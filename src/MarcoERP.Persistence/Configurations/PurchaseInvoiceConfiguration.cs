@@ -45,7 +45,8 @@ namespace MarcoERP.Persistence.Configurations
 
             // Relationships
             builder.HasOne(pi => pi.Supplier).WithMany()
-                .HasForeignKey(pi => pi.SupplierId).OnDelete(DeleteBehavior.Restrict);
+                .HasForeignKey(pi => pi.SupplierId).OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
 
             builder.HasOne<Warehouse>().WithMany()
                 .HasForeignKey(pi => pi.WarehouseId).OnDelete(DeleteBehavior.Restrict);
@@ -59,6 +60,10 @@ namespace MarcoERP.Persistence.Configurations
                 .HasForeignKey(pi => pi.CounterpartyCustomerId).OnDelete(DeleteBehavior.Restrict)
                 .IsRequired(false);
 
+            builder.HasOne(pi => pi.SalesRepresentative).WithMany()
+                .HasForeignKey(pi => pi.SalesRepresentativeId).OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
+
             builder.HasOne<MarcoERP.Domain.Entities.Accounting.JournalEntry>().WithMany()
                 .HasForeignKey(pi => pi.JournalEntryId).OnDelete(DeleteBehavior.Restrict)
                 .IsRequired(false);
@@ -67,12 +72,15 @@ namespace MarcoERP.Persistence.Configurations
                 .HasForeignKey(l => l.PurchaseInvoiceId).OnDelete(DeleteBehavior.Restrict);
 
             // Indexes
+            // Unique index with filter: allows reusing invoice numbers for soft-deleted records
             builder.HasIndex(pi => pi.InvoiceNumber).IsUnique()
-                .HasDatabaseName("IX_PurchaseInvoices_InvoiceNumber");
+                .HasDatabaseName("IX_PurchaseInvoices_InvoiceNumber")
+                .HasFilter("[IsDeleted] = 0");
             builder.HasIndex(pi => pi.InvoiceDate)
                 .HasDatabaseName("IX_PurchaseInvoices_InvoiceDate");
             builder.HasIndex(pi => pi.SupplierId)
-                .HasDatabaseName("IX_PurchaseInvoices_SupplierId");
+                .HasDatabaseName("IX_PurchaseInvoices_SupplierId")
+                .HasFilter("[SupplierId] IS NOT NULL");
             builder.HasIndex(pi => pi.WarehouseId)
                 .HasDatabaseName("IX_PurchaseInvoices_WarehouseId");
             builder.HasIndex(pi => pi.Status)
@@ -83,6 +91,9 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasIndex(pi => pi.CounterpartyCustomerId)
                 .HasDatabaseName("IX_PurchaseInvoices_CounterpartyCustomerId")
                 .HasFilter("[CounterpartyCustomerId] IS NOT NULL");
+            builder.HasIndex(pi => pi.SalesRepresentativeId)
+                .HasDatabaseName("IX_PurchaseInvoices_SalesRepresentativeId")
+                .HasFilter("[SalesRepresentativeId] IS NOT NULL");
         }
     }
 }

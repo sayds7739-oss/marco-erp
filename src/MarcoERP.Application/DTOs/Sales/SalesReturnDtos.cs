@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using MarcoERP.Domain.Enums;
 
 namespace MarcoERP.Application.DTOs.Sales
 {
@@ -13,8 +14,12 @@ namespace MarcoERP.Application.DTOs.Sales
         public int Id { get; set; }
         public string ReturnNumber { get; set; }
         public DateTime ReturnDate { get; set; }
-        public int CustomerId { get; set; }
+        public int? CustomerId { get; set; }
         public string CustomerNameAr { get; set; }
+        public CounterpartyType CounterpartyType { get; set; }
+        public int? SupplierId { get; set; }
+        public string SupplierNameAr { get; set; }
+        public int? SalesRepresentativeId { get; set; }
         public int WarehouseId { get; set; }
         public string WarehouseNameAr { get; set; }
         public int? OriginalInvoiceId { get; set; }
@@ -56,7 +61,10 @@ namespace MarcoERP.Application.DTOs.Sales
     public sealed class CreateSalesReturnDto
     {
         public DateTime ReturnDate { get; set; }
-        public int CustomerId { get; set; }
+        public int? CustomerId { get; set; }
+        public CounterpartyType CounterpartyType { get; set; }
+        public int? SupplierId { get; set; }
+        public int? SalesRepresentativeId { get; set; }
         public int WarehouseId { get; set; }
         public int? OriginalInvoiceId { get; set; }
         public string Notes { get; set; }
@@ -78,7 +86,10 @@ namespace MarcoERP.Application.DTOs.Sales
     {
         public int Id { get; set; }
         public DateTime ReturnDate { get; set; }
-        public int CustomerId { get; set; }
+        public int? CustomerId { get; set; }
+        public CounterpartyType CounterpartyType { get; set; }
+        public int? SupplierId { get; set; }
+        public int? SalesRepresentativeId { get; set; }
         public int WarehouseId { get; set; }
         public int? OriginalInvoiceId { get; set; }
         public string Notes { get; set; }

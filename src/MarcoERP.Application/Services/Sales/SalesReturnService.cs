@@ -19,6 +19,7 @@ using MarcoERP.Domain.Exceptions.Sales;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Sales;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Sales
 {
@@ -46,6 +47,7 @@ namespace MarcoERP.Application.Services.Sales
         private readonly IDateTimeProvider _dateTime;
         private readonly IValidator<CreateSalesReturnDto> _createValidator;
         private readonly IValidator<UpdateSalesReturnDto> _updateValidator;
+        private readonly ILogger<SalesReturnService> _logger;
 
         // ── GL Account Codes (from SystemAccountSeed) ───────────
         private const string ArAccountCode = "1121";
@@ -58,11 +60,13 @@ namespace MarcoERP.Application.Services.Sales
         public SalesReturnService(
             SalesReturnRepositories repos,
             SalesReturnServices services,
-            SalesReturnValidators validators)
+            SalesReturnValidators validators,
+            ILogger<SalesReturnService> logger)
         {
             if (repos == null) throw new ArgumentNullException(nameof(repos));
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (validators == null) throw new ArgumentNullException(nameof(validators));
+            if (logger == null) throw new ArgumentNullException(nameof(logger));
 
             _returnRepo = repos.ReturnRepo;
             _productRepo = repos.ProductRepo;
@@ -80,6 +84,7 @@ namespace MarcoERP.Application.Services.Sales
 
             _createValidator = validators.CreateValidator;
             _updateValidator = validators.UpdateValidator;
+            _logger = logger;
         }
 
         // ══════════════════════════════════════════════════════════
@@ -131,6 +136,16 @@ namespace MarcoERP.Application.Services.Sales
                     if (originalInvoice == null)
                         return ServiceResult<SalesReturnDto>.Failure("الفاتورة الأصلية غير موجودة.");
 
+                    // Get all previous posted/draft returns for this invoice to prevent over-return
+                    var previousReturns = await _returnRepo.GetByOriginalInvoiceAsync(dto.OriginalInvoiceId.Value, ct);
+                    var previouslyReturnedQty = previousReturns
+                        .Where(r => r.Status != InvoiceStatus.Cancelled)
+                        .SelectMany(r => r.Lines)
+                        .GroupBy(l => new { l.ProductId, l.UnitId })
+                        .ToDictionary(
+                            g => g.Key,
+                            g => g.Sum(l => l.Quantity));
+
                     foreach (var lineDto in dto.Lines)
                     {
                         var invoiceLine = originalInvoice.Lines
@@ -140,9 +155,14 @@ namespace MarcoERP.Application.Services.Sales
                             return ServiceResult<SalesReturnDto>.Failure(
                                 $"الصنف {lineDto.ProductId} بالوحدة {lineDto.UnitId} غير موجود في الفاتورة الأصلية.");
 
-                        if (lineDto.Quantity > invoiceLine.Quantity)
+                        var alreadyReturned = previouslyReturnedQty
+                            .GetValueOrDefault(new { lineDto.ProductId, lineDto.UnitId }, 0m);
+                        var remainingReturnable = invoiceLine.Quantity - alreadyReturned;
+
+                        if (lineDto.Quantity > remainingReturnable)
                             return ServiceResult<SalesReturnDto>.Failure(
-                                $"كمية المرتجع ({lineDto.Quantity}) تتجاوز الكمية في الفاتورة الأصلية ({invoiceLine.Quantity}) للصنف {lineDto.ProductId}.");
+                                $"كمية المرتجع ({lineDto.Quantity}) تتجاوز الكمية المتاحة للإرجاع ({remainingReturnable}) للصنف {lineDto.ProductId}. " +
+                                $"(الكمية الأصلية: {invoiceLine.Quantity}، تم إرجاع: {alreadyReturned})");
                     }
                 }
 
@@ -154,7 +174,10 @@ namespace MarcoERP.Application.Services.Sales
                     dto.CustomerId,
                     dto.WarehouseId,
                     dto.OriginalInvoiceId,
-                    dto.Notes);
+                    dto.Notes,
+                    salesRepresentativeId: dto.SalesRepresentativeId,
+                    counterpartyType: dto.CounterpartyType,
+                    supplierId: dto.SupplierId);
 
                 foreach (var lineDto in dto.Lines)
                 {
@@ -213,7 +236,10 @@ namespace MarcoERP.Application.Services.Sales
             try
             {
                 salesReturn.UpdateHeader(dto.ReturnDate, dto.CustomerId, dto.WarehouseId,
-                    dto.OriginalInvoiceId, dto.Notes);
+                    dto.OriginalInvoiceId, dto.Notes,
+                    salesRepresentativeId: dto.SalesRepresentativeId,
+                    counterpartyType: dto.CounterpartyType,
+                    supplierId: dto.SupplierId);
 
                 var newLines = new List<SalesReturnLine>();
                 foreach (var lineDto in dto.Lines)
@@ -287,7 +313,8 @@ namespace MarcoERP.Application.Services.Sales
             }
             catch (Exception ex)
             {
-                return ServiceResult<SalesReturnDto>.Failure($"خطأ أثناء ترحيل المرتجع: {ex.Message}");
+                _logger.LogError(ex, "Failed to post sales return {ReturnId}.", salesReturn?.Id);
+                return ServiceResult<SalesReturnDto>.Failure("حدث خطأ غير متوقع أثناء ترحيل المرتجع.");
             }
         }
 
@@ -322,7 +349,8 @@ namespace MarcoERP.Application.Services.Sales
             }
             catch (Exception ex)
             {
-                return ServiceResult.Failure($"فشل إلغاء مرتجع البيع: {ex.Message}");
+                _logger.LogError(ex, "Failed to cancel sales return {ReturnId}.", salesReturn?.Id);
+                return ServiceResult.Failure("حدث خطأ غير متوقع أثناء إلغاء مرتجع البيع.");
             }
         }
 

@@ -1,4 +1,4 @@
-<UserControl x:Class="MarcoERP.WpfUI.Views.Purchases.PurchaseInvoiceView"
+﻿<UserControl x:Class="MarcoERP.WpfUI.Views.Purchases.PurchaseInvoiceView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -234,7 +234,7 @@
                                     <DataGridTemplateColumn Header="الكمية" Width="70">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBox Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged, StringFormat=N3}"
+                                                <TextBox Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged, StringFormat=0.00}"
                                                          IsEnabled="{Binding DataContext.IsEditing, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                          TextAlignment="Center" BorderThickness="0" FontSize="12" />
                                             </DataTemplate>

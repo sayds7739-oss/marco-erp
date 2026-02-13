@@ -1,4 +1,4 @@
-<UserControl x:Class="MarcoERP.WpfUI.Views.Reports.InventoryReportView"
+﻿<UserControl x:Class="MarcoERP.WpfUI.Views.Reports.InventoryReportView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -51,7 +51,7 @@
                 <DataGridTextColumn Header="اسم الصنف" Binding="{Binding ProductName}" Width="*" />
                 <DataGridTextColumn Header="التصنيف" Binding="{Binding CategoryName}" Width="120" />
                 <DataGridTextColumn Header="المستودع" Binding="{Binding WarehouseName}" Width="120" />
-                <DataGridTextColumn Header="الكمية" Binding="{Binding Quantity, StringFormat=N3}" Width="90" />
+                <DataGridTextColumn Header="الكمية" Binding="{Binding Quantity, StringFormat=0.00}" Width="90" />
                 <DataGridTextColumn Header="الوحدة" Binding="{Binding UnitName}" Width="80" />
                 <DataGridTextColumn Header="سعر التكلفة" Binding="{Binding CostPrice, StringFormat=N2}" Width="100" />
                 <DataGridTextColumn Header="القيمة" Binding="{Binding TotalValue, StringFormat=N2}" Width="110">

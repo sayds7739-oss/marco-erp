@@ -177,6 +177,10 @@ namespace MarcoERP.Application.Services.Inventory
                     dto.MinimumStock, dto.ReorderLevel, dto.VatRate, dto.Barcode, dto.Description,
                     dto.DefaultSupplierId);
 
+                product.UpdateCostPrice(dto.CostPrice);
+
+                SyncBaseUnitPricing(product);
+
                 SyncUnits(product, dto);
 
                 _productRepo.Update(product);
@@ -269,6 +273,13 @@ namespace MarcoERP.Application.Services.Inventory
                     u.SalePrice, u.PurchasePrice, u.Barcode, u.IsDefault);
                 product.AddUnit(pu);
             }
+        }
+
+        private static void SyncBaseUnitPricing(Product product)
+        {
+            var baseUnit = product.ProductUnits.FirstOrDefault(u => u.UnitId == product.BaseUnitId);
+            if (baseUnit != null)
+                baseUnit.UpdatePricing(product.DefaultSalePrice, product.CostPrice, product.Barcode);
         }
     }
 }

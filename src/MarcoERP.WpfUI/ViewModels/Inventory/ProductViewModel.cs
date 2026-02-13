@@ -103,14 +103,22 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         public decimal FormCostPrice
         {
             get => _formCostPrice;
-            set => SetProperty(ref _formCostPrice, value);
+            set
+            {
+                if (SetProperty(ref _formCostPrice, value))
+                    RefreshUnitPricesFromBase();
+            }
         }
 
         private decimal _formDefaultSalePrice;
         public decimal FormDefaultSalePrice
         {
             get => _formDefaultSalePrice;
-            set => SetProperty(ref _formDefaultSalePrice, value);
+            set
+            {
+                if (SetProperty(ref _formDefaultSalePrice, value))
+                    RefreshUnitPricesFromBase();
+            }
         }
 
         private decimal _formMinimumStock;
@@ -338,6 +346,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                         NameAr = FormNameAr?.Trim(),
                         NameEn = FormNameEn?.Trim(),
                         CategoryId = FormCategoryId ?? 0,
+                        CostPrice = FormCostPrice,
                         DefaultSalePrice = FormDefaultSalePrice,
                         MinimumStock = FormMinimumStock,
                         ReorderLevel = FormReorderLevel,
@@ -560,6 +569,12 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             FormDefaultSupplierId = null;
             FormUnits.Clear();
         }
+
+        private void RefreshUnitPricesFromBase()
+        {
+            foreach (var unit in FormUnits)
+                unit.AutoCalcPrices();
+        }
     }
 
     // ════════════════════════════════════════════════════════════
@@ -571,6 +586,9 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
     {
         private Func<(decimal salePrice, decimal costPrice)> _getBasePrices;
         private bool _suppressAutoCalc;
+        private bool _isAutoCalc;
+        private bool _salePriceManual;
+        private bool _purchasePriceManual;
 
         /// <summary>
         /// Sets the base price provider for auto-calculation.
@@ -603,14 +621,22 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         public decimal SalePrice
         {
             get => _salePrice;
-            set => SetProperty(ref _salePrice, value);
+            set
+            {
+                if (SetProperty(ref _salePrice, value) && !_isAutoCalc)
+                    _salePriceManual = value != 0;
+            }
         }
 
         private decimal _purchasePrice;
         public decimal PurchasePrice
         {
             get => _purchasePrice;
-            set => SetProperty(ref _purchasePrice, value);
+            set
+            {
+                if (SetProperty(ref _purchasePrice, value) && !_isAutoCalc)
+                    _purchasePriceManual = value != 0;
+            }
         }
 
         private string _barcode;
@@ -631,15 +657,23 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         /// Auto-calculates SalePrice and PurchasePrice from base unit prices
         /// and the conversion factor. Formula: UnitPrice = BasePrice / Factor.
         /// E.g., Carton(base)=100, Piece factor=12 → PiecePrice = 100/12 ≈ 8.33
+        /// If SalePrice or PurchasePrice is zero, it will be auto-calculated.
+        /// If user enters a value, it will be preserved.
         /// </summary>
         public void AutoCalcPrices()
         {
             if (_getBasePrices == null || ConversionFactor <= 0) return;
             var (baseSale, baseCost) = _getBasePrices();
-            if (baseSale > 0)
+
+            _isAutoCalc = true;
+
+            if (baseSale > 0 && !_salePriceManual)
                 SalePrice = Math.Round(baseSale / ConversionFactor, 4);
-            if (baseCost > 0)
+
+            if (baseCost > 0 && !_purchasePriceManual)
                 PurchasePrice = Math.Round(baseCost / ConversionFactor, 4);
+
+            _isAutoCalc = false;
         }
 
         /// <summary>
@@ -654,6 +688,8 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             PurchasePrice = purchase;
             Barcode = barcode;
             IsDefault = isDefault;
+            _salePriceManual = sale != 0;
+            _purchasePriceManual = purchase != 0;
             _suppressAutoCalc = false;
         }
     }

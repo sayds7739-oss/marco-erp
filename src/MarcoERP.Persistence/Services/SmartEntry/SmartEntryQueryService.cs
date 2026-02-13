@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using MarcoERP.Application.DTOs.Common;
 using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.SmartEntry;
 using MarcoERP.Domain.Enums;
@@ -44,6 +45,24 @@ namespace MarcoERP.Persistence.Services.SmartEntry
             return result.HasValue ? result.Value : (decimal?)null;
         }
 
+        public async Task<decimal?> GetLastSalesUnitPriceForSupplierAsync(int supplierId, int productId, int unitId, CancellationToken ct = default)
+        {
+            if (supplierId <= 0 || productId <= 0 || unitId <= 0)
+                return null;
+
+            return await (
+                    from line in _db.Set<Domain.Entities.Sales.SalesInvoiceLine>().AsNoTracking()
+                    join inv in _db.SalesInvoices.AsNoTracking() on line.SalesInvoiceId equals inv.Id
+                    where inv.Status == InvoiceStatus.Posted
+                          && inv.CounterpartyType == CounterpartyType.Supplier
+                          && inv.SupplierId == supplierId
+                          && line.ProductId == productId
+                          && line.UnitId == unitId
+                    orderby inv.InvoiceDate descending, inv.Id descending
+                    select (decimal?)line.UnitPrice)
+                .FirstOrDefaultAsync(ct);
+        }
+
         public async Task<decimal?> GetLastPurchaseUnitPriceAsync(int productId, int unitId, CancellationToken ct = default)
         {
             var result = await TryFirstAsync(CompiledQueries.GetLastPurchaseUnitPrice(_db, productId, unitId), ct);
@@ -54,6 +73,88 @@ namespace MarcoERP.Persistence.Services.SmartEntry
         {
             var result = await TryFirstAsync(CompiledQueries.GetLastPurchaseUnitPriceForSupplier(_db, supplierId, productId, unitId), ct);
             return result.HasValue ? result.Value : (decimal?)null;
+        }
+
+        public async Task<decimal?> GetLastPurchaseUnitPriceForCustomerAsync(int customerId, int productId, int unitId, CancellationToken ct = default)
+        {
+            if (customerId <= 0 || productId <= 0 || unitId <= 0)
+                return null;
+
+            return await (
+                    from line in _db.Set<Domain.Entities.Purchases.PurchaseInvoiceLine>().AsNoTracking()
+                    join inv in _db.PurchaseInvoices.AsNoTracking() on line.PurchaseInvoiceId equals inv.Id
+                    where inv.Status == InvoiceStatus.Posted
+                          && inv.CounterpartyType == CounterpartyType.Customer
+                          && inv.CounterpartyCustomerId == customerId
+                          && line.ProductId == productId
+                          && line.UnitId == unitId
+                    orderby inv.InvoiceDate descending, inv.Id descending
+                    select (decimal?)line.UnitPrice)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        public async Task<IReadOnlyList<PriceHistoryRowDto>> GetRecentSalesPricesAsync(int productId, int unitId, int take = 5, CancellationToken ct = default)
+        {
+            if (productId <= 0 || unitId <= 0 || take <= 0)
+                return Array.Empty<PriceHistoryRowDto>();
+
+            var rows = await (
+                    from line in _db.Set<Domain.Entities.Sales.SalesInvoiceLine>().AsNoTracking()
+                    join inv in _db.SalesInvoices.AsNoTracking() on line.SalesInvoiceId equals inv.Id
+                    join cust in _db.Customers.AsNoTracking() on inv.CustomerId equals cust.Id into custJoin
+                    from cust in custJoin.DefaultIfEmpty()
+                    join sup in _db.Suppliers.AsNoTracking() on inv.SupplierId equals sup.Id into supJoin
+                    from sup in supJoin.DefaultIfEmpty()
+                    where inv.Status == InvoiceStatus.Posted
+                          && line.ProductId == productId
+                          && line.UnitId == unitId
+                    orderby inv.InvoiceDate descending, inv.Id descending
+                    select new PriceHistoryRowDto
+                    {
+                        InvoiceDate = inv.InvoiceDate,
+                        DocumentNumber = inv.InvoiceNumber,
+                        CounterpartyNameAr = inv.CounterpartyType == CounterpartyType.Supplier
+                            ? sup.NameAr
+                            : cust.NameAr,
+                        UnitPrice = line.UnitPrice,
+                        Quantity = line.Quantity
+                    })
+                .Take(take)
+                .ToListAsync(ct);
+
+            return rows;
+        }
+
+        public async Task<IReadOnlyList<PriceHistoryRowDto>> GetRecentPurchasePricesAsync(int productId, int unitId, int take = 5, CancellationToken ct = default)
+        {
+            if (productId <= 0 || unitId <= 0 || take <= 0)
+                return Array.Empty<PriceHistoryRowDto>();
+
+            var rows = await (
+                    from line in _db.Set<Domain.Entities.Purchases.PurchaseInvoiceLine>().AsNoTracking()
+                    join inv in _db.PurchaseInvoices.AsNoTracking() on line.PurchaseInvoiceId equals inv.Id
+                    join sup in _db.Suppliers.AsNoTracking() on inv.SupplierId equals sup.Id into supJoin
+                    from sup in supJoin.DefaultIfEmpty()
+                    join cust in _db.Customers.AsNoTracking() on inv.CounterpartyCustomerId equals cust.Id into custJoin
+                    from cust in custJoin.DefaultIfEmpty()
+                    where inv.Status == InvoiceStatus.Posted
+                          && line.ProductId == productId
+                          && line.UnitId == unitId
+                    orderby inv.InvoiceDate descending, inv.Id descending
+                    select new PriceHistoryRowDto
+                    {
+                        InvoiceDate = inv.InvoiceDate,
+                        DocumentNumber = inv.InvoiceNumber,
+                        CounterpartyNameAr = inv.CounterpartyType == CounterpartyType.Customer
+                            ? cust.NameAr
+                            : sup.NameAr,
+                        UnitPrice = line.UnitPrice,
+                        Quantity = line.Quantity
+                    })
+                .Take(take)
+                .ToListAsync(ct);
+
+            return rows;
         }
 
         public async Task<decimal> GetPostedAccountBalanceAsync(int accountId, CancellationToken ct = default)

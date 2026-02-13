@@ -1,4 +1,4 @@
-<UserControl x:Class="MarcoERP.WpfUI.Views.Sales.SalesInvoiceDetailView"
+﻿<UserControl x:Class="MarcoERP.WpfUI.Views.Sales.SalesInvoiceDetailView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:common="clr-namespace:MarcoERP.WpfUI.Common"
@@ -327,7 +327,7 @@
                         </DataGridTemplateColumn>
                         <!-- Qty -->
                         <DataGridTextColumn Header="الكمية" Width="70"
-                                            Binding="{Binding Quantity, StringFormat=N3}" IsReadOnly="True">
+                                            Binding="{Binding Quantity, StringFormat=0.00}" IsReadOnly="True">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="TextAlignment" Value="Center" />

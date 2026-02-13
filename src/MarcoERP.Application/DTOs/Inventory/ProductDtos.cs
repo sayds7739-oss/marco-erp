@@ -77,6 +77,7 @@ namespace MarcoERP.Application.DTOs.Inventory
         public string NameAr { get; set; }
         public string NameEn { get; set; }
         public int CategoryId { get; set; }
+        public decimal CostPrice { get; set; }
         public decimal DefaultSalePrice { get; set; }
         public decimal MinimumStock { get; set; }
         public decimal ReorderLevel { get; set; }

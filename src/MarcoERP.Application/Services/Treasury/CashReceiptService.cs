@@ -18,6 +18,7 @@ using MarcoERP.Domain.Exceptions.Treasury;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Sales;
 using MarcoERP.Domain.Interfaces.Treasury;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Treasury
 {
@@ -43,13 +44,15 @@ namespace MarcoERP.Application.Services.Treasury
         private readonly IDateTimeProvider _dateTime;
         private readonly IValidator<CreateCashReceiptDto> _createValidator;
         private readonly IValidator<UpdateCashReceiptDto> _updateValidator;
+        private readonly ILogger<CashReceiptService> _logger;
 
         private const string ReceiptNotFoundMessage = "سند القبض غير موجود.";
 
         public CashReceiptService(
             CashReceiptRepositories repos,
             CashReceiptServices services,
-            CashReceiptValidators validators)
+            CashReceiptValidators validators,
+            ILogger<CashReceiptService> logger)
         {
             if (repos == null) throw new ArgumentNullException(nameof(repos));
             if (services == null) throw new ArgumentNullException(nameof(services));
@@ -69,6 +72,7 @@ namespace MarcoERP.Application.Services.Treasury
 
             _createValidator = validators.CreateValidator;
             _updateValidator = validators.UpdateValidator;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         // ── Queries ─────────────────────────────────────────────
@@ -226,7 +230,8 @@ namespace MarcoERP.Application.Services.Treasury
             }
             catch (Exception ex)
             {
-                return ServiceResult<CashReceiptDto>.Failure($"خطأ أثناء ترحيل سند القبض: {ex.Message}");
+                _logger.LogError(ex, "خطأ غير متوقع أثناء ترحيل سند القبض {ReceiptId}", id);
+                return ServiceResult<CashReceiptDto>.Failure("حدث خطأ غير متوقع أثناء ترحيل سند القبض.");
             }
         }
 
@@ -254,7 +259,8 @@ namespace MarcoERP.Application.Services.Treasury
             }
             catch (Exception ex)
             {
-                return ServiceResult.Failure($"فشل إلغاء سند القبض: {ex.Message}");
+                _logger.LogError(ex, "خطأ غير متوقع أثناء إلغاء سند القبض {ReceiptId}", id);
+                return ServiceResult.Failure("حدث خطأ غير متوقع أثناء إلغاء سند القبض.");
             }
         }
 

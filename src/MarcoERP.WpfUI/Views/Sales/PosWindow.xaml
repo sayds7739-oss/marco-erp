@@ -1,4 +1,4 @@
-<Window x:Class="MarcoERP.WpfUI.Views.Sales.PosWindow"
+﻿<Window x:Class="MarcoERP.WpfUI.Views.Sales.PosWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -209,7 +209,7 @@
                             <DataGridTextColumn Header="الكود" Binding="{Binding ProductCode}" Width="80" />
                             <DataGridTextColumn Header="الصنف" Binding="{Binding ProductNameAr}" Width="*" MinWidth="160" />
                             <DataGridTextColumn Header="الوحدة" Binding="{Binding UnitNameAr}" Width="80" />
-                            <DataGridTextColumn Header="الكمية" Binding="{Binding Quantity, StringFormat=N3}" Width="70" />
+                            <DataGridTextColumn Header="الكمية" Binding="{Binding Quantity, StringFormat=0.00}" Width="70" />
                             <DataGridTextColumn Header="السعر" Binding="{Binding UnitPrice, StringFormat=N2}" Width="85" />
                             <DataGridTextColumn Header="خصم %" Binding="{Binding DiscountPercent, StringFormat=N1}" Width="60" />
                             <DataGridTextColumn Header="الضريبة" Binding="{Binding VatAmount, StringFormat=N2}" Width="80" />

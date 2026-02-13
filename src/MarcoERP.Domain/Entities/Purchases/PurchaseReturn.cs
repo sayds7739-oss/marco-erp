@@ -27,25 +27,34 @@ namespace MarcoERP.Domain.Entities.Purchases
         public PurchaseReturn(
             string returnNumber,
             DateTime returnDate,
-            int supplierId,
+            int? supplierId,
             int warehouseId,
             int? originalInvoiceId,
-            string notes)
+            string notes,
+            int? salesRepresentativeId = null,
+            CounterpartyType counterpartyType = CounterpartyType.Supplier,
+            int? customerId = null)
         {
             if (string.IsNullOrWhiteSpace(returnNumber))
                 throw new PurchaseReturnDomainException("رقم مرتجع الشراء مطلوب.");
 
-            if (supplierId <= 0)
+            if (counterpartyType == CounterpartyType.Supplier && (!supplierId.HasValue || supplierId <= 0))
                 throw new PurchaseReturnDomainException("المورد مطلوب.");
 
             if (warehouseId <= 0)
                 throw new PurchaseReturnDomainException("المستودع مطلوب.");
 
+            if (counterpartyType == CounterpartyType.Customer && (!customerId.HasValue || customerId <= 0))
+                throw new PurchaseReturnDomainException("العميل مطلوب عند اختيار نوع الطرف (عميل).");
+
             ReturnNumber = returnNumber.Trim();
             ReturnDate = returnDate;
-            SupplierId = supplierId;
+            CounterpartyType = counterpartyType;
+            SupplierId = counterpartyType == CounterpartyType.Supplier ? supplierId : null;
+            CounterpartyCustomerId = counterpartyType == CounterpartyType.Customer ? customerId : null;
             WarehouseId = warehouseId;
             OriginalInvoiceId = originalInvoiceId;
+            SalesRepresentativeId = salesRepresentativeId;
             Status = InvoiceStatus.Draft;
             Notes = notes?.Trim();
 
@@ -66,13 +75,28 @@ namespace MarcoERP.Domain.Entities.Purchases
         public DateTime ReturnDate { get; private set; }
 
         /// <summary>FK to Supplier.</summary>
-        public int SupplierId { get; private set; }
+        public int? SupplierId { get; private set; }
 
         /// <summary>Navigation property.</summary>
         public Supplier Supplier { get; private set; }
 
+        /// <summary>Counterparty type — who the return is to.</summary>
+        public CounterpartyType CounterpartyType { get; private set; }
+
+        /// <summary>FK to Customer (when CounterpartyType = Customer — مرتجع لمشتريات من عميل).</summary>
+        public int? CounterpartyCustomerId { get; private set; }
+
+        /// <summary>Navigation property to Customer.</summary>
+        public Sales.Customer CounterpartyCustomer { get; private set; }
+
         /// <summary>FK to Warehouse the goods are returned from.</summary>
         public int WarehouseId { get; private set; }
+
+        /// <summary>FK to SalesRepresentative (optional — مندوب).</summary>
+        public int? SalesRepresentativeId { get; private set; }
+
+        /// <summary>Navigation property to SalesRepresentative.</summary>
+        public Sales.SalesRepresentative SalesRepresentative { get; private set; }
 
         /// <summary>Optional FK to the original purchase invoice being returned against.</summary>
         public int? OriginalInvoiceId { get; private set; }
@@ -152,22 +176,30 @@ namespace MarcoERP.Domain.Entities.Purchases
         /// <summary>Updates the return header. Only allowed in Draft status.</summary>
         public void UpdateHeader(
             DateTime returnDate,
-            int supplierId,
+            int? supplierId,
             int warehouseId,
             int? originalInvoiceId,
-            string notes)
+            string notes,
+            int? salesRepresentativeId = null,
+            CounterpartyType counterpartyType = CounterpartyType.Supplier,
+            int? customerId = null)
         {
             EnsureDraft("لا يمكن تعديل مرتجع مرحّل أو ملغى.");
 
-            if (supplierId <= 0)
+            if (counterpartyType == CounterpartyType.Supplier && (!supplierId.HasValue || supplierId <= 0))
                 throw new PurchaseReturnDomainException("المورد مطلوب.");
             if (warehouseId <= 0)
                 throw new PurchaseReturnDomainException("المستودع مطلوب.");
+            if (counterpartyType == CounterpartyType.Customer && (!customerId.HasValue || customerId <= 0))
+                throw new PurchaseReturnDomainException("العميل مطلوب عند اختيار نوع الطرف (عميل).");
 
             ReturnDate = returnDate;
-            SupplierId = supplierId;
+            CounterpartyType = counterpartyType;
+            SupplierId = counterpartyType == CounterpartyType.Supplier ? supplierId : null;
+            CounterpartyCustomerId = counterpartyType == CounterpartyType.Customer ? customerId : null;
             WarehouseId = warehouseId;
             OriginalInvoiceId = originalInvoiceId;
+            SalesRepresentativeId = salesRepresentativeId;
             Notes = notes?.Trim();
         }
 

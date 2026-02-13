@@ -18,6 +18,7 @@ using MarcoERP.Domain.Exceptions.Treasury;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Purchases;
 using MarcoERP.Domain.Interfaces.Treasury;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Treasury
 {
@@ -44,11 +45,13 @@ namespace MarcoERP.Application.Services.Treasury
         private readonly IValidator<CreateCashPaymentDto> _createValidator;
         private readonly IValidator<UpdateCashPaymentDto> _updateValidator;
         private const string PaymentNotFoundMessage = "سند الصرف غير موجود.";
+        private readonly ILogger<CashPaymentService> _logger;
 
         public CashPaymentService(
             CashPaymentRepositories repos,
             CashPaymentServices services,
-            CashPaymentValidators validators)
+            CashPaymentValidators validators,
+            ILogger<CashPaymentService> logger)
         {
             if (repos == null) throw new ArgumentNullException(nameof(repos));
             if (services == null) throw new ArgumentNullException(nameof(services));
@@ -68,6 +71,7 @@ namespace MarcoERP.Application.Services.Treasury
 
             _createValidator = validators.CreateValidator;
             _updateValidator = validators.UpdateValidator;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         // ── Queries ─────────────────────────────────────────────
@@ -267,7 +271,8 @@ namespace MarcoERP.Application.Services.Treasury
             }
             catch (Exception ex)
             {
-                return ServiceResult<CashPaymentDto>.Failure($"خطأ أثناء ترحيل سند الصرف: {ex.Message}");
+                _logger.LogError(ex, "خطأ غير متوقع أثناء ترحيل سند الصرف {PaymentId}", id);
+                return ServiceResult<CashPaymentDto>.Failure("حدث خطأ غير متوقع أثناء ترحيل سند الصرف.");
             }
         }
 
@@ -422,7 +427,8 @@ namespace MarcoERP.Application.Services.Treasury
             }
             catch (Exception ex)
             {
-                return ServiceResult.Failure($"فشل إلغاء سند الصرف: {ex.Message}");
+                _logger.LogError(ex, "خطأ غير متوقع أثناء إلغاء سند الصرف {PaymentId}", id);
+                return ServiceResult.Failure("حدث خطأ غير متوقع أثناء إلغاء سند الصرف.");
             }
         }
 

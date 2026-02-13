@@ -30,6 +30,9 @@ namespace MarcoERP.Application.Validators.Inventory
             RuleFor(x => x.DefaultSalePrice)
                 .GreaterThanOrEqualTo(0).WithMessage("سعر البيع لا يمكن أن يكون سالباً.");
 
+            RuleFor(x => x.CostPrice)
+                .GreaterThanOrEqualTo(0).WithMessage("سعر التكلفة لا يمكن أن يكون سالباً.");
+
             RuleFor(x => x.MinimumStock)
                 .GreaterThanOrEqualTo(0).WithMessage("الحد الأدنى لا يمكن أن يكون سالباً.");
 

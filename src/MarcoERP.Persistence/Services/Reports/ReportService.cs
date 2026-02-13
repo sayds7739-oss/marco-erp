@@ -802,18 +802,23 @@ namespace MarcoERP.Persistence.Services.Reports
             var salesInvoices = await _db.Set<Domain.Entities.Sales.SalesInvoice>()
                 .AsNoTracking()
                 .Include(i => i.Customer)
-                .Where(i => i.Status == InvoiceStatus.Posted && (i.NetTotal - i.PaidAmount) > 0)
+                .Where(i => i.Status == InvoiceStatus.Posted
+                            && i.CounterpartyType == CounterpartyType.Customer
+                            && (i.NetTotal - i.PaidAmount) > 0)
                 .ToListAsync(ct);
 
             // Load posted sales returns (only for customers with outstanding invoices)
             var customerIds = salesInvoices.Select(i => i.CustomerId).Distinct().ToList();
             var salesReturns = await _db.Set<Domain.Entities.Sales.SalesReturn>()
                 .AsNoTracking()
-                .Where(r => r.Status == InvoiceStatus.Posted && customerIds.Contains(r.CustomerId))
+                .Where(r => r.Status == InvoiceStatus.Posted
+                            && r.CounterpartyType == CounterpartyType.Customer
+                            && r.CustomerId.HasValue
+                            && customerIds.Contains(r.CustomerId.Value))
                 .ToListAsync(ct);
 
             var returnsByCustomer = salesReturns
-                .GroupBy(r => r.CustomerId)
+                .GroupBy(r => r.CustomerId.Value)
                 .ToDictionary(g => g.Key, g => g.Sum(r => r.NetTotal));
 
             var customerGroups = salesInvoices
@@ -868,22 +873,28 @@ namespace MarcoERP.Persistence.Services.Reports
             var purchaseInvoices = await _db.Set<Domain.Entities.Purchases.PurchaseInvoice>()
                 .AsNoTracking()
                 .Include(i => i.Supplier)
-                .Where(i => i.Status == InvoiceStatus.Posted && (i.NetTotal - i.PaidAmount) > 0)
+                .Where(i => i.Status == InvoiceStatus.Posted
+                            && i.CounterpartyType == CounterpartyType.Supplier
+                            && i.SupplierId.HasValue
+                            && (i.NetTotal - i.PaidAmount) > 0)
                 .ToListAsync(ct);
 
             // Load posted purchase returns (only for suppliers with outstanding invoices)
-            var supplierIds = purchaseInvoices.Select(i => i.SupplierId).Distinct().ToList();
+            var supplierIds = purchaseInvoices.Select(i => i.SupplierId.Value).Distinct().ToList();
             var purchaseReturns = await _db.Set<Domain.Entities.Purchases.PurchaseReturn>()
                 .AsNoTracking()
-                .Where(r => r.Status == InvoiceStatus.Posted && supplierIds.Contains(r.SupplierId))
+                .Where(r => r.Status == InvoiceStatus.Posted
+                            && r.CounterpartyType == CounterpartyType.Supplier
+                            && r.SupplierId.HasValue
+                            && supplierIds.Contains(r.SupplierId.Value))
                 .ToListAsync(ct);
 
             var returnsBySup = purchaseReturns
-                .GroupBy(r => r.SupplierId)
+                .GroupBy(r => r.SupplierId.Value)
                 .ToDictionary(g => g.Key, g => g.Sum(r => r.NetTotal));
 
             var supplierGroups = purchaseInvoices
-                .GroupBy(i => new { i.SupplierId, i.Supplier.Code, i.Supplier.NameAr })
+                .GroupBy(i => new { SupplierId = i.SupplierId.Value, i.Supplier.Code, i.Supplier.NameAr })
                 .Select(g =>
                 {
                     var row = new AgingRowDto

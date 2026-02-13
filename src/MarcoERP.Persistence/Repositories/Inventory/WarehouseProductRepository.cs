@@ -23,7 +23,24 @@ namespace MarcoERP.Persistence.Repositories.Inventory
         public async Task AddAsync(WarehouseProduct entity, CancellationToken cancellationToken = default)
             => await _context.WarehouseProducts.AddAsync(entity, cancellationToken);
 
-        public void Update(WarehouseProduct entity) => _context.WarehouseProducts.Update(entity);
+        public void Update(WarehouseProduct entity)
+        {
+            var entry = _context.Entry(entity);
+            if (entry.State == EntityState.Added)
+                return;
+
+            if (entry.State == EntityState.Detached)
+            {
+                if (entity.Id == 0)
+                    _context.WarehouseProducts.Add(entity);
+                else
+                    _context.WarehouseProducts.Update(entity);
+
+                return;
+            }
+
+            _context.WarehouseProducts.Update(entity);
+        }
         public void Remove(WarehouseProduct entity) => _context.WarehouseProducts.Remove(entity);
 
         public async Task<WarehouseProduct> GetAsync(int warehouseId, int productId, CancellationToken ct = default)

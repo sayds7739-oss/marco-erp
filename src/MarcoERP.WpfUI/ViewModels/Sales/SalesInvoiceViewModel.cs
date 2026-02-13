@@ -7,11 +7,16 @@ using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Common;
 using MarcoERP.Application.DTOs.Inventory;
+using MarcoERP.Application.DTOs.Purchases;
 using MarcoERP.Application.DTOs.Sales;
 using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Inventory;
+using MarcoERP.Application.Interfaces.Purchases;
 using MarcoERP.Application.Interfaces.Sales;
+using MarcoERP.Application.Interfaces.SmartEntry;
+using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions;
+using MarcoERP.WpfUI.Views.Common;
 using MarcoERP.WpfUI.Common;
 
 namespace MarcoERP.WpfUI.ViewModels.Sales
@@ -27,11 +32,16 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private readonly IProductService _productService;
         private readonly IWarehouseService _warehouseService;
         private readonly ICustomerService _customerService;
+        private readonly ISupplierService _supplierService;
+        private readonly ISalesRepresentativeService _salesRepresentativeService;
+        private readonly ISmartEntryQueryService _smartEntryQueryService;
         private readonly ILineCalculationService _lineCalculationService;
 
         // ── Collections ──────────────────────────────────────────
         public ObservableCollection<SalesInvoiceListDto> Invoices { get; } = new();
         public ObservableCollection<Application.DTOs.Sales.CustomerDto> Customers { get; } = new();
+        public ObservableCollection<SupplierDto> Suppliers { get; } = new();
+        public ObservableCollection<SalesRepresentativeDto> SalesRepresentatives { get; } = new();
         public ObservableCollection<Application.DTOs.Inventory.WarehouseDto> Warehouses { get; } = new();
         public ObservableCollection<ProductDto> Products { get; } = new();
         public ObservableCollection<SalesInvoiceLineFormItem> FormLines { get; } = new();
@@ -104,6 +114,49 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             get => _formCustomerId;
             set { SetProperty(ref _formCustomerId, value); OnPropertyChanged(nameof(CanSave)); }
         }
+
+        private CounterpartyType _formCounterpartyType = CounterpartyType.Customer;
+        public CounterpartyType FormCounterpartyType
+        {
+            get => _formCounterpartyType;
+            set
+            {
+                if (SetProperty(ref _formCounterpartyType, value))
+                {
+                    if (value == CounterpartyType.Customer)
+                        FormSupplierId = null;
+                    else
+                        FormCustomerId = null;
+
+                    OnPropertyChanged(nameof(IsCustomerMode));
+                    OnPropertyChanged(nameof(IsSupplierMode));
+                    OnPropertyChanged(nameof(CanSave));
+                }
+            }
+        }
+
+        public bool IsCustomerMode => FormCounterpartyType == CounterpartyType.Customer;
+        public bool IsSupplierMode => FormCounterpartyType == CounterpartyType.Supplier;
+
+        private int? _formSupplierId;
+        public int? FormSupplierId
+        {
+            get => _formSupplierId;
+            set { SetProperty(ref _formSupplierId, value); OnPropertyChanged(nameof(CanSave)); }
+        }
+
+        private int? _formSalesRepresentativeId;
+        public int? FormSalesRepresentativeId
+        {
+            get => _formSalesRepresentativeId;
+            set => SetProperty(ref _formSalesRepresentativeId, value);
+        }
+
+        public static IReadOnlyList<KeyValuePair<CounterpartyType, string>> CounterpartyTypes { get; } = new[]
+        {
+            new KeyValuePair<CounterpartyType, string>(CounterpartyType.Customer, "عميل"),
+            new KeyValuePair<CounterpartyType, string>(CounterpartyType.Supplier, "مورد")
+        };
 
         private int? _formWarehouseId;
         public int? FormWarehouseId
@@ -189,10 +242,11 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
 
         // ── CanExecute Guards ───────────────────────────────────
         public bool CanSave => IsEditing
-                               && FormCustomerId.HasValue && FormCustomerId > 0
-                               && FormWarehouseId.HasValue && FormWarehouseId > 0
-                               && FormLines.Count > 0
-                               && FormLines.All(l => l.ProductId > 0 && l.Quantity > 0 && l.UnitPrice > 0);
+                       && (FormCounterpartyType != CounterpartyType.Customer || (FormCustomerId.HasValue && FormCustomerId > 0))
+                       && (FormCounterpartyType != CounterpartyType.Supplier || (FormSupplierId.HasValue && FormSupplierId > 0))
+                       && FormWarehouseId.HasValue && FormWarehouseId > 0
+                       && FormLines.Count > 0
+                       && FormLines.All(l => l.ProductId > 0 && l.Quantity > 0 && l.UnitPrice > 0);
 
         public bool CanPost => CurrentInvoice != null && IsDraft && !IsEditing;
         public bool CanCancel => CurrentInvoice != null && IsPosted && !IsEditing;
@@ -209,6 +263,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         public ICommand AddLineCommand { get; }
         public ICommand RemoveLineCommand { get; }
         public ICommand EditSelectedCommand { get; }
+        public ICommand OpenPriceHistoryCommand { get; }
 
         // ── Constructor ─────────────────────────────────────────
         public SalesInvoiceViewModel(
@@ -216,12 +271,18 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             IProductService productService,
             IWarehouseService warehouseService,
             ICustomerService customerService,
+            ISupplierService supplierService,
+            ISalesRepresentativeService salesRepresentativeService,
+            ISmartEntryQueryService smartEntryQueryService,
             ILineCalculationService lineCalculationService)
         {
             _invoiceService = invoiceService ?? throw new ArgumentNullException(nameof(invoiceService));
             _productService = productService ?? throw new ArgumentNullException(nameof(productService));
             _warehouseService = warehouseService ?? throw new ArgumentNullException(nameof(warehouseService));
             _customerService = customerService ?? throw new ArgumentNullException(nameof(customerService));
+            _supplierService = supplierService ?? throw new ArgumentNullException(nameof(supplierService));
+            _salesRepresentativeService = salesRepresentativeService ?? throw new ArgumentNullException(nameof(salesRepresentativeService));
+            _smartEntryQueryService = smartEntryQueryService ?? throw new ArgumentNullException(nameof(smartEntryQueryService));
             _lineCalculationService = lineCalculationService ?? throw new ArgumentNullException(nameof(lineCalculationService));
 
             LoadCommand = new AsyncRelayCommand(LoadInvoicesAsync);
@@ -234,6 +295,27 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             AddLineCommand = new RelayCommand(AddLine);
             RemoveLineCommand = new RelayCommand(RemoveLine);
             EditSelectedCommand = new RelayCommand(_ => EditSelected());
+            OpenPriceHistoryCommand = new AsyncRelayCommand(OpenPriceHistoryAsync);
+        }
+
+        private async Task OpenPriceHistoryAsync(object parameter)
+        {
+            if (parameter is not SalesInvoiceLineFormItem line || line.ProductId <= 0 || line.UnitId <= 0)
+                return;
+
+            var owner = System.Windows.Application.Current?.MainWindow;
+            var selectedPrice = await PriceHistoryHelper.ShowAsync(
+                _smartEntryQueryService,
+                PriceHistorySource.Sales,
+                FormCounterpartyType,
+                FormCustomerId,
+                FormSupplierId,
+                line.ProductId,
+                line.UnitId,
+                owner);
+
+            if (selectedPrice.HasValue)
+                line.UnitPrice = selectedPrice.Value;
         }
 
         // ── Load ────────────────────────────────────────────────
@@ -269,6 +351,18 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             if (custResult.IsSuccess)
                 foreach (var c in custResult.Data.Where(x => x.IsActive))
                     Customers.Add(c);
+
+            var suppResult = await _supplierService.GetAllAsync();
+            Suppliers.Clear();
+            if (suppResult.IsSuccess)
+                foreach (var s in suppResult.Data.Where(x => x.IsActive))
+                    Suppliers.Add(s);
+
+            var repResult = await _salesRepresentativeService.GetActiveAsync();
+            SalesRepresentatives.Clear();
+            if (repResult.IsSuccess)
+                foreach (var rep in repResult.Data)
+                    SalesRepresentatives.Add(rep);
 
             var whResult = await _warehouseService.GetAllAsync();
             Warehouses.Clear();
@@ -326,7 +420,10 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             catch { FormNumber = ""; }
 
             FormDate = DateTime.Today;
+            FormCounterpartyType = CounterpartyType.Customer;
             FormCustomerId = null;
+            FormSupplierId = null;
+            FormSalesRepresentativeId = null;
             FormWarehouseId = null;
             FormNotes = "";
             FormLines.Clear();
@@ -376,6 +473,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
                         CustomerId = FormCustomerId ?? 0,
                         WarehouseId = FormWarehouseId ?? 0,
                         Notes = FormNotes?.Trim(),
+                        SalesRepresentativeId = FormSalesRepresentativeId,
+                        CounterpartyType = FormCounterpartyType,
+                        SupplierId = FormSupplierId,
                         Lines = lines
                     };
 
@@ -398,6 +498,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
                         CustomerId = FormCustomerId ?? 0,
                         WarehouseId = FormWarehouseId ?? 0,
                         Notes = FormNotes?.Trim(),
+                        SalesRepresentativeId = FormSalesRepresentativeId,
+                        CounterpartyType = FormCounterpartyType,
+                        SupplierId = FormSupplierId,
                         Lines = lines
                     };
 
@@ -518,7 +621,10 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         {
             FormNumber = invoice.InvoiceNumber;
             FormDate = invoice.InvoiceDate;
-            FormCustomerId = invoice.CustomerId;
+            FormCounterpartyType = invoice.CounterpartyType;
+            FormCustomerId = invoice.CounterpartyType == CounterpartyType.Customer ? invoice.CustomerId : null;
+            FormSupplierId = invoice.CounterpartyType == CounterpartyType.Supplier ? invoice.SupplierId : null;
+            FormSalesRepresentativeId = invoice.SalesRepresentativeId;
             FormWarehouseId = invoice.WarehouseId;
             FormNotes = invoice.Notes;
 
@@ -544,7 +650,10 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         {
             FormNumber = "";
             FormDate = DateTime.Today;
+            FormCounterpartyType = CounterpartyType.Customer;
             FormCustomerId = null;
+            FormSupplierId = null;
+            FormSalesRepresentativeId = null;
             FormWarehouseId = null;
             FormNotes = "";
             FormLines.Clear();

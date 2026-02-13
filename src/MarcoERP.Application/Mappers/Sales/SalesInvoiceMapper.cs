@@ -30,6 +30,7 @@ namespace MarcoERP.Application.Mappers.Sales
                 Notes = entity.Notes,
                 JournalEntryId = entity.JournalEntryId,
                 CogsJournalEntryId = entity.CogsJournalEntryId,
+                SalesRepresentativeId = entity.SalesRepresentativeId,
                 CounterpartyType = entity.CounterpartyType,
                 SupplierId = entity.SupplierId,
                 SupplierNameAr = entity.CounterpartySupplier?.NameAr,
@@ -66,12 +67,16 @@ namespace MarcoERP.Application.Mappers.Sales
         {
             if (entity == null) return null;
 
+            var counterpartyName = entity.CounterpartyType == Domain.Enums.CounterpartyType.Supplier
+                ? entity.CounterpartySupplier?.NameAr
+                : entity.Customer?.NameAr;
+
             return new SalesInvoiceListDto
             {
                 Id = entity.Id,
                 InvoiceNumber = entity.InvoiceNumber,
                 InvoiceDate = entity.InvoiceDate,
-                CustomerNameAr = entity.Customer?.NameAr,
+                CustomerNameAr = counterpartyName,
                 Status = entity.Status.ToString(),
                 NetTotal = entity.NetTotal
             };

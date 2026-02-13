@@ -1,4 +1,4 @@
-<Window x:Class="MarcoERP.WpfUI.Views.Common.InvoiceAddLineWindow"
+﻿<Window x:Class="MarcoERP.WpfUI.Views.Common.InvoiceAddLineWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -88,7 +88,7 @@
                         <TextBlock Grid.Column="0" Text="{Binding LinePopup.PrimaryUnitName, StringFormat='{}{0}:'}"
                                    VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold" />
                         <TextBox Grid.Column="1" x:Name="txtPrimaryQty" TabIndex="1"
-                                 Text="{Binding LinePopup.PrimaryQty, UpdateSourceTrigger=PropertyChanged, StringFormat=N3}"
+                                 Text="{Binding LinePopup.PrimaryQty, UpdateSourceTrigger=PropertyChanged, StringFormat=0.00}"
                                  Style="{StaticResource CompactBox}"
                                  common:SelectAllOnFocusBehavior.IsEnabled="True"
                                  materialDesign:HintAssist.Hint="الكمية"
@@ -114,7 +114,7 @@
                         <TextBlock Grid.Column="0" Text="{Binding LinePopup.SecondaryUnitName, StringFormat='{}{0}:'}"
                                    VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold" />
                         <TextBox Grid.Column="1" x:Name="txtSecondaryQty" TabIndex="3"
-                                 Text="{Binding LinePopup.SecondaryQty, UpdateSourceTrigger=PropertyChanged, StringFormat=N3}"
+                                 Text="{Binding LinePopup.SecondaryQty, UpdateSourceTrigger=PropertyChanged, StringFormat=0.00}"
                                  Style="{StaticResource CompactBox}"
                                  common:SelectAllOnFocusBehavior.IsEnabled="True"
                                  materialDesign:HintAssist.Hint="الكمية"
@@ -157,7 +157,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" HorizontalAlignment="Center" Margin="2,0">
                         <TextBlock Text="المخزون" Style="{StaticResource Lbl}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding LinePopup.StockQty, StringFormat=N3}" Style="{StaticResource Val}" />
+                        <TextBlock Text="{Binding LinePopup.StockQty, StringFormat=0.00}" Style="{StaticResource Val}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" HorizontalAlignment="Center" Margin="2,0">
                         <TextBlock Text="آخر شراء" Style="{StaticResource Lbl}" TextTrimming="CharacterEllipsis" />

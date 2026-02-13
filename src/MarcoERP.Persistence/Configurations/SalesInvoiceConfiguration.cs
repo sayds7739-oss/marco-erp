@@ -78,8 +78,10 @@ namespace MarcoERP.Persistence.Configurations
                 .IsRequired(false);
 
             // Indexes
+            // Unique index with filter: allows reusing invoice numbers for soft-deleted records
             builder.HasIndex(si => si.InvoiceNumber).IsUnique()
-                .HasDatabaseName("IX_SalesInvoices_InvoiceNumber");
+                .HasDatabaseName("IX_SalesInvoices_InvoiceNumber")
+                .HasFilter("[IsDeleted] = 0");
             builder.HasIndex(si => si.InvoiceDate)
                 .HasDatabaseName("IX_SalesInvoices_InvoiceDate");
             builder.HasIndex(si => si.CustomerId)

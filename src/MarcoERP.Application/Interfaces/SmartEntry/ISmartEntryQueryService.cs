@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using MarcoERP.Application.DTOs.Common;
 
 namespace MarcoERP.Application.Interfaces.SmartEntry
 {
@@ -14,9 +16,17 @@ namespace MarcoERP.Application.Interfaces.SmartEntry
 
         Task<decimal?> GetLastSalesUnitPriceAsync(int customerId, int productId, int unitId, CancellationToken ct = default);
 
+        Task<decimal?> GetLastSalesUnitPriceForSupplierAsync(int supplierId, int productId, int unitId, CancellationToken ct = default);
+
         Task<decimal?> GetLastPurchaseUnitPriceAsync(int productId, int unitId, CancellationToken ct = default);
 
         Task<decimal?> GetLastPurchaseUnitPriceForSupplierAsync(int supplierId, int productId, int unitId, CancellationToken ct = default);
+
+        Task<decimal?> GetLastPurchaseUnitPriceForCustomerAsync(int customerId, int productId, int unitId, CancellationToken ct = default);
+
+        Task<IReadOnlyList<PriceHistoryRowDto>> GetRecentSalesPricesAsync(int productId, int unitId, int take = 5, CancellationToken ct = default);
+
+        Task<IReadOnlyList<PriceHistoryRowDto>> GetRecentPurchasePricesAsync(int productId, int unitId, int take = 5, CancellationToken ct = default);
 
         Task<decimal> GetPostedAccountBalanceAsync(int accountId, CancellationToken ct = default);
 

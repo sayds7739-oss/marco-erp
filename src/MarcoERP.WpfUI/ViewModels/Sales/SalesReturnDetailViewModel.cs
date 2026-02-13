@@ -8,10 +8,13 @@ using System.Windows.Input;
 using MarcoERP.Application.DTOs.Common;
 using MarcoERP.Application.DTOs.Inventory;
 using MarcoERP.Application.DTOs.Sales;
+using MarcoERP.Application.DTOs.Purchases;
 using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Inventory;
+using MarcoERP.Application.Interfaces.Purchases;
 using MarcoERP.Application.Interfaces.Sales;
 using MarcoERP.Application.Interfaces.SmartEntry;
+using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions;
 using MarcoERP.WpfUI.Common;
 using MarcoERP.WpfUI.Navigation;
@@ -31,11 +34,15 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private readonly IProductService _productService;
         private readonly IWarehouseService _warehouseService;
         private readonly ICustomerService _customerService;
+        private readonly ISupplierService _supplierService;
+        private readonly ISalesRepresentativeService _salesRepresentativeService;
         private readonly INavigationService _navigationService;
         private readonly ILineCalculationService _lineCalculationService;
         private readonly ISmartEntryQueryService _smartEntryQueryService;
 
         public ObservableCollection<CustomerDto> Customers { get; } = new();
+        public ObservableCollection<SupplierDto> Suppliers { get; } = new();
+        public ObservableCollection<SalesRepresentativeDto> SalesRepresentatives { get; } = new();
         public ObservableCollection<Application.DTOs.Inventory.WarehouseDto> Warehouses { get; } = new();
         public ObservableCollection<ProductDto> Products { get; } = new();
         public ObservableCollection<SalesInvoiceListDto> PostedInvoices { get; } = new();
@@ -77,8 +84,43 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private int? _formCustomerId;
         public int? FormCustomerId { get => _formCustomerId; set { if (SetProperty(ref _formCustomerId, value)) { MarkDirty(); OnPropertyChanged(nameof(CanSave)); } } }
 
+        private CounterpartyType _formCounterpartyType = CounterpartyType.Customer;
+        public CounterpartyType FormCounterpartyType
+        {
+            get => _formCounterpartyType;
+            set
+            {
+                if (SetProperty(ref _formCounterpartyType, value))
+                {
+                    MarkDirty();
+                    if (value == CounterpartyType.Customer)
+                        FormSupplierId = null;
+                    else
+                        FormCustomerId = null;
+                    OnPropertyChanged(nameof(IsCustomerMode));
+                    OnPropertyChanged(nameof(IsSupplierMode));
+                    OnPropertyChanged(nameof(CanSave));
+                }
+            }
+        }
+
+        public bool IsCustomerMode => FormCounterpartyType == CounterpartyType.Customer;
+        public bool IsSupplierMode => FormCounterpartyType == CounterpartyType.Supplier;
+
+        public static IReadOnlyList<KeyValuePair<CounterpartyType, string>> CounterpartyTypes { get; } = new[]
+        {
+            new KeyValuePair<CounterpartyType, string>(CounterpartyType.Customer, "عميل"),
+            new KeyValuePair<CounterpartyType, string>(CounterpartyType.Supplier, "مورد")
+        };
+
+        private int? _formSupplierId;
+        public int? FormSupplierId { get => _formSupplierId; set { if (SetProperty(ref _formSupplierId, value)) { MarkDirty(); OnPropertyChanged(nameof(CanSave)); } } }
+
         private int? _formWarehouseId;
         public int? FormWarehouseId { get => _formWarehouseId; set { if (SetProperty(ref _formWarehouseId, value)) { MarkDirty(); OnPropertyChanged(nameof(CanSave)); } } }
+
+        private int? _formSalesRepresentativeId;
+        public int? FormSalesRepresentativeId { get => _formSalesRepresentativeId; set { if (SetProperty(ref _formSalesRepresentativeId, value)) MarkDirty(); } }
 
         private int? _formOriginalInvoiceId;
         public int? FormOriginalInvoiceId { get => _formOriginalInvoiceId; set { if (SetProperty(ref _formOriginalInvoiceId, value)) MarkDirty(); } }
@@ -154,10 +196,11 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         }
 
         public bool CanSave => IsEditing
-                               && FormCustomerId.HasValue && FormCustomerId > 0
-                               && FormWarehouseId.HasValue && FormWarehouseId > 0
-                               && FormLines.Count > 0
-                               && FormLines.All(l => l.ProductId > 0 && l.Quantity > 0 && l.UnitPrice >= 0);
+                       && FormWarehouseId.HasValue && FormWarehouseId > 0
+                       && FormLines.Count > 0
+                       && (FormCounterpartyType != CounterpartyType.Customer || (FormCustomerId.HasValue && FormCustomerId > 0))
+                       && (FormCounterpartyType != CounterpartyType.Supplier || (FormSupplierId.HasValue && FormSupplierId > 0))
+                       && FormLines.All(l => l.ProductId > 0 && l.Quantity > 0 && l.UnitPrice >= 0);
 
         public bool CanPost => CurrentReturn != null && IsDraft && !IsEditing;
         public bool CanCancel => CurrentReturn != null && IsPosted && !IsEditing;
@@ -175,6 +218,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         public ICommand BackCommand { get; }
         public ICommand OpenAddLinePopupCommand { get; }
         public ICommand EditLineCommand { get; }
+        public ICommand OpenPriceHistoryCommand { get; }
 
         // ── IDirtyStateAware ─────────────────────────────────────
         public void ResetDirtyState() => ResetDirtyTracking();
@@ -194,6 +238,8 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             IProductService productService,
             IWarehouseService warehouseService,
             ICustomerService customerService,
+            ISupplierService supplierService,
+            ISalesRepresentativeService salesRepresentativeService,
             INavigationService navigationService,
             ILineCalculationService lineCalculationService,
             ISmartEntryQueryService smartEntryQueryService)
@@ -203,6 +249,8 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             _productService = productService ?? throw new ArgumentNullException(nameof(productService));
             _warehouseService = warehouseService ?? throw new ArgumentNullException(nameof(warehouseService));
             _customerService = customerService ?? throw new ArgumentNullException(nameof(customerService));
+            _supplierService = supplierService ?? throw new ArgumentNullException(nameof(supplierService));
+            _salesRepresentativeService = salesRepresentativeService ?? throw new ArgumentNullException(nameof(salesRepresentativeService));
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _lineCalculationService = lineCalculationService ?? throw new ArgumentNullException(nameof(lineCalculationService));
             _smartEntryQueryService = smartEntryQueryService ?? throw new ArgumentNullException(nameof(smartEntryQueryService));
@@ -218,15 +266,56 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             BackCommand = new RelayCommand(_ => NavigateBack());
             OpenAddLinePopupCommand = new RelayCommand(_ => OpenAddLinePopup());
             EditLineCommand = new RelayCommand(EditLinePopup);
+            OpenPriceHistoryCommand = new AsyncRelayCommand(OpenPriceHistoryAsync);
+        }
+
+        private async Task OpenPriceHistoryAsync(object parameter)
+        {
+            int productId = 0;
+            int unitId = 0;
+            Action<decimal> applyPrice = null;
+
+            if (parameter is InvoiceLinePopupState popup)
+            {
+                productId = popup.ProductId;
+                unitId = popup.SelectedUnitId;
+                applyPrice = popup.ApplyUnitPrice;
+            }
+            else if (parameter is SalesReturnLineFormItem line)
+            {
+                productId = line.ProductId;
+                unitId = line.UnitId;
+                applyPrice = price => line.UnitPrice = price;
+            }
+
+            if (productId <= 0 || unitId <= 0 || applyPrice == null)
+                return;
+
+            var owner = System.Windows.Application.Current?.MainWindow;
+            var selectedPrice = await PriceHistoryHelper.ShowAsync(
+                _smartEntryQueryService,
+                PriceHistorySource.Sales,
+                FormCounterpartyType,
+                FormCustomerId,
+                FormSupplierId,
+                productId,
+                unitId,
+                owner);
+
+            if (selectedPrice.HasValue)
+                applyPrice(selectedPrice.Value);
         }
 
         public async Task OnNavigatedToAsync(object parameter)
         {
-            await LoadLookupsAsync();
-            if (parameter is int id && id > 0)
-                await LoadDetailAsync(id);
-            else
-                await PrepareNewAsync();
+            await RunDbGuardedAsync(async () =>
+            {
+                await LoadLookupsAsync();
+                if (parameter is int id && id > 0)
+                    await LoadDetailAsync(id);
+                else
+                    await PrepareNewAsync();
+            });
         }
 
         private async Task LoadLookupsAsync()
@@ -236,6 +325,18 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             if (custResult.IsSuccess)
                 foreach (var c in custResult.Data.Where(x => x.IsActive))
                     Customers.Add(c);
+
+            var suppResult = await _supplierService.GetAllAsync();
+            Suppliers.Clear();
+            if (suppResult.IsSuccess)
+                foreach (var s in suppResult.Data.Where(x => x.IsActive))
+                    Suppliers.Add(s);
+
+            var repResult = await _salesRepresentativeService.GetActiveAsync();
+            SalesRepresentatives.Clear();
+            if (repResult.IsSuccess)
+                foreach (var rep in repResult.Data)
+                    SalesRepresentatives.Add(rep);
 
             var whResult = await _warehouseService.GetAllAsync();
             Warehouses.Clear();
@@ -274,7 +375,12 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             IsEditing = true; IsNew = true; CurrentReturn = null; ClearError();
             try { var r = await _returnService.GetNextNumberAsync(); FormNumber = r.IsSuccess ? r.Data : ""; }
             catch { FormNumber = ""; }
-            FormDate = DateTime.Today; FormCustomerId = null; FormWarehouseId = null;
+            FormDate = DateTime.Today;
+            FormCounterpartyType = CounterpartyType.Customer;
+            FormCustomerId = null;
+            FormSupplierId = null;
+            FormSalesRepresentativeId = null;
+            FormWarehouseId = null;
             FormOriginalInvoiceId = null; FormNotes = "";
             FormLines.Clear(); RefreshTotals();
             StatusMessage = "إنشاء مرتجع بيع جديد...";
@@ -295,49 +401,89 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
 
         private async Task SaveAsync()
         {
-            IsBusy = true; ClearError();
-
-            // ── Pre-save validation ──
-            if (FormLines.Count == 0)
+            await RunDbGuardedAsync(async () =>
             {
-                ErrorMessage = "لا يمكن حفظ مرتجع بدون بنود. أضف صنف واحد على الأقل.";
-                IsBusy = false;
-                return;
-            }
+                IsBusy = true; ClearError();
 
-            var invalidLines = FormLines.Where(l => l.ProductId <= 0 || l.Quantity <= 0 || l.UnitPrice < 0).ToList();
-            if (invalidLines.Any())
-            {
-                ErrorMessage = "يوجد بنود غير مكتملة (صنف أو كمية = صفر). يرجى مراجعة البنود.";
-                IsBusy = false;
-                return;
-            }
+                // ── Pre-save validation ──
+                if (FormLines.Count == 0)
+                {
+                    ErrorMessage = "لا يمكن حفظ مرتجع بدون بنود. أضف صنف واحد على الأقل.";
+                    IsBusy = false;
+                    return;
+                }
 
-            // Duplicate products are allowed (user confirmed during add)
+                var invalidLines = FormLines.Where(l => l.ProductId <= 0 || l.Quantity <= 0 || l.UnitPrice < 0).ToList();
+                if (invalidLines.Any())
+                {
+                    ErrorMessage = "يوجد بنود غير مكتملة (صنف أو كمية = صفر). يرجى مراجعة البنود.";
+                    IsBusy = false;
+                    return;
+                }
 
+                // Duplicate products are allowed (user confirmed during add)
+
+                try
+                {
+                    var lines = FormLines.Select(l => new CreateSalesReturnLineDto
+                    { ProductId = l.ProductId, UnitId = l.UnitId, Quantity = l.Quantity, UnitPrice = l.UnitPrice, DiscountPercent = l.DiscountPercent }).ToList();
+
+                    if (IsNew)
+                    {
+                        var dto = new CreateSalesReturnDto
+                        {
+                            ReturnDate = FormDate,
+                            CustomerId = FormCustomerId,
+                            CounterpartyType = FormCounterpartyType,
+                            SupplierId = FormSupplierId,
+                            SalesRepresentativeId = FormSalesRepresentativeId,
+                            WarehouseId = FormWarehouseId ?? 0,
+                            OriginalInvoiceId = FormOriginalInvoiceId,
+                            Notes = FormNotes?.Trim(),
+                            Lines = lines
+                        };
+                        var result = await _returnService.CreateAsync(dto);
+                        if (result.IsSuccess) { StatusMessage = $"تم إنشاء مرتجع البيع «{result.Data.ReturnNumber}» بنجاح"; CurrentReturn = result.Data; PopulateForm(result.Data); }
+                        else ErrorMessage = result.ErrorMessage;
+                    }
+                    else
+                    {
+                        var dto = new UpdateSalesReturnDto
+                        {
+                            Id = CurrentReturn.Id,
+                            ReturnDate = FormDate,
+                            CustomerId = FormCustomerId,
+                            CounterpartyType = FormCounterpartyType,
+                            SupplierId = FormSupplierId,
+                            SalesRepresentativeId = FormSalesRepresentativeId,
+                            WarehouseId = FormWarehouseId ?? 0,
+                            OriginalInvoiceId = FormOriginalInvoiceId,
+                            Notes = FormNotes?.Trim(),
+                            Lines = lines
+                        };
+                        var result = await _returnService.UpdateAsync(dto);
+                        if (result.IsSuccess) { StatusMessage = $"تم تحديث مرتجع البيع «{result.Data.ReturnNumber}» بنجاح"; CurrentReturn = result.Data; PopulateForm(result.Data); }
+                        else ErrorMessage = result.ErrorMessage;
+                    }
+                }
+                catch (ConcurrencyConflictException) { ErrorMessage = "حدث تعارض في البيانات. يرجى إعادة تحميل المرتجع."; }
+                catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("حفظ المرتجع", ex); }
+                finally { IsBusy = false; }
+            });
+        }
+
+        /// <summary>Serializes DB access within this ViewModel.</summary>
+        private async Task RunDbGuardedAsync(Func<Task> work)
+        {
+            await DbGuard.WaitAsync().ConfigureAwait(false);
             try
             {
-                var lines = FormLines.Select(l => new CreateSalesReturnLineDto
-                { ProductId = l.ProductId, UnitId = l.UnitId, Quantity = l.Quantity, UnitPrice = l.UnitPrice, DiscountPercent = l.DiscountPercent }).ToList();
-
-                if (IsNew)
-                {
-                    var dto = new CreateSalesReturnDto { ReturnDate = FormDate, CustomerId = FormCustomerId ?? 0, WarehouseId = FormWarehouseId ?? 0, OriginalInvoiceId = FormOriginalInvoiceId, Notes = FormNotes?.Trim(), Lines = lines };
-                    var result = await _returnService.CreateAsync(dto);
-                    if (result.IsSuccess) { StatusMessage = $"تم إنشاء مرتجع البيع «{result.Data.ReturnNumber}» بنجاح"; CurrentReturn = result.Data; PopulateForm(result.Data); }
-                    else ErrorMessage = result.ErrorMessage;
-                }
-                else
-                {
-                    var dto = new UpdateSalesReturnDto { Id = CurrentReturn.Id, ReturnDate = FormDate, CustomerId = FormCustomerId ?? 0, WarehouseId = FormWarehouseId ?? 0, OriginalInvoiceId = FormOriginalInvoiceId, Notes = FormNotes?.Trim(), Lines = lines };
-                    var result = await _returnService.UpdateAsync(dto);
-                    if (result.IsSuccess) { StatusMessage = $"تم تحديث مرتجع البيع «{result.Data.ReturnNumber}» بنجاح"; CurrentReturn = result.Data; PopulateForm(result.Data); }
-                    else ErrorMessage = result.ErrorMessage;
-                }
+                await work().ConfigureAwait(false);
             }
-            catch (ConcurrencyConflictException) { ErrorMessage = "حدث تعارض في البيانات. يرجى إعادة تحميل المرتجع."; }
-            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("حفظ المرتجع", ex); }
-            finally { IsBusy = false; }
+            finally
+            {
+                DbGuard.Release();
+            }
         }
 
         private async Task PostAsync()
@@ -376,8 +522,15 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
 
         private void PopulateForm(SalesReturnDto ret)
         {
-            FormNumber = ret.ReturnNumber; FormDate = ret.ReturnDate; FormCustomerId = ret.CustomerId;
-            FormWarehouseId = ret.WarehouseId; FormOriginalInvoiceId = ret.OriginalInvoiceId; FormNotes = ret.Notes;
+            FormNumber = ret.ReturnNumber;
+            FormDate = ret.ReturnDate;
+            FormCounterpartyType = ret.CounterpartyType;
+            FormCustomerId = ret.CustomerId;
+            FormSupplierId = ret.SupplierId;
+            FormSalesRepresentativeId = ret.SalesRepresentativeId;
+            FormWarehouseId = ret.WarehouseId;
+            FormOriginalInvoiceId = ret.OriginalInvoiceId;
+            FormNotes = ret.Notes;
             FormLines.Clear();
             foreach (var line in ret.Lines ?? new List<SalesReturnLineDto>())
                 FormLines.Add(new SalesReturnLineFormItem(this) { ProductId = line.ProductId, UnitId = line.UnitId, Quantity = line.Quantity, UnitPrice = line.UnitPrice, DiscountPercent = line.DiscountPercent });

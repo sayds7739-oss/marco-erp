@@ -18,7 +18,7 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
         public DocumentTab(string tabKey, string title, UserControl view, object parameter)
         {
             _tabKey = tabKey;
-            Title = title;
+            _title = title;
             View = view;
             Parameter = parameter;
 
@@ -35,8 +35,37 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
         /// <summary>Original navigation parameter.</summary>
         public object Parameter { get; }
 
+        private string _title;
         /// <summary>Tab title.</summary>
-        public string Title { get; }
+        public string Title 
+        { 
+            get => _title;
+            set
+            {
+                if (_title != value)
+                {
+                    _title = value;
+                    OnPropertyChanged(nameof(Title));
+                    OnPropertyChanged(nameof(DisplayTitle));
+                }
+            }
+        }
+
+        private string _statusText;
+        /// <summary>Status text shown below title (e.g., invoice number).</summary>
+        public string StatusText
+        {
+            get => _statusText;
+            set
+            {
+                if (_statusText != value)
+                {
+                    _statusText = value;
+                    OnPropertyChanged(nameof(StatusText));
+                    OnPropertyChanged(nameof(DisplayTitle));
+                }
+            }
+        }
 
         /// <summary>Display title with dirty indicator when needed.</summary>
         public string DisplayTitle => IsTabDirty ? $"{Title} *" : Title;

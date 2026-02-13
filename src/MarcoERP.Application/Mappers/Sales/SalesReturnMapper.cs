@@ -1,6 +1,7 @@
 using System.Linq;
 using MarcoERP.Application.DTOs.Sales;
 using MarcoERP.Domain.Entities.Sales;
+using MarcoERP.Domain.Enums;
 
 namespace MarcoERP.Application.Mappers.Sales
 {
@@ -21,6 +22,10 @@ namespace MarcoERP.Application.Mappers.Sales
                 ReturnDate = entity.ReturnDate,
                 CustomerId = entity.CustomerId,
                 CustomerNameAr = entity.Customer?.NameAr,
+                CounterpartyType = entity.CounterpartyType,
+                SupplierId = entity.SupplierId,
+                SupplierNameAr = entity.CounterpartySupplier?.NameAr,
+                SalesRepresentativeId = entity.SalesRepresentativeId,
                 WarehouseId = entity.WarehouseId,
                 OriginalInvoiceId = entity.OriginalInvoiceId,
                 OriginalInvoiceNumber = entity.OriginalInvoice?.InvoiceNumber,
@@ -65,12 +70,16 @@ namespace MarcoERP.Application.Mappers.Sales
         {
             if (entity == null) return null;
 
+            var counterpartyName = entity.CounterpartyType == CounterpartyType.Supplier
+                ? entity.CounterpartySupplier?.NameAr
+                : entity.Customer?.NameAr;
+
             return new SalesReturnListDto
             {
                 Id = entity.Id,
                 ReturnNumber = entity.ReturnNumber,
                 ReturnDate = entity.ReturnDate,
-                CustomerNameAr = entity.Customer?.NameAr,
+                CustomerNameAr = counterpartyName,
                 Status = entity.Status.ToString(),
                 NetTotal = entity.NetTotal
             };

@@ -110,6 +110,15 @@ namespace MarcoERP.Application.Services.Inventory
             var authCheck = AuthorizationGuard.Check<InventoryAdjustmentDto>(_currentUser, PermissionKeys.InventoryManage);
             if (authCheck != null) return authCheck;
 
+            if (dto.WarehouseId <= 0)
+                return ServiceResult<InventoryAdjustmentDto>.Failure("يجب اختيار المخزن.");
+
+            if (dto.Lines == null || dto.Lines.Count == 0)
+                return ServiceResult<InventoryAdjustmentDto>.Failure("لا يمكن حفظ تسوية بدون بنود.");
+
+            if (dto.Lines.Any(l => l.ProductId <= 0 || l.UnitId <= 0 || l.ActualQuantity < 0))
+                return ServiceResult<InventoryAdjustmentDto>.Failure("يوجد بنود غير مكتملة (صنف أو وحدة أو كمية غير صحيحة).");
+
             try
             {
                 var number = await _adjustmentRepo.GetNextNumberAsync(ct);
@@ -158,6 +167,15 @@ namespace MarcoERP.Application.Services.Inventory
         {
             var authCheck = AuthorizationGuard.Check<InventoryAdjustmentDto>(_currentUser, PermissionKeys.InventoryManage);
             if (authCheck != null) return authCheck;
+
+            if (dto.WarehouseId <= 0)
+                return ServiceResult<InventoryAdjustmentDto>.Failure("يجب اختيار المخزن.");
+
+            if (dto.Lines == null || dto.Lines.Count == 0)
+                return ServiceResult<InventoryAdjustmentDto>.Failure("لا يمكن حفظ تسوية بدون بنود.");
+
+            if (dto.Lines.Any(l => l.ProductId <= 0 || l.UnitId <= 0 || l.ActualQuantity < 0))
+                return ServiceResult<InventoryAdjustmentDto>.Failure("يوجد بنود غير مكتملة (صنف أو وحدة أو كمية غير صحيحة).");
 
             var adjustment = await _adjustmentRepo.GetWithLinesAsync(dto.Id, ct);
             if (adjustment == null)

@@ -27,16 +27,17 @@ namespace MarcoERP.Domain.Entities.Purchases
         public PurchaseInvoice(
             string invoiceNumber,
             DateTime invoiceDate,
-            int supplierId,
+            int? supplierId,
             int warehouseId,
             string notes,
+            int? salesRepresentativeId = null,
             CounterpartyType counterpartyType = CounterpartyType.Supplier,
             int? customerId = null)
         {
             if (string.IsNullOrWhiteSpace(invoiceNumber))
                 throw new PurchaseInvoiceDomainException("رقم فاتورة الشراء مطلوب.");
 
-            if (supplierId <= 0)
+            if (counterpartyType == CounterpartyType.Supplier && (!supplierId.HasValue || supplierId <= 0))
                 throw new PurchaseInvoiceDomainException("المورد مطلوب.");
 
             if (warehouseId <= 0)
@@ -47,10 +48,11 @@ namespace MarcoERP.Domain.Entities.Purchases
 
             InvoiceNumber = invoiceNumber.Trim();
             InvoiceDate = invoiceDate;
-            SupplierId = supplierId;
-            WarehouseId = warehouseId;
             CounterpartyType = counterpartyType;
+            SupplierId = counterpartyType == CounterpartyType.Supplier ? supplierId : null;
+            WarehouseId = warehouseId;
             CounterpartyCustomerId = counterpartyType == CounterpartyType.Customer ? customerId : null;
+            SalesRepresentativeId = salesRepresentativeId;
             Status = InvoiceStatus.Draft;
             Notes = notes?.Trim();
 
@@ -72,13 +74,19 @@ namespace MarcoERP.Domain.Entities.Purchases
         public DateTime InvoiceDate { get; private set; }
 
         /// <summary>FK to Supplier.</summary>
-        public int SupplierId { get; private set; }
+        public int? SupplierId { get; private set; }
 
         /// <summary>Navigation property.</summary>
         public Supplier Supplier { get; private set; }
 
         /// <summary>FK to Warehouse receiving the goods.</summary>
         public int WarehouseId { get; private set; }
+
+        /// <summary>FK to SalesRepresentative (optional — مندوب).</summary>
+        public int? SalesRepresentativeId { get; private set; }
+
+        /// <summary>Navigation property to SalesRepresentative.</summary>
+        public Sales.SalesRepresentative SalesRepresentative { get; private set; }
 
         /// <summary>Counterparty type — who is the invoice from.</summary>
         public CounterpartyType CounterpartyType { get; private set; }
@@ -170,15 +178,16 @@ namespace MarcoERP.Domain.Entities.Purchases
         /// <summary>Updates the invoice header. Only allowed in Draft status.</summary>
         public void UpdateHeader(
             DateTime invoiceDate,
-            int supplierId,
+            int? supplierId,
             int warehouseId,
             string notes,
+            int? salesRepresentativeId = null,
             CounterpartyType counterpartyType = CounterpartyType.Supplier,
             int? customerId = null)
         {
             EnsureDraft("لا يمكن تعديل فاتورة مرحّلة أو ملغاة.");
 
-            if (supplierId <= 0)
+            if (counterpartyType == CounterpartyType.Supplier && (!supplierId.HasValue || supplierId <= 0))
                 throw new PurchaseInvoiceDomainException("المورد مطلوب.");
             if (warehouseId <= 0)
                 throw new PurchaseInvoiceDomainException("المستودع مطلوب.");
@@ -186,10 +195,11 @@ namespace MarcoERP.Domain.Entities.Purchases
                 throw new PurchaseInvoiceDomainException("العميل مطلوب عند اختيار نوع الطرف (عميل).");
 
             InvoiceDate = invoiceDate;
-            SupplierId = supplierId;
-            WarehouseId = warehouseId;
             CounterpartyType = counterpartyType;
+            SupplierId = counterpartyType == CounterpartyType.Supplier ? supplierId : null;
+            WarehouseId = warehouseId;
             CounterpartyCustomerId = counterpartyType == CounterpartyType.Customer ? customerId : null;
+            SalesRepresentativeId = salesRepresentativeId;
             Notes = notes?.Trim();
         }
 

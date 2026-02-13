@@ -26,6 +26,7 @@ namespace MarcoERP.Application.DTOs.Sales
         public string Notes { get; set; }
         public int? JournalEntryId { get; set; }
         public int? CogsJournalEntryId { get; set; }
+        public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? SupplierId { get; set; }
         public string SupplierNameAr { get; set; }
@@ -61,6 +62,7 @@ namespace MarcoERP.Application.DTOs.Sales
         public int CustomerId { get; set; }
         public int WarehouseId { get; set; }
         public string Notes { get; set; }
+        public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? SupplierId { get; set; }
         public List<CreateSalesInvoiceLineDto> Lines { get; set; } = new();
@@ -84,6 +86,7 @@ namespace MarcoERP.Application.DTOs.Sales
         public int CustomerId { get; set; }
         public int WarehouseId { get; set; }
         public string Notes { get; set; }
+        public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? SupplierId { get; set; }
         public List<CreateSalesInvoiceLineDto> Lines { get; set; } = new();

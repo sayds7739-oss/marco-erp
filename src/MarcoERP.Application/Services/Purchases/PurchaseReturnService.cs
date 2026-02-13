@@ -19,6 +19,7 @@ using MarcoERP.Domain.Exceptions.Purchases;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Purchases;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Purchases
 {
@@ -30,6 +31,7 @@ namespace MarcoERP.Application.Services.Purchases
     public sealed class PurchaseReturnService : IPurchaseReturnService
     {
         private readonly IPurchaseReturnRepository _returnRepo;
+        private readonly IPurchaseInvoiceRepository _invoiceRepo;
         private readonly IProductRepository _productRepo;
         private readonly IWarehouseProductRepository _whProductRepo;
         private readonly IInventoryMovementRepository _movementRepo;
@@ -42,6 +44,7 @@ namespace MarcoERP.Application.Services.Purchases
         private readonly IDateTimeProvider _dateTime;
         private readonly IValidator<CreatePurchaseReturnDto> _createValidator;
         private readonly IValidator<UpdatePurchaseReturnDto> _updateValidator;
+        private readonly ILogger<PurchaseReturnService> _logger;
 
         // ── GL Account Codes (from SystemAccountSeed) ───────────
         private const string InventoryAccountCode = "1131";
@@ -52,13 +55,16 @@ namespace MarcoERP.Application.Services.Purchases
         public PurchaseReturnService(
             PurchaseReturnRepositories repos,
             PurchaseReturnServices services,
-            PurchaseReturnValidators validators)
+            PurchaseReturnValidators validators,
+            ILogger<PurchaseReturnService> logger)
         {
             if (repos == null) throw new ArgumentNullException(nameof(repos));
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (validators == null) throw new ArgumentNullException(nameof(validators));
+            if (logger == null) throw new ArgumentNullException(nameof(logger));
 
             _returnRepo = repos.ReturnRepo;
+            _invoiceRepo = repos.InvoiceRepo;
             _productRepo = repos.ProductRepo;
             _whProductRepo = repos.WhProductRepo;
             _movementRepo = repos.MovementRepo;
@@ -73,6 +79,7 @@ namespace MarcoERP.Application.Services.Purchases
 
             _createValidator = validators.CreateValidator;
             _updateValidator = validators.UpdateValidator;
+            _logger = logger;
         }
 
         public async Task<ServiceResult<IReadOnlyList<PurchaseReturnListDto>>> GetAllAsync(CancellationToken ct = default)
@@ -109,6 +116,43 @@ namespace MarcoERP.Application.Services.Purchases
 
             try
             {
+                // ── Validate return quantities against original invoice ──
+                if (dto.OriginalInvoiceId.HasValue)
+                {
+                    var originalInvoice = await _invoiceRepo.GetWithLinesAsync(dto.OriginalInvoiceId.Value, ct);
+                    if (originalInvoice == null)
+                        return ServiceResult<PurchaseReturnDto>.Failure("فاتورة الشراء الأصلية غير موجودة.");
+
+                    // Get all previous non-cancelled returns for this invoice
+                    var previousReturns = await _returnRepo.GetByOriginalInvoiceAsync(dto.OriginalInvoiceId.Value, ct);
+                    var previouslyReturnedQty = previousReturns
+                        .Where(r => r.Status != InvoiceStatus.Cancelled)
+                        .SelectMany(r => r.Lines)
+                        .GroupBy(l => new { l.ProductId, l.UnitId })
+                        .ToDictionary(
+                            g => g.Key,
+                            g => g.Sum(l => l.Quantity));
+
+                    foreach (var lineDto in dto.Lines)
+                    {
+                        var invoiceLine = originalInvoice.Lines
+                            .FirstOrDefault(l => l.ProductId == lineDto.ProductId && l.UnitId == lineDto.UnitId);
+
+                        if (invoiceLine == null)
+                            return ServiceResult<PurchaseReturnDto>.Failure(
+                                $"الصنف {lineDto.ProductId} بالوحدة {lineDto.UnitId} غير موجود في فاتورة الشراء الأصلية.");
+
+                        var alreadyReturned = previouslyReturnedQty
+                            .GetValueOrDefault(new { lineDto.ProductId, lineDto.UnitId }, 0m);
+                        var remainingReturnable = invoiceLine.Quantity - alreadyReturned;
+
+                        if (lineDto.Quantity > remainingReturnable)
+                            return ServiceResult<PurchaseReturnDto>.Failure(
+                                $"كمية المرتجع ({lineDto.Quantity}) تتجاوز الكمية المتاحة للإرجاع ({remainingReturnable}) للصنف {lineDto.ProductId}. " +
+                                $"(الكمية الأصلية: {invoiceLine.Quantity}، تم إرجاع: {alreadyReturned})");
+                    }
+                }
+
                 var returnNumber = await _returnRepo.GetNextNumberAsync(ct);
 
                 var purchaseReturn = new PurchaseReturn(
@@ -117,7 +161,10 @@ namespace MarcoERP.Application.Services.Purchases
                     dto.SupplierId,
                     dto.WarehouseId,
                     dto.OriginalInvoiceId,
-                    dto.Notes);
+                    dto.Notes,
+                    salesRepresentativeId: dto.SalesRepresentativeId,
+                    counterpartyType: dto.CounterpartyType,
+                    customerId: dto.CounterpartyCustomerId);
 
                 foreach (var lineDto in dto.Lines)
                 {
@@ -172,7 +219,10 @@ namespace MarcoERP.Application.Services.Purchases
             try
             {
                 purchaseReturn.UpdateHeader(dto.ReturnDate, dto.SupplierId, dto.WarehouseId,
-                    dto.OriginalInvoiceId, dto.Notes);
+                    dto.OriginalInvoiceId, dto.Notes,
+                    salesRepresentativeId: dto.SalesRepresentativeId,
+                    counterpartyType: dto.CounterpartyType,
+                    customerId: dto.CounterpartyCustomerId);
 
                 var newLines = new List<PurchaseReturnLine>();
                 foreach (var lineDto in dto.Lines)
@@ -241,7 +291,8 @@ namespace MarcoERP.Application.Services.Purchases
             }
             catch (Exception ex)
             {
-                return ServiceResult<PurchaseReturnDto>.Failure($"خطأ أثناء ترحيل المرتجع: {ex.Message}");
+                _logger.LogError(ex, "Failed to post purchase return {ReturnId}.", purchaseReturn?.Id);
+                return ServiceResult<PurchaseReturnDto>.Failure("حدث خطأ غير متوقع أثناء ترحيل المرتجع.");
             }
         }
 
@@ -272,7 +323,8 @@ namespace MarcoERP.Application.Services.Purchases
             }
             catch (Exception ex)
             {
-                return ServiceResult.Failure($"فشل إلغاء مرتجع الشراء: {ex.Message}");
+                _logger.LogError(ex, "Failed to cancel purchase return {ReturnId}.", purchaseReturn?.Id);
+                return ServiceResult.Failure("حدث خطأ غير متوقع أثناء إلغاء مرتجع الشراء.");
             }
         }
 
@@ -583,6 +635,7 @@ namespace MarcoERP.Application.Services.Purchases
     {
         public PurchaseReturnRepositories(
             IPurchaseReturnRepository returnRepo,
+            IPurchaseInvoiceRepository invoiceRepo,
             IProductRepository productRepo,
             IWarehouseProductRepository whProductRepo,
             IInventoryMovementRepository movementRepo,
@@ -590,6 +643,7 @@ namespace MarcoERP.Application.Services.Purchases
             IAccountRepository accountRepo)
         {
             ReturnRepo = returnRepo ?? throw new ArgumentNullException(nameof(returnRepo));
+            InvoiceRepo = invoiceRepo ?? throw new ArgumentNullException(nameof(invoiceRepo));
             ProductRepo = productRepo ?? throw new ArgumentNullException(nameof(productRepo));
             WhProductRepo = whProductRepo ?? throw new ArgumentNullException(nameof(whProductRepo));
             MovementRepo = movementRepo ?? throw new ArgumentNullException(nameof(movementRepo));
@@ -598,6 +652,7 @@ namespace MarcoERP.Application.Services.Purchases
         }
 
         public IPurchaseReturnRepository ReturnRepo { get; }
+        public IPurchaseInvoiceRepository InvoiceRepo { get; }
         public IProductRepository ProductRepo { get; }
         public IWarehouseProductRepository WhProductRepo { get; }
         public IInventoryMovementRepository MovementRepo { get; }

@@ -388,6 +388,16 @@ namespace MarcoERP.WpfUI.ViewModels.Common
             OnPropertyChanged(nameof(IsValid));
         }
 
+        public void ApplyUnitPrice(decimal price)
+        {
+            if (_lastEditedIsPrimary && HasPrimaryUnit)
+                PrimaryPrice = price;
+            else
+                SecondaryPrice = price;
+
+            RecalcComputed();
+        }
+
         /// <summary>Populates the popup state from an existing line for editing (generic).</summary>
         public void LoadFromLine(int productId, int unitId, decimal quantity, decimal unitPrice,
             decimal discountPercent, decimal stockQty, decimal lastPurchasePrice,

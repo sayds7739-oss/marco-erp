@@ -14,7 +14,7 @@ namespace MarcoERP.Application.DTOs.Purchases
         public int Id { get; set; }
         public string InvoiceNumber { get; set; }
         public DateTime InvoiceDate { get; set; }
-        public int SupplierId { get; set; }
+        public int? SupplierId { get; set; }
         public string SupplierNameAr { get; set; }
         public int WarehouseId { get; set; }
         public string WarehouseNameAr { get; set; }
@@ -25,6 +25,7 @@ namespace MarcoERP.Application.DTOs.Purchases
         public decimal NetTotal { get; set; }
         public string Notes { get; set; }
         public int? JournalEntryId { get; set; }
+        public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? CounterpartyCustomerId { get; set; }
         public string CounterpartyCustomerNameAr { get; set; }
@@ -57,9 +58,10 @@ namespace MarcoERP.Application.DTOs.Purchases
     public sealed class CreatePurchaseInvoiceDto
     {
         public DateTime InvoiceDate { get; set; }
-        public int SupplierId { get; set; }
+        public int? SupplierId { get; set; }
         public int WarehouseId { get; set; }
         public string Notes { get; set; }
+        public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? CounterpartyCustomerId { get; set; }
         public List<CreatePurchaseInvoiceLineDto> Lines { get; set; } = new();
@@ -80,9 +82,10 @@ namespace MarcoERP.Application.DTOs.Purchases
     {
         public int Id { get; set; }
         public DateTime InvoiceDate { get; set; }
-        public int SupplierId { get; set; }
+        public int? SupplierId { get; set; }
         public int WarehouseId { get; set; }
         public string Notes { get; set; }
+        public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? CounterpartyCustomerId { get; set; }
         public List<CreatePurchaseInvoiceLineDto> Lines { get; set; } = new();

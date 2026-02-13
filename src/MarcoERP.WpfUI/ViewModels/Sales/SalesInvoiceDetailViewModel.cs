@@ -37,6 +37,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private readonly IWarehouseService _warehouseService;
         private readonly ICustomerService _customerService;
         private readonly ISupplierService _supplierService;
+        private readonly ISalesRepresentativeService _salesRepresentativeService;
         private readonly INavigationService _navigationService;
         private readonly IInvoiceTreasuryIntegrationService _invoiceTreasuryIntegrationService;
         private readonly ISmartEntryQueryService _smartEntryQueryService;
@@ -48,6 +49,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         // ── Collections ──────────────────────────────────────────
         public ObservableCollection<Application.DTOs.Sales.CustomerDto> Customers { get; } = new();
         public ObservableCollection<Application.DTOs.Purchases.SupplierDto> Suppliers { get; } = new();
+        public ObservableCollection<SalesRepresentativeDto> SalesRepresentatives { get; } = new();
         public ObservableCollection<Application.DTOs.Inventory.WarehouseDto> Warehouses { get; } = new();
         public ObservableCollection<ProductDto> Products { get; } = new();
         public ObservableCollection<SalesInvoiceLineFormItem> FormLines { get; } = new();
@@ -137,7 +139,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
                 {
                     MarkDirty();
                     OnPropertyChanged(nameof(CanSave));
-                    EnqueueDbWork(async () =>
+                    EnqueueDbWork(async () => 
                     {
                         await RefreshCustomerFinancialStatusAsync();
                         await RefreshSmartEntryForAllLinesAsync();
@@ -191,6 +193,17 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
                     MarkDirty();
                     OnPropertyChanged(nameof(CanSave));
                 }
+            }
+        }
+
+        private int? _formSalesRepresentativeId;
+        public int? FormSalesRepresentativeId
+        {
+            get => _formSalesRepresentativeId;
+            set
+            {
+                if (SetProperty(ref _formSalesRepresentativeId, value))
+                    MarkDirty();
             }
         }
 
@@ -359,6 +372,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         public ICommand PrintCommand { get; }
         public ICommand ExportToExcelCommand { get; }
         public ICommand JumpToInvoiceCommand { get; }
+        public ICommand OpenPriceHistoryCommand { get; }
 
         // ── Constructor ─────────────────────────────────────────
         public SalesInvoiceDetailViewModel(
@@ -367,6 +381,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             IWarehouseService warehouseService,
             ICustomerService customerService,
             ISupplierService supplierService,
+            ISalesRepresentativeService salesRepresentativeService,
             INavigationService navigationService,
             IInvoiceTreasuryIntegrationService invoiceTreasuryIntegrationService,
             ISmartEntryQueryService smartEntryQueryService,
@@ -378,6 +393,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             _warehouseService = warehouseService ?? throw new ArgumentNullException(nameof(warehouseService));
             _customerService = customerService ?? throw new ArgumentNullException(nameof(customerService));
             _supplierService = supplierService ?? throw new ArgumentNullException(nameof(supplierService));
+            _salesRepresentativeService = salesRepresentativeService ?? throw new ArgumentNullException(nameof(salesRepresentativeService));
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _invoiceTreasuryIntegrationService = invoiceTreasuryIntegrationService ?? throw new ArgumentNullException(nameof(invoiceTreasuryIntegrationService));
             _smartEntryQueryService = smartEntryQueryService ?? throw new ArgumentNullException(nameof(smartEntryQueryService));
@@ -400,25 +416,66 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             PrintCommand = new AsyncRelayCommand(ViewPdfAsync);
             ExportToExcelCommand = new AsyncRelayCommand(ExportToExcelAsync);
             JumpToInvoiceCommand = new AsyncRelayCommand(JumpToInvoiceAsync);
+            OpenPriceHistoryCommand = new AsyncRelayCommand(OpenPriceHistoryAsync);
+        }
+
+        private async Task OpenPriceHistoryAsync(object parameter)
+        {
+            int productId = 0;
+            int unitId = 0;
+            Action<decimal> applyPrice = null;
+
+            if (parameter is InvoiceLinePopupState popup)
+            {
+                productId = popup.ProductId;
+                unitId = popup.SelectedUnitId;
+                applyPrice = popup.ApplyUnitPrice;
+            }
+            else if (parameter is SalesInvoiceLineFormItem line)
+            {
+                productId = line.ProductId;
+                unitId = line.UnitId;
+                applyPrice = price => line.UnitPrice = price;
+            }
+
+            if (productId <= 0 || unitId <= 0 || applyPrice == null)
+                return;
+
+            var owner = System.Windows.Application.Current?.MainWindow;
+            var selectedPrice = await PriceHistoryHelper.ShowAsync(
+                _smartEntryQueryService,
+                PriceHistorySource.Sales,
+                FormCounterpartyType,
+                FormCustomerId,
+                FormSupplierId,
+                productId,
+                unitId,
+                owner);
+
+            if (selectedPrice.HasValue)
+                applyPrice(selectedPrice.Value);
         }
 
         // ── INavigationAware ────────────────────────────────────
         public async Task OnNavigatedToAsync(object parameter)
         {
-            await LoadLookupsAsync();
-            await LoadInvoiceIdsAsync();
-
-            if (parameter is int invoiceId && invoiceId > 0)
+            await RunDbGuardedAsync(async () =>
             {
-                _currentInvoiceIndex = _invoiceIds.IndexOf(invoiceId);
-                await LoadInvoiceDetailAsync(invoiceId);
-            }
-            else
-            {
-                await PrepareNewAsync();
-            }
+                await LoadLookupsAsync();
+                await LoadInvoiceIdsAsync();
 
-            UpdateNavigationState();
+                if (parameter is int invoiceId && invoiceId > 0)
+                {
+                    _currentInvoiceIndex = _invoiceIds.IndexOf(invoiceId);
+                    await LoadInvoiceDetailAsync(invoiceId);
+                }
+                else
+                {
+                    await PrepareNewAsync();
+                }
+
+                UpdateNavigationState();
+            });
         }
 
         // ── Load ────────────────────────────────────────────────
@@ -435,6 +492,12 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             if (suppResult.IsSuccess)
                 foreach (var s in suppResult.Data.Where(x => x.IsActive))
                     Suppliers.Add(s);
+
+            var repResult = await _salesRepresentativeService.GetActiveAsync();
+            SalesRepresentatives.Clear();
+            if (repResult.IsSuccess)
+                foreach (var rep in repResult.Data)
+                    SalesRepresentatives.Add(rep);
 
             var whResult = await _warehouseService.GetAllAsync();
             Warehouses.Clear();
@@ -464,6 +527,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
                     PopulateFormFromInvoice(result.Data);
                     await RefreshInvoicePaymentsAsync();
                     StatusMessage = $"فاتورة بيع «{result.Data.InvoiceNumber}»";
+                    UpdateTabTitle(result.Data.InvoiceNumber, GetStatusText(result.Data.Status));
                 }
                 else
                 {
@@ -497,6 +561,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
 
             FormDate = DateTime.Today;
             FormCustomerId = null;
+            FormSalesRepresentativeId = null;
             FormWarehouseId = null;
             FormNotes = "";
             UnhookAllLines();
@@ -675,102 +740,106 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         // ── Save ────────────────────────────────────────────────
         private async Task SaveAsync()
         {
-            IsBusy = true;
-            ClearError();
-
-            // ── Pre-save validation ──
-            if (FormLines.Count == 0)
+            await RunDbGuardedAsync(async () =>
             {
-                ErrorMessage = "لا يمكن حفظ فاتورة بدون بنود. أضف صنف واحد على الأقل.";
-                IsBusy = false;
-                return;
-            }
+                IsBusy = true;
+                ClearError();
 
-            var invalidLines = FormLines.Where(l => l.ProductId <= 0 || l.Quantity <= 0 || l.UnitPrice < 0).ToList();
-            if (invalidLines.Any())
-            {
-                ErrorMessage = "يوجد بنود غير مكتملة (صنف أو كمية أو سعر = صفر). يرجى مراجعة البنود.";
-                IsBusy = false;
-                return;
-            }
-
-            // Duplicate products are allowed (user confirmed during add)
-
-            var wasNew = IsNew;
-            try
-            {
-                var lines = FormLines.Select(l => new CreateSalesInvoiceLineDto
+                // ── Pre-save validation ──
+                if (FormLines.Count == 0)
                 {
-                    ProductId = l.ProductId,
-                    UnitId = l.UnitId,
-                    Quantity = l.Quantity,
-                    UnitPrice = l.UnitPrice,
-                    DiscountPercent = l.DiscountPercent
-                }).ToList();
-
-                if (IsNew)
-                {
-                    var dto = new CreateSalesInvoiceDto
-                    {
-                        InvoiceDate = FormDate,
-                        CustomerId = FormCustomerId ?? 0,
-                        WarehouseId = FormWarehouseId ?? 0,
-                        Notes = FormNotes?.Trim(),
-                        CounterpartyType = FormCounterpartyType,
-                        SupplierId = FormSupplierId,
-                        Lines = lines
-                    };
-
-                    var result = await _invoiceService.CreateAsync(dto);
-                    if (result.IsSuccess)
-                    {
-                        StatusMessage = $"تم إنشاء فاتورة البيع «{result.Data.InvoiceNumber}» بنجاح";
-                        CurrentInvoice = result.Data;
-                        PopulateFormFromInvoice(result.Data);
-                        ResetDirtyTracking();
-
-                        await RefreshInvoicePaymentsAsync();
-
-                        if (wasNew)
-                            await PromptCreateReceiptFromInvoiceAsync(result.Data);
-                    }
-                    else ErrorMessage = result.ErrorMessage;
+                    ErrorMessage = "لا يمكن حفظ فاتورة بدون بنود. أضف صنف واحد على الأقل.";
+                    IsBusy = false;
+                    return;
                 }
-                else
+
+                var invalidLines = FormLines.Where(l => l.ProductId <= 0 || l.Quantity <= 0 || l.UnitPrice < 0).ToList();
+                if (invalidLines.Any())
                 {
-                    var dto = new UpdateSalesInvoiceDto
-                    {
-                        Id = CurrentInvoice.Id,
-                        InvoiceDate = FormDate,
-                        CustomerId = FormCustomerId ?? 0,
-                        WarehouseId = FormWarehouseId ?? 0,
-                        Notes = FormNotes?.Trim(),
-                        CounterpartyType = FormCounterpartyType,
-                        SupplierId = FormSupplierId,
-                        Lines = lines
-                    };
-
-                    var result = await _invoiceService.UpdateAsync(dto);
-                    if (result.IsSuccess)
-                    {
-                        StatusMessage = $"تم تحديث فاتورة البيع «{result.Data.InvoiceNumber}» بنجاح";
-                        CurrentInvoice = result.Data;
-                        PopulateFormFromInvoice(result.Data);
-
-                        await RefreshInvoicePaymentsAsync();
-                    }
-                    else ErrorMessage = result.ErrorMessage;
+                    ErrorMessage = "يوجد بنود غير مكتملة (صنف أو كمية أو سعر = صفر). يرجى مراجعة البنود.";
+                    IsBusy = false;
+                    return;
                 }
-            }
-            catch (ConcurrencyConflictException)
-            {
-                ErrorMessage = "حدث تعارض في البيانات. يرجى إعادة تحميل الفاتورة.";
-            }
-            catch (Exception ex)
-            {
-                ErrorMessage = FriendlyErrorMessage("حفظ الفاتورة", ex);
-            }
-            finally { IsBusy = false; }
+
+                // Duplicate products are allowed (user confirmed during add)
+
+                var wasNew = IsNew;
+                try
+                {
+                    var lines = FormLines.Select(l => new CreateSalesInvoiceLineDto
+                    {
+                        ProductId = l.ProductId,
+                        UnitId = l.UnitId,
+                        Quantity = l.Quantity,
+                        UnitPrice = l.UnitPrice,
+                        DiscountPercent = l.DiscountPercent
+                    }).ToList();
+
+                    if (IsNew)
+                    {
+                        var dto = new CreateSalesInvoiceDto
+                        {
+                            InvoiceDate = FormDate,
+                            CustomerId = FormCustomerId ?? 0,
+                            WarehouseId = FormWarehouseId ?? 0,
+                            Notes = FormNotes?.Trim(),
+                            SalesRepresentativeId = FormSalesRepresentativeId,
+                            CounterpartyType = FormCounterpartyType,
+                            SupplierId = FormSupplierId,
+                            Lines = lines
+                        };
+
+                        var result = await _invoiceService.CreateAsync(dto);
+                        if (result.IsSuccess)
+                        {
+                            StatusMessage = $"تم إنشاء فاتورة البيع «{result.Data.InvoiceNumber}» بنجاح";
+                            CurrentInvoice = result.Data;
+                            PopulateFormFromInvoice(result.Data);
+                            UpdateTabTitle(result.Data.InvoiceNumber, GetStatusText(result.Data.Status));
+                            ResetDirtyTracking();
+
+                            await RefreshInvoicePaymentsAsync();
+                        }
+                        else ErrorMessage = result.ErrorMessage;
+                    }
+                    else
+                    {
+                        var dto = new UpdateSalesInvoiceDto
+                        {
+                            Id = CurrentInvoice.Id,
+                            InvoiceDate = FormDate,
+                            CustomerId = FormCustomerId ?? 0,
+                            WarehouseId = FormWarehouseId ?? 0,
+                            Notes = FormNotes?.Trim(),
+                            SalesRepresentativeId = FormSalesRepresentativeId,
+                            CounterpartyType = FormCounterpartyType,
+                            SupplierId = FormSupplierId,
+                            Lines = lines
+                        };
+
+                        var result = await _invoiceService.UpdateAsync(dto);
+                        if (result.IsSuccess)
+                        {
+                            StatusMessage = $"تم تحديث فاتورة البيع «{result.Data.InvoiceNumber}» بنجاح";
+                            CurrentInvoice = result.Data;
+                            PopulateFormFromInvoice(result.Data);
+                            UpdateTabTitle(result.Data.InvoiceNumber, GetStatusText(result.Data.Status));
+
+                            await RefreshInvoicePaymentsAsync();
+                        }
+                        else ErrorMessage = result.ErrorMessage;
+                    }
+                }
+                catch (ConcurrencyConflictException)
+                {
+                    ErrorMessage = "حدث تعارض في البيانات. يرجى إعادة تحميل الفاتورة.";
+                }
+                catch (Exception ex)
+                {
+                    ErrorMessage = FriendlyErrorMessage("حفظ الفاتورة", ex);
+                }
+                finally { IsBusy = false; }
+            });
         }
 
         private async Task RefreshInvoicePaymentsAsync()
@@ -845,6 +914,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
                     StatusMessage = $"تم ترحيل فاتورة البيع «{result.Data.InvoiceNumber}» بنجاح";
                     CurrentInvoice = result.Data;
                     PopulateFormFromInvoice(result.Data);
+                    await PromptCreateReceiptFromInvoiceAsync(result.Data);
                 }
                 else ErrorMessage = result.ErrorMessage;
             }
@@ -932,6 +1002,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             FormCounterpartyType = invoice.CounterpartyType;
             FormCustomerId = invoice.CustomerId;
             FormSupplierId = invoice.SupplierId;
+            FormSalesRepresentativeId = invoice.SalesRepresentativeId;
             FormWarehouseId = invoice.WarehouseId;
             FormNotes = invoice.Notes;
 
@@ -1363,6 +1434,55 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             catch
             {
                 // Smart entry is non-critical; ignore failures.
+            }
+        }
+
+        // ── Tab Title Update ────────────────────────────────────
+        /// <summary>Updates the tab title to show invoice number and status.</summary>
+        private void UpdateTabTitle(string invoiceNumber, string statusText)
+        {
+            try
+            {
+                // Find current tab through navigation service
+                var mainViewModel = System.Windows.Application.Current.MainWindow?.DataContext as Shell.MainWindowViewModel;
+                if (mainViewModel == null) return;
+
+                var currentTab = mainViewModel.ActiveTab;
+                if (currentTab != null)
+                {
+                    currentTab.Title = $"فاتورة بيع - {invoiceNumber}";
+                    currentTab.StatusText = statusText;
+                }
+            }
+            catch
+            {
+                // Tab update is non-critical; ignore failures
+            }
+        }
+
+        /// <summary>Returns Arabic status text for display.</summary>
+        private static string GetStatusText(string status)
+        {
+            return status switch
+            {
+                "Draft" => "مسودة",
+                "Posted" => "مرحّلة",
+                "Cancelled" => "ملغاة",
+                _ => status
+            };
+        }
+
+        /// <summary>Serializes DB access within this ViewModel.</summary>
+        private async Task RunDbGuardedAsync(Func<Task> work)
+        {
+            await DbGuard.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                await work().ConfigureAwait(false);
+            }
+            finally
+            {
+                DbGuard.Release();
             }
         }
 

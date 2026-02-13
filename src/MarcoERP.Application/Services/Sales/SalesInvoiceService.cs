@@ -20,6 +20,7 @@ using MarcoERP.Domain.Exceptions.Sales;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Sales;
+using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
 namespace MarcoERP.Application.Services.Sales
@@ -49,6 +50,7 @@ namespace MarcoERP.Application.Services.Sales
         private readonly IDateTimeProvider _dateTime;
         private readonly IValidator<CreateSalesInvoiceDto> _createValidator;
         private readonly IValidator<UpdateSalesInvoiceDto> _updateValidator;
+        private readonly ILogger<SalesInvoiceService> _logger;
 
         // ── GL Account Codes (from SystemAccountSeed) ───────────
         // 1121 = المدينون — ذمم تجارية (AR — Trade Receivables)
@@ -66,11 +68,13 @@ namespace MarcoERP.Application.Services.Sales
         public SalesInvoiceService(
             SalesInvoiceRepositories repos,
             SalesInvoiceServices services,
-            SalesInvoiceValidators validators)
+            SalesInvoiceValidators validators,
+            ILogger<SalesInvoiceService> logger)
         {
             if (repos == null) throw new ArgumentNullException(nameof(repos));
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (validators == null) throw new ArgumentNullException(nameof(validators));
+            if (logger == null) throw new ArgumentNullException(nameof(logger));
 
             _invoiceRepo = repos.InvoiceRepo;
             _productRepo = repos.ProductRepo;
@@ -89,6 +93,7 @@ namespace MarcoERP.Application.Services.Sales
 
             _createValidator = validators.CreateValidator;
             _updateValidator = validators.UpdateValidator;
+            _logger = logger;
         }
 
         // ══════════════════════════════════════════════════════════
@@ -154,6 +159,7 @@ namespace MarcoERP.Application.Services.Sales
                             dto.CustomerId,
                             dto.WarehouseId,
                             dto.Notes,
+                            salesRepresentativeId: dto.SalesRepresentativeId,
                             counterpartyType: dto.CounterpartyType,
                             supplierId: dto.SupplierId);
 
@@ -240,6 +246,7 @@ namespace MarcoERP.Application.Services.Sales
             try
             {
                 invoice.UpdateHeader(dto.InvoiceDate, dto.CustomerId, dto.WarehouseId, dto.Notes,
+                    salesRepresentativeId: dto.SalesRepresentativeId,
                     counterpartyType: dto.CounterpartyType, supplierId: dto.SupplierId);
 
                 var newLines = new List<SalesInvoiceLine>();
@@ -353,7 +360,8 @@ namespace MarcoERP.Application.Services.Sales
             }
             catch (Exception ex)
             {
-                return ServiceResult<SalesInvoiceDto>.Failure($"خطأ أثناء ترحيل الفاتورة: {ex.Message}");
+                _logger.LogError(ex, "Failed to post sales invoice {InvoiceId}.", invoice?.Id);
+                return ServiceResult<SalesInvoiceDto>.Failure("حدث خطأ غير متوقع أثناء ترحيل الفاتورة.");
             }
         }
 
@@ -426,7 +434,8 @@ namespace MarcoERP.Application.Services.Sales
             }
             catch (Exception ex)
             {
-                return ServiceResult.Failure($"فشل إلغاء فاتورة البيع: {ex.Message}");
+                _logger.LogError(ex, "Failed to cancel sales invoice {InvoiceId}.", invoice?.Id);
+                return ServiceResult.Failure("حدث خطأ غير متوقع أثناء إلغاء فاتورة البيع.");
             }
         }
 

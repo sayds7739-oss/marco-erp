@@ -19,6 +19,7 @@ using MarcoERP.Domain.Exceptions.Purchases;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Purchases;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Purchases
 {
@@ -42,6 +43,7 @@ namespace MarcoERP.Application.Services.Purchases
         private readonly IDateTimeProvider _dateTime;
         private readonly IValidator<CreatePurchaseInvoiceDto> _createValidator;
         private readonly IValidator<UpdatePurchaseInvoiceDto> _updateValidator;
+        private readonly ILogger<PurchaseInvoiceService> _logger;
 
         // ── GL Account Codes (from SystemAccountSeed) ───────────
         // 1131 = المخزون — المستودع الرئيسي (Inventory)
@@ -55,11 +57,13 @@ namespace MarcoERP.Application.Services.Purchases
         public PurchaseInvoiceService(
             PurchaseInvoiceRepositories repos,
             PurchaseInvoiceServices services,
-            PurchaseInvoiceValidators validators)
+            PurchaseInvoiceValidators validators,
+            ILogger<PurchaseInvoiceService> logger)
         {
             if (repos == null) throw new ArgumentNullException(nameof(repos));
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (validators == null) throw new ArgumentNullException(nameof(validators));
+            if (logger == null) throw new ArgumentNullException(nameof(logger));
 
             _invoiceRepo = repos.InvoiceRepo;
             _productRepo = repos.ProductRepo;
@@ -76,6 +80,7 @@ namespace MarcoERP.Application.Services.Purchases
 
             _createValidator = validators.CreateValidator;
             _updateValidator = validators.UpdateValidator;
+            _logger = logger;
         }
 
         public async Task<ServiceResult<IReadOnlyList<PurchaseInvoiceListDto>>> GetAllAsync(CancellationToken ct = default)
@@ -120,6 +125,7 @@ namespace MarcoERP.Application.Services.Purchases
                     dto.SupplierId,
                     dto.WarehouseId,
                     dto.Notes,
+                    salesRepresentativeId: dto.SalesRepresentativeId,
                     counterpartyType: dto.CounterpartyType,
                     customerId: dto.CounterpartyCustomerId);
 
@@ -178,6 +184,7 @@ namespace MarcoERP.Application.Services.Purchases
             try
             {
                 invoice.UpdateHeader(dto.InvoiceDate, dto.SupplierId, dto.WarehouseId, dto.Notes,
+                    salesRepresentativeId: dto.SalesRepresentativeId,
                     counterpartyType: dto.CounterpartyType, customerId: dto.CounterpartyCustomerId);
 
                 // Rebuild lines from DTO
@@ -248,7 +255,8 @@ namespace MarcoERP.Application.Services.Purchases
             }
             catch (Exception ex)
             {
-                return ServiceResult<PurchaseInvoiceDto>.Failure($"خطأ أثناء ترحيل الفاتورة: {ex.Message}");
+                _logger.LogError(ex, "Failed to post purchase invoice {InvoiceId}.", invoice?.Id);
+                return ServiceResult<PurchaseInvoiceDto>.Failure("حدث خطأ غير متوقع أثناء ترحيل الفاتورة.");
             }
         }
 
@@ -283,7 +291,8 @@ namespace MarcoERP.Application.Services.Purchases
             }
             catch (Exception ex)
             {
-                return ServiceResult.Failure($"فشل إلغاء فاتورة الشراء: {ex.Message}");
+                _logger.LogError(ex, "Failed to cancel purchase invoice {InvoiceId}.", invoice?.Id);
+                return ServiceResult.Failure("حدث خطأ غير متوقع أثناء إلغاء فاتورة الشراء.");
             }
         }
 
@@ -413,20 +422,29 @@ namespace MarcoERP.Application.Services.Purchases
 
         private async Task ApplyStockAndWacAsync(PurchaseInvoice invoice, CancellationToken ct)
         {
+            var runningTotals = new Dictionary<int, (Product product, decimal totalQty)>();
+
             foreach (var line in invoice.Lines)
             {
                 var whProduct = await _whProductRepo.GetOrCreateAsync(
                     invoice.WarehouseId, line.ProductId, ct);
 
-                var existingTotalQty = await _whProductRepo.GetTotalStockAsync(line.ProductId, ct);
+                if (!runningTotals.TryGetValue(line.ProductId, out var state))
+                {
+                    var product = await _productRepo.GetByIdWithUnitsAsync(line.ProductId, ct);
+                    var existingTotalQty = await _whProductRepo.GetTotalStockAsync(line.ProductId, ct);
+                    state = (product, existingTotalQty);
+                }
 
                 var costPerBaseUnit = line.BaseQuantity > 0
                     ? line.NetTotal / line.BaseQuantity
                     : 0;
 
-                var product = await _productRepo.GetByIdWithUnitsAsync(line.ProductId, ct);
-                product.UpdateWeightedAverageCost(existingTotalQty, line.BaseQuantity, costPerBaseUnit);
-                _productRepo.Update(product);
+                // Use running totals to keep WAC accurate across multiple lines for the same product.
+                state.product.UpdateWeightedAverageCost(state.totalQty, line.BaseQuantity, costPerBaseUnit);
+                state.totalQty += line.BaseQuantity;
+                runningTotals[line.ProductId] = state;
+                _productRepo.Update(state.product);
 
                 whProduct.IncreaseStock(line.BaseQuantity);
                 _whProductRepo.Update(whProduct);
@@ -503,20 +521,31 @@ namespace MarcoERP.Application.Services.Purchases
             PurchaseInvoiceCancelContext context,
             CancellationToken ct)
         {
+            // Running totals to handle duplicate product lines in same invoice (mirrors posting logic)
+            var runningDeductions = new Dictionary<int, decimal>();
+
             foreach (var line in invoice.Lines)
             {
                 var whProduct = await _whProductRepo.GetAsync(
                     invoice.WarehouseId, line.ProductId, ct);
 
                 if (whProduct == null)
-                    continue;
+                    throw new PurchaseInvoiceDomainException(
+                        $"تعذر إلغاء الفاتورة: سجل المخزون للصنف {line.ProductId} في المستودع {invoice.WarehouseId} غير موجود.");
 
                 whProduct.DecreaseStock(line.BaseQuantity);
                 _whProductRepo.Update(whProduct);
 
+                // Track cumulative deductions per product for stale-DB correction
+                if (!runningDeductions.TryGetValue(line.ProductId, out var previousDeductions))
+                    previousDeductions = 0;
+
                 // Recalculate WAC after removing this purchase batch's contribution
                 var product = await _productRepo.GetByIdWithUnitsAsync(line.ProductId, ct);
-                var remainingTotalQty = await _whProductRepo.GetTotalStockAsync(line.ProductId, ct);
+                var dbTotalQty = await _whProductRepo.GetTotalStockAsync(line.ProductId, ct);
+                // DB hasn't been saved yet, so subtract all deductions made in this loop
+                var remainingTotalQty = dbTotalQty - previousDeductions - line.BaseQuantity;
+
                 if (remainingTotalQty > 0)
                 {
                     var costPerUnit = line.BaseQuantity > 0
@@ -533,6 +562,8 @@ namespace MarcoERP.Application.Services.Purchases
                     product.SetWeightedAverageCost(product.CostPrice); // Fallback to base cost
                 }
                 _productRepo.Update(product);
+
+                runningDeductions[line.ProductId] = previousDeductions + line.BaseQuantity;
 
                 var costPerBaseUnit = line.BaseQuantity > 0
                     ? line.NetTotal / line.BaseQuantity

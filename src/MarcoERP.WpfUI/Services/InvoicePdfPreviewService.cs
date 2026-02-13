@@ -7,6 +7,7 @@ using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using MarcoERP.Application.DTOs.Purchases;
 using MarcoERP.Application.DTOs.Sales;
+using MarcoERP.Domain.Enums;
 using MarcoERP.WpfUI.Views.Common;
 
 namespace MarcoERP.WpfUI.Services
@@ -87,8 +88,11 @@ namespace MarcoERP.WpfUI.Services
             sb.AppendLine(".totals div{background:#F5F5F5; padding:8px 10px; border-radius:6px;}");
             sb.AppendLine("</style></head><body>");
 
+            var salesCounterpartyLabel = invoice.CounterpartyType == CounterpartyType.Supplier ? "المورد" : "العميل";
+            var salesCounterpartyName = invoice.CounterpartyType == CounterpartyType.Supplier ? invoice.SupplierNameAr : invoice.CustomerNameAr;
+
             sb.AppendLine($"<h1>فاتورة بيع رقم {WebUtility.HtmlEncode(invoice.InvoiceNumber)}</h1>");
-            sb.AppendLine($"<div class=\"meta\">التاريخ: {invoice.InvoiceDate.ToString("yyyy-MM-dd", culture)} | العميل: {WebUtility.HtmlEncode(invoice.CustomerNameAr)}</div>");
+            sb.AppendLine($"<div class=\"meta\">التاريخ: {invoice.InvoiceDate.ToString("yyyy-MM-dd", culture)} | {salesCounterpartyLabel}: {WebUtility.HtmlEncode(salesCounterpartyName)}</div>");
 
             sb.AppendLine("<table>");
             sb.AppendLine("<thead><tr>");
@@ -144,8 +148,11 @@ namespace MarcoERP.WpfUI.Services
             sb.AppendLine(".totals div{background:#F5F5F5; padding:8px 10px; border-radius:6px;}");
             sb.AppendLine("</style></head><body>");
 
+            var purchaseCounterpartyLabel = invoice.CounterpartyType == CounterpartyType.Customer ? "العميل" : "المورد";
+            var purchaseCounterpartyName = invoice.CounterpartyType == CounterpartyType.Customer ? invoice.CounterpartyCustomerNameAr : invoice.SupplierNameAr;
+
             sb.AppendLine($"<h1>فاتورة شراء رقم {WebUtility.HtmlEncode(invoice.InvoiceNumber)}</h1>");
-            sb.AppendLine($"<div class=\"meta\">التاريخ: {invoice.InvoiceDate.ToString("yyyy-MM-dd", culture)} | المورد: {WebUtility.HtmlEncode(invoice.SupplierNameAr)}</div>");
+            sb.AppendLine($"<div class=\"meta\">التاريخ: {invoice.InvoiceDate.ToString("yyyy-MM-dd", culture)} | {purchaseCounterpartyLabel}: {WebUtility.HtmlEncode(purchaseCounterpartyName)}</div>");
 
             sb.AppendLine("<table>");
             sb.AppendLine("<thead><tr>");

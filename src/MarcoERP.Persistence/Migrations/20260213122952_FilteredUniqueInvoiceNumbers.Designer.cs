@@ -4,6 +4,7 @@ using MarcoERP.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MarcoERP.Persistence.Migrations
 {
     [DbContext(typeof(MarcoDbContext))]
-    partial class MarcoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260213122952_FilteredUniqueInvoiceNumbers")]
+    partial class FilteredUniqueInvoiceNumbers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1455,9 +1458,6 @@ namespace MarcoERP.Persistence.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
-                    b.Property<int?>("SalesRepresentativeId")
-                        .HasColumnType("int");
-
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -1465,7 +1465,7 @@ namespace MarcoERP.Persistence.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
 
-                    b.Property<int?>("SupplierId")
+                    b.Property<int>("SupplierId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("VatTotal")
@@ -1495,16 +1495,11 @@ namespace MarcoERP.Persistence.Migrations
                         .HasDatabaseName("IX_PurchaseInvoices_JournalEntryId")
                         .HasFilter("[JournalEntryId] IS NOT NULL");
 
-                    b.HasIndex("SalesRepresentativeId")
-                        .HasDatabaseName("IX_PurchaseInvoices_SalesRepresentativeId")
-                        .HasFilter("[SalesRepresentativeId] IS NOT NULL");
-
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_PurchaseInvoices_Status");
 
                     b.HasIndex("SupplierId")
-                        .HasDatabaseName("IX_PurchaseInvoices_SupplierId")
-                        .HasFilter("[SupplierId] IS NOT NULL");
+                        .HasDatabaseName("IX_PurchaseInvoices_SupplierId");
 
                     b.HasIndex("WarehouseId")
                         .HasDatabaseName("IX_PurchaseInvoices_WarehouseId");
@@ -1802,14 +1797,6 @@ namespace MarcoERP.Persistence.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
-                    b.Property<int?>("CounterpartyCustomerId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("CounterpartyType")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1869,9 +1856,6 @@ namespace MarcoERP.Persistence.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
-                    b.Property<int?>("SalesRepresentativeId")
-                        .HasColumnType("int");
-
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -1879,7 +1863,7 @@ namespace MarcoERP.Persistence.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
 
-                    b.Property<int?>("SupplierId")
+                    b.Property<int>("SupplierId")
                         .HasColumnType("int");
 
                     b.Property<decimal>("VatTotal")
@@ -1892,10 +1876,6 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
-
-                    b.HasIndex("CounterpartyCustomerId")
-                        .HasDatabaseName("IX_PurchaseReturns_CounterpartyCustomerId")
-                        .HasFilter("[CounterpartyCustomerId] IS NOT NULL");
 
                     b.HasIndex("JournalEntryId")
                         .HasDatabaseName("IX_PurchaseReturns_JournalEntryId")
@@ -1912,16 +1892,11 @@ namespace MarcoERP.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_PurchaseReturns_ReturnNumber");
 
-                    b.HasIndex("SalesRepresentativeId")
-                        .HasDatabaseName("IX_PurchaseReturns_SalesRepresentativeId")
-                        .HasFilter("[SalesRepresentativeId] IS NOT NULL");
-
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_PurchaseReturns_Status");
 
                     b.HasIndex("SupplierId")
-                        .HasDatabaseName("IX_PurchaseReturns_SupplierId")
-                        .HasFilter("[SupplierId] IS NOT NULL");
+                        .HasDatabaseName("IX_PurchaseReturns_SupplierId");
 
                     b.HasIndex("WarehouseId")
                         .HasDatabaseName("IX_PurchaseReturns_WarehouseId");
@@ -3100,11 +3075,6 @@ namespace MarcoERP.Persistence.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
-                    b.Property<int>("CounterpartyType")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -3113,7 +3083,7 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int?>("CustomerId")
+                    b.Property<int>("CustomerId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("DeletedAt")
@@ -3167,18 +3137,12 @@ namespace MarcoERP.Persistence.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
-                    b.Property<int?>("SalesRepresentativeId")
-                        .HasColumnType("int");
-
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Subtotal")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
-
-                    b.Property<int?>("SupplierId")
-                        .HasColumnType("int");
 
                     b.Property<decimal>("VatTotal")
                         .HasPrecision(18, 4)
@@ -3213,16 +3177,8 @@ namespace MarcoERP.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_SalesReturns_ReturnNumber");
 
-                    b.HasIndex("SalesRepresentativeId")
-                        .HasDatabaseName("IX_SalesReturns_SalesRepresentativeId")
-                        .HasFilter("[SalesRepresentativeId] IS NOT NULL");
-
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_SalesReturns_Status");
-
-                    b.HasIndex("SupplierId")
-                        .HasDatabaseName("IX_SalesReturns_SupplierId")
-                        .HasFilter("[SupplierId] IS NOT NULL");
 
                     b.HasIndex("WarehouseId")
                         .HasDatabaseName("IX_SalesReturns_WarehouseId");
@@ -4818,15 +4774,11 @@ namespace MarcoERP.Persistence.Migrations
                         .HasForeignKey("JournalEntryId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("MarcoERP.Domain.Entities.Sales.SalesRepresentative", "SalesRepresentative")
-                        .WithMany()
-                        .HasForeignKey("SalesRepresentativeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("MarcoERP.Domain.Entities.Purchases.Supplier", "Supplier")
                         .WithMany()
                         .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("MarcoERP.Domain.Entities.Inventory.Warehouse", null)
                         .WithMany()
@@ -4835,8 +4787,6 @@ namespace MarcoERP.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("CounterpartyCustomer");
-
-                    b.Navigation("SalesRepresentative");
 
                     b.Navigation("Supplier");
                 });
@@ -4919,11 +4869,6 @@ namespace MarcoERP.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MarcoERP.Domain.Entities.Sales.Customer", "CounterpartyCustomer")
-                        .WithMany()
-                        .HasForeignKey("CounterpartyCustomerId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("MarcoERP.Domain.Entities.Accounting.JournalEntry", null)
                         .WithMany()
                         .HasForeignKey("JournalEntryId")
@@ -4934,15 +4879,11 @@ namespace MarcoERP.Persistence.Migrations
                         .HasForeignKey("OriginalInvoiceId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("MarcoERP.Domain.Entities.Sales.SalesRepresentative", "SalesRepresentative")
-                        .WithMany()
-                        .HasForeignKey("SalesRepresentativeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("MarcoERP.Domain.Entities.Purchases.Supplier", "Supplier")
                         .WithMany()
                         .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("MarcoERP.Domain.Entities.Inventory.Warehouse", null)
                         .WithMany()
@@ -4950,11 +4891,7 @@ namespace MarcoERP.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("CounterpartyCustomer");
-
                     b.Navigation("OriginalInvoice");
-
-                    b.Navigation("SalesRepresentative");
 
                     b.Navigation("Supplier");
                 });
@@ -5225,7 +5162,8 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasOne("MarcoERP.Domain.Entities.Sales.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("MarcoERP.Domain.Entities.Accounting.JournalEntry", null)
                         .WithMany()
@@ -5237,29 +5175,15 @@ namespace MarcoERP.Persistence.Migrations
                         .HasForeignKey("OriginalInvoiceId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("MarcoERP.Domain.Entities.Sales.SalesRepresentative", "SalesRepresentative")
-                        .WithMany()
-                        .HasForeignKey("SalesRepresentativeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("MarcoERP.Domain.Entities.Purchases.Supplier", "CounterpartySupplier")
-                        .WithMany()
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("MarcoERP.Domain.Entities.Inventory.Warehouse", null)
                         .WithMany()
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("CounterpartySupplier");
-
                     b.Navigation("Customer");
 
                     b.Navigation("OriginalInvoice");
-
-                    b.Navigation("SalesRepresentative");
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Sales.SalesReturnLine", b =>

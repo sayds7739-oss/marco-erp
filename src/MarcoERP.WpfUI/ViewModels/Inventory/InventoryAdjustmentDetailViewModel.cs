@@ -7,6 +7,7 @@ using System.Windows.Input;
 using MarcoERP.Application.DTOs.Inventory;
 using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Inventory;
+using MarcoERP.Application.Interfaces.SmartEntry;
 using MarcoERP.WpfUI.Navigation;
 
 namespace MarcoERP.WpfUI.ViewModels.Inventory
@@ -18,17 +19,23 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
     {
         private readonly IInventoryAdjustmentService _adjustmentService;
         private readonly IWarehouseService _warehouseService;
+        private readonly IProductService _productService;
+        private readonly ISmartEntryQueryService _smartEntryQueryService;
         private readonly INavigationService _navigationService;
         private readonly ILineCalculationService _lineCalculationService;
 
         public InventoryAdjustmentDetailViewModel(
             IInventoryAdjustmentService adjustmentService,
             IWarehouseService warehouseService,
+            IProductService productService,
+            ISmartEntryQueryService smartEntryQueryService,
             INavigationService navigationService,
             ILineCalculationService lineCalculationService)
         {
             _adjustmentService = adjustmentService ?? throw new ArgumentNullException(nameof(adjustmentService));
             _warehouseService = warehouseService ?? throw new ArgumentNullException(nameof(warehouseService));
+            _productService = productService ?? throw new ArgumentNullException(nameof(productService));
+            _smartEntryQueryService = smartEntryQueryService ?? throw new ArgumentNullException(nameof(smartEntryQueryService));
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _lineCalculationService = lineCalculationService ?? throw new ArgumentNullException(nameof(lineCalculationService));
 
@@ -88,7 +95,14 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         public int WarehouseId
         {
             get => _warehouseId;
-            set => SetProperty(ref _warehouseId, value);
+            set
+            {
+                if (SetProperty(ref _warehouseId, value))
+                {
+                    OnPropertyChanged(nameof(CanSave));
+                    EnqueueDbWork(RefreshLineMetaAsync);
+                }
+            }
         }
 
         private string _reason;
@@ -114,14 +128,22 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         public int LineProductId
         {
             get => _lineProductId;
-            set => SetProperty(ref _lineProductId, value);
+            set
+            {
+                if (SetProperty(ref _lineProductId, value))
+                    EnqueueDbWork(RefreshLineMetaAsync);
+            }
         }
 
         private int _lineUnitId;
         public int LineUnitId
         {
             get => _lineUnitId;
-            set => SetProperty(ref _lineUnitId, value);
+            set
+            {
+                if (SetProperty(ref _lineUnitId, value))
+                    EnqueueDbWork(RefreshLineMetaAsync);
+            }
         }
 
         private decimal _lineSystemQty;
@@ -164,7 +186,11 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
 
         // ── Can Execute ──────────────────────────────────────────
 
-        public bool CanSave => IsEditable && !string.IsNullOrWhiteSpace(Reason);
+        public bool CanSave => IsEditable
+                      && WarehouseId > 0
+                      && !string.IsNullOrWhiteSpace(Reason)
+                      && Lines.Count > 0
+                      && Lines.All(l => l.ProductId > 0 && l.UnitId > 0 && l.ActualQuantity >= 0);
         public bool CanPost => !IsNew && Status == "Draft";
         public bool CanCancelAdjustment => !IsNew && Status == "Posted";
         public bool CanDelete => !IsNew && Status == "Draft";
@@ -267,6 +293,25 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             ClearError();
             try
             {
+                if (WarehouseId <= 0)
+                {
+                    ErrorMessage = "يجب اختيار المخزن.";
+                    return;
+                }
+
+                if (Lines.Count == 0)
+                {
+                    ErrorMessage = "لا يمكن حفظ تسوية بدون بنود.";
+                    return;
+                }
+
+                var invalidLines = Lines.Where(l => l.ProductId <= 0 || l.UnitId <= 0 || l.ActualQuantity < 0).ToList();
+                if (invalidLines.Any())
+                {
+                    ErrorMessage = "يوجد بنود غير مكتملة (صنف أو وحدة أو كمية غير صحيحة).";
+                    return;
+                }
+
                 if (IsNew)
                 {
                     var dto = new CreateInventoryAdjustmentDto
@@ -478,12 +523,43 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             LineActualQty = 0;
             LineConversion = 1;
             LineUnitCost = 0;
+
+            OnPropertyChanged(nameof(CanSave));
         }
 
         private void RemoveLine(object parameter)
         {
             if (parameter is InventoryAdjustmentLineDto line)
                 Lines.Remove(line);
+            OnPropertyChanged(nameof(CanSave));
+        }
+
+        private async Task RefreshLineMetaAsync()
+        {
+            if (WarehouseId <= 0 || LineProductId <= 0 || LineUnitId <= 0)
+                return;
+
+            try
+            {
+                var productResult = await _productService.GetByIdAsync(LineProductId);
+                if (!productResult.IsSuccess || productResult.Data == null)
+                    return;
+
+                var product = productResult.Data;
+                var unit = product.Units?.FirstOrDefault(u => u.UnitId == LineUnitId);
+                var factor = unit?.ConversionFactor ?? 1m;
+                if (factor <= 0) factor = 1m;
+
+                LineConversion = factor;
+                LineUnitCost = product.WeightedAverageCost;
+
+                var stockBase = await _smartEntryQueryService.GetStockBaseQtyAsync(WarehouseId, LineProductId);
+                LineSystemQty = Math.Round(stockBase / factor, 4);
+            }
+            catch
+            {
+                // Non-critical; keep existing values.
+            }
         }
     }
 }

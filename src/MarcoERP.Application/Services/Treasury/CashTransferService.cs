@@ -17,6 +17,7 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Treasury;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Treasury;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Treasury
 {
@@ -41,12 +42,14 @@ namespace MarcoERP.Application.Services.Treasury
         private readonly IDateTimeProvider _dateTime;
         private readonly IValidator<CreateCashTransferDto> _createValidator;
         private readonly IValidator<UpdateCashTransferDto> _updateValidator;
+        private readonly ILogger<CashTransferService> _logger;
         private const string TransferNotFoundMessage = "التحويل غير موجود.";
 
         public CashTransferService(
             CashTransferRepositories repos,
             CashTransferServices services,
-            CashTransferValidators validators)
+            CashTransferValidators validators,
+            ILogger<CashTransferService> logger)
         {
             if (repos == null) throw new ArgumentNullException(nameof(repos));
             if (services == null) throw new ArgumentNullException(nameof(services));
@@ -65,6 +68,7 @@ namespace MarcoERP.Application.Services.Treasury
 
             _createValidator = validators.CreateValidator;
             _updateValidator = validators.UpdateValidator;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         // ══════════════════════════════════════════════════════════
@@ -204,6 +208,15 @@ namespace MarcoERP.Application.Services.Treasury
             var preCheck = ValidatePostPreconditions(transfer);
             if (preCheck != null) return preCheck;
 
+            // CSH-03: Prevent source cashbox balance from going negative
+            var sourceBalance = await _cashboxRepo.GetGLBalanceAsync(transfer.SourceCashboxId, ct);
+            if (sourceBalance < transfer.Amount)
+            {
+                var sourceCashbox = await _cashboxRepo.GetByIdAsync(transfer.SourceCashboxId, ct);
+                return ServiceResult<CashTransferDto>.Failure(
+                    $"رصيد الخزنة المصدر ({sourceCashbox?.NameAr ?? "غير معروفة"}) غير كافٍ. الرصيد الحالي: {sourceBalance:N2}، المبلغ المطلوب: {transfer.Amount:N2}");
+            }
+
             CashTransfer saved = null;
 
             try
@@ -239,7 +252,8 @@ namespace MarcoERP.Application.Services.Treasury
             }
             catch (Exception ex)
             {
-                return ServiceResult<CashTransferDto>.Failure($"فشل ترحيل التحويل: {ex.Message}");
+                _logger.LogError(ex, "خطأ غير متوقع أثناء ترحيل التحويل {TransferId}", id);
+                return ServiceResult<CashTransferDto>.Failure("حدث خطأ غير متوقع أثناء ترحيل التحويل.");
             }
         }
 
@@ -402,7 +416,8 @@ namespace MarcoERP.Application.Services.Treasury
             }
             catch (Exception ex)
             {
-                return ServiceResult.Failure($"فشل إلغاء التحويل: {ex.Message}");
+                _logger.LogError(ex, "خطأ غير متوقع أثناء إلغاء التحويل {TransferId}", id);
+                return ServiceResult.Failure("حدث خطأ غير متوقع أثناء إلغاء التحويل.");
             }
         }
 

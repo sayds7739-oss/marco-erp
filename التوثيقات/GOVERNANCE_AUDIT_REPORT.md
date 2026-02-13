@@ -322,3 +322,46 @@ The 3 HIGH-severity deferred items (project references, ReportService size) are 
 ---
 
 *Report generated automatically. Build: 0 errors, 0 warnings. Tests: 356/356 passing.*
+
+---
+
+## Addendum — Posting Workflow Audit (Sales/Purchases/Returns)
+
+**Date:** 2026-02-13  
+**Scope:** SalesInvoiceService, SalesReturnService, PurchaseInvoiceService, PurchaseReturnService  
+**Goal:** Verify posting sequence correctness, inventory impact, and AR/AP impact against FINANCIAL_ENGINE_RULES + ACCOUNTING_PRINCIPLES.
+
+### Posting Sequence Verification
+
+- All four workflows execute inside Serializable transactions and enforce period lock checks prior to posting.
+- Sales: revenue journal + COGS journal created before stock deduction; invoice is marked Posted after stock movement.
+- Purchases: journal entry posted before stock receipt + WAC update; invoice marked Posted after stock movement.
+- Returns: reversal journals created before stock movement; return marked Posted after stock movement.
+
+### Accounting & Inventory Effects
+
+- Sales invoice: DR AR, CR Sales, CR VAT Output; COGS journal DR COGS, CR Inventory; stock decreases.
+- Sales return: DR Sales, DR VAT Output, CR AR; COGS reversal DR Inventory, CR COGS; stock increases.
+- Purchase invoice: DR Inventory, DR VAT Input, CR AP; stock increases with WAC update.
+- Purchase return: DR AP, CR Inventory, CR VAT Input; stock decreases.
+
+### Findings (New)
+
+1. **SEC-ERR-01 (Medium):** Generic catch blocks still surface `ex.Message` to UI in posting/cancel flows.
+2. **INV-02 / INV-06 (Medium):** WAC update inside PurchaseInvoiceService uses a fresh DB total per line, which can underweight earlier lines when the same product appears multiple times in the same invoice. Recommend aggregating lines per product or maintaining a running in-transaction total.
+
+### Remediation Applied (This Session)
+
+- Sanitized generic catch blocks to avoid exposing raw exception text in posting/cancel paths.
+- Implemented running in-transaction totals for WAC updates in purchase posting to handle duplicate product lines correctly.
+
+### Deeper Checks Performed
+
+- Verified line-level base quantity rounding (4 decimals) for all four line entities.
+- Verified movement types match business direction (SalesOut, SalesReturn, PurchaseIn, PurchaseReturn).
+- Verified reversals use original transaction dates and still honor open-period checks.
+
+### Result
+
+- **No conflicts found** with FINANCIAL_ENGINE_RULES or ACCOUNTING_PRINCIPLES on posting sequence.
+- **Two medium risks** documented above; remediation deferred unless prioritized.

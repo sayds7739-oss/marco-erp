@@ -19,7 +19,12 @@ namespace MarcoERP.Application.Validators.Sales
                 .WithMessage("تاريخ المرتجع خارج النطاق المسموح.");
 
             RuleFor(x => x.CustomerId)
-                .GreaterThan(0).WithMessage("العميل مطلوب.");
+                .Must(id => id.HasValue && id.Value > 0).WithMessage("العميل مطلوب.")
+                .When(x => x.CounterpartyType == Domain.Enums.CounterpartyType.Customer);
+
+            RuleFor(x => x.SupplierId)
+                .Must(id => id.HasValue && id.Value > 0).WithMessage("المورد مطلوب.")
+                .When(x => x.CounterpartyType == Domain.Enums.CounterpartyType.Supplier);
 
             RuleFor(x => x.WarehouseId)
                 .GreaterThan(0).WithMessage("المستودع مطلوب.");
@@ -50,7 +55,12 @@ namespace MarcoERP.Application.Validators.Sales
                 .WithMessage("تاريخ المرتجع خارج النطاق المسموح.");
 
             RuleFor(x => x.CustomerId)
-                .GreaterThan(0).WithMessage("العميل مطلوب.");
+                .Must(id => id.HasValue && id.Value > 0).WithMessage("العميل مطلوب.")
+                .When(x => x.CounterpartyType == Domain.Enums.CounterpartyType.Customer);
+
+            RuleFor(x => x.SupplierId)
+                .Must(id => id.HasValue && id.Value > 0).WithMessage("المورد مطلوب.")
+                .When(x => x.CounterpartyType == Domain.Enums.CounterpartyType.Supplier);
 
             RuleFor(x => x.WarehouseId)
                 .GreaterThan(0).WithMessage("المستودع مطلوب.");

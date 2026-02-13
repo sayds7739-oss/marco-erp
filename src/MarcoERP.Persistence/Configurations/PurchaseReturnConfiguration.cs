@@ -25,6 +25,10 @@ namespace MarcoERP.Persistence.Configurations
             builder.Property(pr => pr.NetTotal).IsRequired().HasPrecision(18, 4);
             builder.Property(pr => pr.Notes).HasMaxLength(1000);
 
+            // Counterparty type
+            builder.Property(pr => pr.CounterpartyType).IsRequired().HasConversion<int>()
+                .HasDefaultValue(Domain.Enums.CounterpartyType.Supplier);
+
             // Audit
             builder.Property(pr => pr.CreatedAt).IsRequired();
             builder.Property(pr => pr.CreatedBy).IsRequired().HasMaxLength(100);
@@ -42,13 +46,22 @@ namespace MarcoERP.Persistence.Configurations
 
             // Relationships
             builder.HasOne(pr => pr.Supplier).WithMany()
-                .HasForeignKey(pr => pr.SupplierId).OnDelete(DeleteBehavior.Restrict);
+                .HasForeignKey(pr => pr.SupplierId).OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
+
+            builder.HasOne(pr => pr.CounterpartyCustomer).WithMany()
+                .HasForeignKey(pr => pr.CounterpartyCustomerId).OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
 
             builder.HasOne<Warehouse>().WithMany()
                 .HasForeignKey(pr => pr.WarehouseId).OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(pr => pr.OriginalInvoice).WithMany()
                 .HasForeignKey(pr => pr.OriginalInvoiceId).OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
+
+            builder.HasOne(pr => pr.SalesRepresentative).WithMany()
+                .HasForeignKey(pr => pr.SalesRepresentativeId).OnDelete(DeleteBehavior.Restrict)
                 .IsRequired(false);
 
             builder.HasOne<MarcoERP.Domain.Entities.Accounting.JournalEntry>().WithMany()
@@ -64,7 +77,11 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasIndex(pr => pr.ReturnDate)
                 .HasDatabaseName("IX_PurchaseReturns_ReturnDate");
             builder.HasIndex(pr => pr.SupplierId)
-                .HasDatabaseName("IX_PurchaseReturns_SupplierId");
+                .HasDatabaseName("IX_PurchaseReturns_SupplierId")
+                .HasFilter("[SupplierId] IS NOT NULL");
+            builder.HasIndex(pr => pr.CounterpartyCustomerId)
+                .HasDatabaseName("IX_PurchaseReturns_CounterpartyCustomerId")
+                .HasFilter("[CounterpartyCustomerId] IS NOT NULL");
             builder.HasIndex(pr => pr.WarehouseId)
                 .HasDatabaseName("IX_PurchaseReturns_WarehouseId");
             builder.HasIndex(pr => pr.OriginalInvoiceId)
@@ -75,6 +92,9 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasIndex(pr => pr.JournalEntryId)
                 .HasDatabaseName("IX_PurchaseReturns_JournalEntryId")
                 .HasFilter("[JournalEntryId] IS NOT NULL");
+            builder.HasIndex(pr => pr.SalesRepresentativeId)
+                .HasDatabaseName("IX_PurchaseReturns_SalesRepresentativeId")
+                .HasFilter("[SalesRepresentativeId] IS NOT NULL");
         }
     }
 }

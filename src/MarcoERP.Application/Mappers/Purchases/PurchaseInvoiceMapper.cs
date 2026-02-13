@@ -1,6 +1,7 @@
 using System.Linq;
 using MarcoERP.Application.DTOs.Purchases;
 using MarcoERP.Domain.Entities.Purchases;
+using MarcoERP.Domain.Enums;
 
 namespace MarcoERP.Application.Mappers.Purchases
 {
@@ -29,6 +30,7 @@ namespace MarcoERP.Application.Mappers.Purchases
                 NetTotal = entity.NetTotal,
                 Notes = entity.Notes,
                 JournalEntryId = entity.JournalEntryId,
+                SalesRepresentativeId = entity.SalesRepresentativeId,
                 CounterpartyType = entity.CounterpartyType,
                 CounterpartyCustomerId = entity.CounterpartyCustomerId,
                 CounterpartyCustomerNameAr = entity.CounterpartyCustomer?.NameAr,
@@ -65,12 +67,16 @@ namespace MarcoERP.Application.Mappers.Purchases
         {
             if (entity == null) return null;
 
+            var counterpartyName = entity.CounterpartyType == CounterpartyType.Customer
+                ? entity.CounterpartyCustomer?.NameAr
+                : entity.Supplier?.NameAr;
+
             return new PurchaseInvoiceListDto
             {
                 Id = entity.Id,
                 InvoiceNumber = entity.InvoiceNumber,
                 InvoiceDate = entity.InvoiceDate,
-                SupplierNameAr = entity.Supplier?.NameAr,
+                SupplierNameAr = counterpartyName,
                 Status = entity.Status.ToString(),
                 NetTotal = entity.NetTotal
             };
