@@ -198,7 +198,8 @@ namespace MarcoERP.Application.Tests.Reports
         [Fact]
         public async Task ExportToExcelAsync_InvalidPath_ReturnsFailure()
         {
-            var invalidPath = Path.Combine("Z:\\nonexistent_drive_xyz_999\\", "report.xlsx");
+            // On Linux, Z:\ is just a directory name. We need a truly restricted path.
+            var invalidPath = "/proc/invalid_path/report.xlsx";
 
             var result = await _service.ExportToExcelAsync(CreateSampleRequest(), invalidPath, CancellationToken.None);
 

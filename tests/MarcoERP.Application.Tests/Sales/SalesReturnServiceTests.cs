@@ -17,6 +17,7 @@ using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Sales;
 using MarcoERP.Domain.Entities.Accounting.Policies;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Tests.Sales
 {
@@ -36,6 +37,7 @@ namespace MarcoERP.Application.Tests.Sales
         private readonly Mock<IDateTimeProvider> _dateTimeMock = new();
         private readonly Mock<IValidator<CreateSalesReturnDto>> _createValidatorMock = new();
         private readonly Mock<IValidator<UpdateSalesReturnDto>> _updateValidatorMock = new();
+        private readonly Mock<ILogger<SalesReturnService>> _loggerMock = new();
         private readonly SalesReturnService _sut;
 
         public SalesReturnServiceTests()
@@ -72,7 +74,8 @@ namespace MarcoERP.Application.Tests.Sales
                     _dateTimeMock.Object),
                 new SalesReturnValidators(
                     _createValidatorMock.Object,
-                    _updateValidatorMock.Object));
+                    _updateValidatorMock.Object),
+                _loggerMock.Object);
         }
 
         private static Product CreateProduct(int id = 1, decimal wac = 10m, decimal vatRate = 14m)
