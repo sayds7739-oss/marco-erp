@@ -17,12 +17,14 @@ using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Purchases;
 using MarcoERP.Domain.Entities.Accounting.Policies;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Tests.Purchases
 {
     public sealed class PurchaseReturnServiceTests
     {
         private readonly Mock<IPurchaseReturnRepository> _returnRepoMock = new();
+        private readonly Mock<IPurchaseInvoiceRepository> _invoiceRepoMock = new();
         private readonly Mock<IProductRepository> _productRepoMock = new();
         private readonly Mock<IWarehouseProductRepository> _whProductRepoMock = new();
         private readonly Mock<IInventoryMovementRepository> _movementRepoMock = new();
@@ -35,6 +37,7 @@ namespace MarcoERP.Application.Tests.Purchases
         private readonly Mock<IDateTimeProvider> _dateTimeMock = new();
         private readonly Mock<IValidator<CreatePurchaseReturnDto>> _createValidatorMock = new();
         private readonly Mock<IValidator<UpdatePurchaseReturnDto>> _updateValidatorMock = new();
+        private readonly Mock<ILogger<PurchaseReturnService>> _loggerMock = new();
         private readonly PurchaseReturnService _sut;
 
         public PurchaseReturnServiceTests()
@@ -57,6 +60,7 @@ namespace MarcoERP.Application.Tests.Purchases
             _sut = new PurchaseReturnService(
                 new PurchaseReturnRepositories(
                     _returnRepoMock.Object,
+                    _invoiceRepoMock.Object,
                     _productRepoMock.Object,
                     _whProductRepoMock.Object,
                     _movementRepoMock.Object,
@@ -70,7 +74,8 @@ namespace MarcoERP.Application.Tests.Purchases
                     _dateTimeMock.Object),
                 new PurchaseReturnValidators(
                     _createValidatorMock.Object,
-                    _updateValidatorMock.Object));
+                    _updateValidatorMock.Object),
+                _loggerMock.Object);
         }
 
         private static Product CreateProduct(int id = 1, decimal wac = 10m, decimal vatRate = 14m)
@@ -95,6 +100,7 @@ namespace MarcoERP.Application.Tests.Purchases
             {
                 ReturnDate = new DateTime(2026, 2, 9, 0, 0, 0, DateTimeKind.Utc),
                 SupplierId = 1,
+                CounterpartyType = Domain.Enums.CounterpartyType.Supplier,
                 WarehouseId = 1,
                 OriginalInvoiceId = null,
                 Notes = "مرتجع شراء",

@@ -17,6 +17,7 @@ using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Purchases;
 using MarcoERP.Domain.Entities.Accounting.Policies;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Tests.Purchases
 {
@@ -35,6 +36,7 @@ namespace MarcoERP.Application.Tests.Purchases
         private readonly Mock<IDateTimeProvider> _dateTimeMock = new();
         private readonly Mock<IValidator<CreatePurchaseInvoiceDto>> _createValidatorMock = new();
         private readonly Mock<IValidator<UpdatePurchaseInvoiceDto>> _updateValidatorMock = new();
+        private readonly Mock<ILogger<PurchaseInvoiceService>> _loggerMock = new();
         private readonly PurchaseInvoiceService _sut;
 
         public PurchaseInvoiceServiceTests()
@@ -70,7 +72,8 @@ namespace MarcoERP.Application.Tests.Purchases
                     _dateTimeMock.Object),
                 new PurchaseInvoiceValidators(
                     _createValidatorMock.Object,
-                    _updateValidatorMock.Object));
+                    _updateValidatorMock.Object),
+                _loggerMock.Object);
         }
 
         private static Product CreateProduct(int id = 1, decimal wac = 10m, decimal vatRate = 14m)
@@ -95,6 +98,7 @@ namespace MarcoERP.Application.Tests.Purchases
             {
                 InvoiceDate = new DateTime(2026, 2, 9, 0, 0, 0, DateTimeKind.Utc),
                 SupplierId = 1,
+                CounterpartyType = Domain.Enums.CounterpartyType.Supplier,
                 WarehouseId = 1,
                 Notes = "فاتورة شراء",
                 Lines = new List<CreatePurchaseInvoiceLineDto>

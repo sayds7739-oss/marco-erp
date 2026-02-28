@@ -22,6 +22,7 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Sales;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Tests.Sales
 {
@@ -42,6 +43,7 @@ namespace MarcoERP.Application.Tests.Sales
         private readonly Mock<ISmartEntryQueryService> _smartEntryQueryServiceMock;
         private readonly Mock<IValidator<CreateSalesInvoiceDto>> _createValidatorMock;
         private readonly Mock<IValidator<UpdateSalesInvoiceDto>> _updateValidatorMock;
+        private readonly Mock<ILogger<SalesInvoiceService>> _loggerMock;
         private readonly SalesInvoiceService _sut;
 
         public SalesInvoiceServiceTests()
@@ -61,6 +63,7 @@ namespace MarcoERP.Application.Tests.Sales
             _dateTimeMock = new Mock<IDateTimeProvider>();
             _createValidatorMock = new Mock<IValidator<CreateSalesInvoiceDto>>();
             _updateValidatorMock = new Mock<IValidator<UpdateSalesInvoiceDto>>();
+            _loggerMock = new Mock<ILogger<SalesInvoiceService>>();
 
             // Default: authenticated user with sales permissions
             _currentUserMock.Setup(c => c.IsAuthenticated).Returns(true);
@@ -108,7 +111,8 @@ namespace MarcoERP.Application.Tests.Sales
                     _smartEntryQueryServiceMock.Object),
                 new SalesInvoiceValidators(
                     _createValidatorMock.Object,
-                    _updateValidatorMock.Object));
+                    _updateValidatorMock.Object),
+                _loggerMock.Object);
         }
 
         // ── Helpers ─────────────────────────────────────────────
