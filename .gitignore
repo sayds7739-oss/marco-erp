@@ -166,3 +166,10 @@ env/
 
 # Logs
 *.log
+
+# Mobile build artifacts
+*.apk
+*.aab
+MarcoERP-Mobile.apk
+mobile/marco_erp/build/
+mobile/marco_erp/.dart_tool/

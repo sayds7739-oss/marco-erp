@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: marco-erp-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: DB_PROVIDER
+        value: PostgreSQL
+      - key: DB_APPLY_MIGRATIONS_ON_STARTUP
+        value: "true"
+      - key: Jwt__Issuer
+        value: MarcoERP.API
+      - key: Jwt__Audience
+        value: MarcoERP.Mobile
+      - key: MARCOERP_JWT_SECRET
+        generateValue: true
+      - key: Cors__AllowedOrigins__0
+        value: https://your-frontend-domain.onrender.com
+      - key: DB_CONNECTION
+        fromDatabase:
+          name: marco-erp-db
+          property: connectionString
+
+databases:
+  - name: marco-erp-db
+    plan: free
+    databaseName: marcoerp
+    user: marcoerp

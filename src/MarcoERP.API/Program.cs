@@ -63,9 +63,17 @@ using MarcoERP.Application.Services.Printing;
 using MarcoERP.Application.Interfaces.Printing;
 using MarcoERP.Application.Services.Reports;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+
+var renderPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(renderPort)
+    && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+{
+    Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"http://0.0.0.0:{renderPort}");
+}
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -195,6 +203,12 @@ builder.Services.AddRateLimiter(options =>
 });
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // ═══════════════════════════════════════════════════════
 // Persistence Layer
@@ -497,6 +511,8 @@ builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.GzipCompress
 // ═══════════════════════════════════════════════════════
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
 // Response compression — must be first to wrap all responses
 app.UseResponseCompression();
 
@@ -544,7 +560,13 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Apply pending migrations on startup if configured
-if (configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
+var applyMigrationsOnStartup = bool.TryParse(
+        Environment.GetEnvironmentVariable("DB_APPLY_MIGRATIONS_ON_STARTUP"),
+        out var applyMigrationsFromEnv)
+    ? applyMigrationsFromEnv
+    : configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup");
+
+if (applyMigrationsOnStartup)
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<MarcoDbContext>();
@@ -561,6 +583,7 @@ logger.LogInformation("║          MarcoERP API Started Successfully           
 logger.LogInformation("╠══════════════════════════════════════════════════════════════╣");
 logger.LogInformation("║  Listening on: {urls}", urls);
 logger.LogInformation("║  Environment: {env}", app.Environment.EnvironmentName);
+logger.LogInformation("║  Render Port: {port}", renderPort ?? "n/a");
 logger.LogInformation("║  Swagger UI: http://0.0.0.0:5000/swagger");
 logger.LogInformation("║  Health Check: http://0.0.0.0:5000/api/health");
 logger.LogInformation("║  Mobile Login: http://YOUR-IP:5000/api/auth/login");

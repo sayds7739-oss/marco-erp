@@ -1,0 +1,17 @@
+.git
+.github
+.vs
+**/bin
+**/obj
+**/TestResults
+MarcoERP-Mobile.apk
+mobile/
+tests/
+FastReport-master/
+governance/
+التوثيقات/
+*.user
+*.suo
+*.rsuser
+*.db
+*.log
