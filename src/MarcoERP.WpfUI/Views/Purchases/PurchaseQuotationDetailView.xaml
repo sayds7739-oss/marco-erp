@@ -150,6 +150,15 @@
                         <materialDesign:PackIcon Kind="ChevronLeft" Width="20" Height="20" />
                     </Button>
 
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding PrintCommand}" Margin="4,0" Height="28" Padding="8,0"
+                            ToolTip="طباعة عرض السعر">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Printer" Width="14" Height="14" VerticalAlignment="Center" />
+                            <TextBlock Text="طباعة" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
+                        </StackPanel>
+                    </Button>
+
                     <Border CornerRadius="8" Padding="8,2" Margin="8,0,0,0"
                             Background="{StaticResource UnsavedWarningBackgroundBrush}"
                             Visibility="{Binding IsDirty, Converter={StaticResource BooleanToVisibilityConverter}}">

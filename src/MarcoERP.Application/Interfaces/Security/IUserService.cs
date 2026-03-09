@@ -19,21 +19,27 @@ namespace MarcoERP.Application.Interfaces.Security
         Task<ServiceResult<UserDto>> GetByIdAsync(int id, CancellationToken ct = default);
 
         /// <summary>إنشاء مستخدم جديد — Creates a new user account.</summary>
+        [RequiresPermission(PermissionKeys.UsersManage)]
         Task<ServiceResult<UserDto>> CreateAsync(CreateUserDto dto, CancellationToken ct = default);
 
         /// <summary>تعديل بيانات مستخدم — Updates user profile information.</summary>
+        [RequiresPermission(PermissionKeys.UsersManage)]
         Task<ServiceResult<UserDto>> UpdateAsync(UpdateUserDto dto, CancellationToken ct = default);
 
         /// <summary>إعادة تعيين كلمة المرور — Resets a user's password (admin action).</summary>
+        [RequiresPermission(PermissionKeys.UsersManage)]
         Task<ServiceResult> ResetPasswordAsync(ResetPasswordDto dto, CancellationToken ct = default);
 
         /// <summary>تفعيل حساب مستخدم — Activates a user account.</summary>
+        [RequiresPermission(PermissionKeys.UsersManage)]
         Task<ServiceResult> ActivateAsync(int id, CancellationToken ct = default);
 
         /// <summary>تعطيل حساب مستخدم — Deactivates a user account.</summary>
+        [RequiresPermission(PermissionKeys.UsersManage)]
         Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct = default);
 
         /// <summary>فتح حساب مقفل — Unlocks a locked user account.</summary>
+        [RequiresPermission(PermissionKeys.UsersManage)]
         Task<ServiceResult> UnlockAsync(int id, CancellationToken ct = default);
     }
 }

@@ -39,6 +39,18 @@ namespace MarcoERP.Domain.Entities.Purchases
             Address = draft.Address?.Trim();
             City = draft.City?.Trim();
             TaxNumber = draft.TaxNumber?.Trim();
+            Email = draft.Email?.Trim();
+            CommercialRegister = draft.CommercialRegister?.Trim();
+            Country = draft.Country?.Trim();
+            PostalCode = draft.PostalCode?.Trim();
+            ContactPerson = draft.ContactPerson?.Trim();
+            Website = draft.Website?.Trim();
+            CreditLimit = draft.CreditLimit;
+            DaysAllowed = draft.DaysAllowed;
+            BankName = draft.BankName?.Trim();
+            BankAccountName = draft.BankAccountName?.Trim();
+            BankAccountNumber = draft.BankAccountNumber?.Trim();
+            IBAN = draft.IBAN?.Trim();
             PreviousBalance = draft.PreviousBalance;
             Notes = draft.Notes?.Trim();
             IsActive = true;
@@ -70,6 +82,42 @@ namespace MarcoERP.Domain.Entities.Purchases
 
         /// <summary>Tax registration number (الرقم الضريبي).</summary>
         public string TaxNumber { get; private set; }
+
+        /// <summary>البريد الإلكتروني.</summary>
+        public string Email { get; private set; }
+
+        /// <summary>السجل التجاري.</summary>
+        public string CommercialRegister { get; private set; }
+
+        /// <summary>الدولة.</summary>
+        public string Country { get; private set; }
+
+        /// <summary>الرمز البريدي.</summary>
+        public string PostalCode { get; private set; }
+
+        /// <summary>اسم الشخص المسؤول.</summary>
+        public string ContactPerson { get; private set; }
+
+        /// <summary>الموقع الإلكتروني.</summary>
+        public string Website { get; private set; }
+
+        /// <summary>حد الائتمان المسموح.</summary>
+        public decimal CreditLimit { get; private set; }
+
+        /// <summary>أيام السداد المسموحة.</summary>
+        public int? DaysAllowed { get; private set; }
+
+        /// <summary>اسم البنك.</summary>
+        public string BankName { get; private set; }
+
+        /// <summary>اسم صاحب الحساب البنكي.</summary>
+        public string BankAccountName { get; private set; }
+
+        /// <summary>رقم الحساب البنكي.</summary>
+        public string BankAccountNumber { get; private set; }
+
+        /// <summary>رقم IBAN.</summary>
+        public string IBAN { get; private set; }
 
         /// <summary>
         /// Opening balance brought forward from a previous system.
@@ -111,6 +159,18 @@ namespace MarcoERP.Domain.Entities.Purchases
             Address = update.Address?.Trim();
             City = update.City?.Trim();
             TaxNumber = update.TaxNumber?.Trim();
+            Email = update.Email?.Trim();
+            CommercialRegister = update.CommercialRegister?.Trim();
+            Country = update.Country?.Trim();
+            PostalCode = update.PostalCode?.Trim();
+            ContactPerson = update.ContactPerson?.Trim();
+            Website = update.Website?.Trim();
+            CreditLimit = update.CreditLimit;
+            DaysAllowed = update.DaysAllowed;
+            BankName = update.BankName?.Trim();
+            BankAccountName = update.BankAccountName?.Trim();
+            BankAccountNumber = update.BankAccountNumber?.Trim();
+            IBAN = update.IBAN?.Trim();
             Notes = update.Notes?.Trim();
         }
 
@@ -165,6 +225,18 @@ namespace MarcoERP.Domain.Entities.Purchases
         public string Address { get; init; }
         public string City { get; init; }
         public string TaxNumber { get; init; }
+        public string Email { get; init; }
+        public string CommercialRegister { get; init; }
+        public string Country { get; init; }
+        public string PostalCode { get; init; }
+        public string ContactPerson { get; init; }
+        public string Website { get; init; }
+        public decimal CreditLimit { get; init; }
+        public int? DaysAllowed { get; init; }
+        public string BankName { get; init; }
+        public string BankAccountName { get; init; }
+        public string BankAccountNumber { get; init; }
+        public string IBAN { get; init; }
         public decimal PreviousBalance { get; init; }
         public string Notes { get; init; }
     }
@@ -178,6 +250,18 @@ namespace MarcoERP.Domain.Entities.Purchases
         public string Address { get; init; }
         public string City { get; init; }
         public string TaxNumber { get; init; }
+        public string Email { get; init; }
+        public string CommercialRegister { get; init; }
+        public string Country { get; init; }
+        public string PostalCode { get; init; }
+        public string ContactPerson { get; init; }
+        public string Website { get; init; }
+        public decimal CreditLimit { get; init; }
+        public int? DaysAllowed { get; init; }
+        public string BankName { get; init; }
+        public string BankAccountName { get; init; }
+        public string BankAccountNumber { get; init; }
+        public string IBAN { get; init; }
         public string Notes { get; init; }
     }
 }

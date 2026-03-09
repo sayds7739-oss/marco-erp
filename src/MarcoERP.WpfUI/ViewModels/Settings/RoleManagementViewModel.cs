@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.Common;
 using MarcoERP.Application.DTOs.Security;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Security;
 
 namespace MarcoERP.WpfUI.ViewModels.Settings
@@ -19,10 +20,12 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
     public sealed class RoleManagementViewModel : BaseViewModel
     {
         private readonly IRoleService _roleService;
+        private readonly IDialogService _dialog;
 
-        public RoleManagementViewModel(IRoleService roleService)
+        public RoleManagementViewModel(IRoleService roleService, IDialogService dialog)
         {
             _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllRoles = new ObservableCollection<RoleListDto>();
             PermissionItems = new ObservableCollection<PermissionCheckItem>();
@@ -314,11 +317,9 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
         {
             if (SelectedRole == null || SelectedRole.IsSystem) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل أنت متأكد من حذف الدور «{SelectedRole.NameAr}»؟",
-                "تأكيد الحذف",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الحذف")) return;
 
             IsBusy = true;
             ClearError();

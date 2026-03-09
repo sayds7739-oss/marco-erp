@@ -16,8 +16,12 @@ namespace MarcoERP.WpfUI.Services
         public string Title { get; set; }
         public string FilePrefix { get; set; }
         public string HtmlContent { get; set; }
+        public string PdfPath { get; set; }
 
         /// <summary>Paper size — defaults to A4.</summary>
         public PdfPaperSize PaperSize { get; set; } = PdfPaperSize.A4;
+
+        /// <summary>When true, the dialog opens in HTML mode first. User can toggle to PDF.</summary>
+        public bool StartInHtmlMode { get; set; }
     }
 }

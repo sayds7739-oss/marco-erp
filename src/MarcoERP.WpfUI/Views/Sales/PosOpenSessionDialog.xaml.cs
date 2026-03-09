@@ -4,20 +4,25 @@ using System.Windows;
 using System.Windows.Controls;
 using MarcoERP.Application.DTOs.Inventory;
 using MarcoERP.Application.DTOs.Treasury;
+using MarcoERP.Application.Interfaces;
 
 namespace MarcoERP.WpfUI.Views.Sales
 {
     public partial class PosOpenSessionDialog : Window
     {
+        private readonly IDialogService _dialog;
+
         public int SelectedCashboxId { get; private set; }
         public int SelectedWarehouseId { get; private set; }
         public decimal OpeningBalance { get; private set; }
 
         public PosOpenSessionDialog(
             IReadOnlyList<CashboxDto> cashboxes,
-            IReadOnlyList<WarehouseDto> warehouses)
+            IReadOnlyList<WarehouseDto> warehouses,
+            IDialogService dialogService = null)
         {
             InitializeComponent();
+            _dialog = dialogService;
 
             CashboxCombo.ItemsSource = cashboxes;
             WarehouseCombo.ItemsSource = warehouses;
@@ -42,19 +47,19 @@ namespace MarcoERP.WpfUI.Views.Sales
         {
             if (CashboxCombo.SelectedItem is not CashboxDto cashbox)
             {
-                MessageBox.Show("يجب اختيار الخزنة.", "تنبيه", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowWarning("يجب اختيار الخزنة.");
                 return;
             }
 
             if (WarehouseCombo.SelectedItem is not WarehouseDto warehouse)
             {
-                MessageBox.Show("يجب اختيار المستودع.", "تنبيه", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowWarning("يجب اختيار المستودع.");
                 return;
             }
 
             if (!decimal.TryParse(OpeningBalanceBox.Text, out var balance) || balance < 0)
             {
-                MessageBox.Show("رصيد الافتتاح يجب أن يكون قيمة صحيحة غير سالبة.", "تنبيه", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowWarning("رصيد الافتتاح يجب أن يكون قيمة صحيحة غير سالبة.");
                 return;
             }
 
@@ -62,6 +67,14 @@ namespace MarcoERP.WpfUI.Views.Sales
             SelectedWarehouseId = warehouse.Id;
             OpeningBalance = balance;
             DialogResult = true;
+        }
+
+        private void ShowWarning(string message)
+        {
+            if (_dialog != null)
+                _dialog.ShowWarning(message, "تنبيه");
+            else
+                MessageBox.Show(message, "تنبيه", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         private void Cancel_Click(object sender, RoutedEventArgs e)

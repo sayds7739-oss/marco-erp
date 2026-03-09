@@ -14,7 +14,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(q => q.Id);
             builder.Property(q => q.Id).UseIdentityColumn();
 
-            builder.Property(q => q.RowVersion).IsRowVersion().IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(q => q.QuotationNumber).IsRequired().HasMaxLength(30).IsUnicode(false);
             builder.Property(q => q.QuotationDate).IsRequired().HasColumnType("date");
@@ -49,7 +49,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasOne(q => q.Supplier).WithMany()
                 .HasForeignKey(q => q.SupplierId).OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne<Warehouse>().WithMany()
+            builder.HasOne(q => q.Warehouse).WithMany()
                 .HasForeignKey(q => q.WarehouseId).OnDelete(DeleteBehavior.Restrict);
 
             // Converted invoice (optional)
@@ -58,11 +58,13 @@ namespace MarcoERP.Persistence.Configurations
                 .IsRequired(false);
 
             builder.HasMany(q => q.Lines).WithOne()
-                .HasForeignKey(l => l.PurchaseQuotationId).OnDelete(DeleteBehavior.Restrict);
+                .HasForeignKey(l => l.PurchaseQuotationId).OnDelete(DeleteBehavior.Cascade);
 
             // Indexes
-            builder.HasIndex(q => q.QuotationNumber).IsUnique()
-                .HasDatabaseName("IX_PurchaseQuotations_QuotationNumber");
+            builder.HasIndex(q => new { q.CompanyId, q.QuotationNumber })
+                .IsUnique()
+                .HasFilter(DbProviderHelper.SoftDeleteFilter())
+                .HasDatabaseName("IX_PurchaseQuotations_CompanyId_QuotationNumber");
             builder.HasIndex(q => q.QuotationDate)
                 .HasDatabaseName("IX_PurchaseQuotations_QuotationDate");
             builder.HasIndex(q => q.SupplierId)
@@ -73,7 +75,7 @@ namespace MarcoERP.Persistence.Configurations
                 .HasDatabaseName("IX_PurchaseQuotations_Status");
             builder.HasIndex(q => q.ConvertedToInvoiceId)
                 .HasDatabaseName("IX_PurchaseQuotations_ConvertedToInvoiceId")
-                .HasFilter("[ConvertedToInvoiceId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("ConvertedToInvoiceId"));
         }
     }
 }

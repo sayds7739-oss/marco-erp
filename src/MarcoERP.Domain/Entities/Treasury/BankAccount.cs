@@ -1,4 +1,5 @@
 using System;
+using MarcoERP.Domain.Entities.Accounting;
 using MarcoERP.Domain.Entities.Common;
 using MarcoERP.Domain.Exceptions.Treasury;
 
@@ -66,6 +67,9 @@ namespace MarcoERP.Domain.Entities.Treasury
 
         /// <summary>FK to GL Account under 1110 Cash and Banks.</summary>
         public int? AccountId { get; private set; }
+
+        /// <summary>Navigation to linked GL Account.</summary>
+        public Account Account { get; private set; }
 
         /// <summary>Whether this bank account is active.</summary>
         public bool IsActive { get; private set; }

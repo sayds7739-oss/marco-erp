@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Web.WebView2.Core;
@@ -12,9 +11,10 @@ namespace MarcoERP.WpfUI.Views.Common
     public partial class InvoicePdfPreviewDialog : Window
     {
         private readonly InvoicePdfPreviewDialogViewModel _viewModel;
-        private string _htmlPath;
+        private string _htmlContent;
         private string _pdfPath;
         private PdfPaperSize _paperSize = PdfPaperSize.A4;
+        private bool _startInHtmlMode;
 
         public InvoicePdfPreviewDialog(InvoicePdfPreviewDialogViewModel viewModel)
         {
@@ -22,6 +22,7 @@ namespace MarcoERP.WpfUI.Views.Common
             _viewModel = viewModel;
             DataContext = _viewModel;
             _viewModel.RequestClose += () => Close();
+            _viewModel.RequestViewModeChange += OnViewModeChange;
 
             Loaded += OnLoaded;
         }
@@ -30,32 +31,61 @@ namespace MarcoERP.WpfUI.Views.Common
         {
             _viewModel.TitleText = request?.Title ?? "PDF Preview";
             _viewModel.PdfPath = null;
+            _viewModel.CanToggleViewMode = !string.IsNullOrWhiteSpace(request?.HtmlContent);
 
-            var safePrefix = string.IsNullOrWhiteSpace(request?.FilePrefix) ? "invoice" : request.FilePrefix;
-            foreach (var ch in Path.GetInvalidFileNameChars())
-                safePrefix = safePrefix.Replace(ch, '_');
-            var folder = Path.Combine(Path.GetTempPath(), "MarcoERP", "pdf-preview");
-            Directory.CreateDirectory(folder);
+            _pdfPath = request?.PdfPath;
+            _htmlContent = request?.HtmlContent;
 
-            var fileName = $"{safePrefix}_{DateTime.Now:yyyyMMdd_HHmmss}";
-            _htmlPath = Path.Combine(folder, $"{fileName}.html");
-            _pdfPath = Path.Combine(folder, $"{fileName}.pdf");
+            if (string.IsNullOrWhiteSpace(_pdfPath))
+            {
+                var safePrefix = string.IsNullOrWhiteSpace(request?.FilePrefix) ? "invoice" : request.FilePrefix;
+                foreach (var ch in Path.GetInvalidFileNameChars())
+                    safePrefix = safePrefix.Replace(ch, '_');
+                var folder = Path.Combine(Path.GetTempPath(), "MarcoERP", "pdf-preview");
+                Directory.CreateDirectory(folder);
 
-            var html = request?.HtmlContent ?? "<html><body></body></html>";
-            File.WriteAllText(_htmlPath, html, Encoding.UTF8);
+                CleanupPreviewFiles(folder, safePrefix);
+                _pdfPath = Path.Combine(folder, $"{safePrefix}.pdf");
+            }
 
             _paperSize = request?.PaperSize ?? PdfPaperSize.A4;
+            _startInHtmlMode = (request?.StartInHtmlMode ?? false) && !string.IsNullOrWhiteSpace(_htmlContent);
         }
 
         private async void OnLoaded(object sender, RoutedEventArgs e)
         {
-            await RenderPdfAsync();
+            if (!string.IsNullOrWhiteSpace(_pdfPath) && File.Exists(_pdfPath))
+            {
+                _viewModel.IsPdfMode = true;
+                _viewModel.PdfPath = _pdfPath;
+                PdfWebView.Source = new Uri(_pdfPath);
+                _viewModel.StatusText = string.Empty;
+                return;
+            }
+
+            if (_startInHtmlMode)
+            {
+                _viewModel.IsPdfMode = false;
+                await PdfWebView.EnsureCoreWebView2Async();
+                PdfWebView.CoreWebView2.NavigateToString(_htmlContent);
+                _viewModel.StatusText = "عرض HTML";
+            }
+            else
+            {
+                await RenderPdfAsync();
+            }
         }
 
         private async Task RenderPdfAsync()
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(_htmlContent))
+                {
+                    _viewModel.StatusText = "لا توجد محتويات قابلة للمعاينة.";
+                    return;
+                }
+
                 _viewModel.IsBusy = true;
                 _viewModel.StatusText = "جاري إنشاء PDF...";
 
@@ -71,7 +101,7 @@ namespace MarcoERP.WpfUI.Views.Common
                 }
 
                 PdfWebView.NavigationCompleted += Handler;
-                PdfWebView.Source = new Uri(_htmlPath);
+                PdfWebView.CoreWebView2.NavigateToString(_htmlContent);
 
                 await tcs.Task;
 
@@ -123,6 +153,62 @@ namespace MarcoERP.WpfUI.Views.Common
             }
             finally
             {
+                _viewModel.IsBusy = false;
+            }
+        }
+
+        private static void CleanupPreviewFiles(string folder, string safePrefix)
+        {
+            try
+            {
+                foreach (var file in Directory.GetFiles(folder, $"{safePrefix}*.pdf"))
+                    File.Delete(file);
+
+                foreach (var file in Directory.GetFiles(folder, $"{safePrefix}*.html"))
+                    File.Delete(file);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex);
+            }
+        }
+
+        private async void OnViewModeChange(bool isPdfMode)
+        {
+            try
+            {
+                if (isPdfMode)
+                {
+                    // Switch to PDF view
+                    if (!string.IsNullOrWhiteSpace(_pdfPath) && File.Exists(_pdfPath) && string.IsNullOrWhiteSpace(_htmlContent))
+                    {
+                        _viewModel.PdfPath = _pdfPath;
+                        PdfWebView.Source = new Uri(_pdfPath);
+                        _viewModel.StatusText = string.Empty;
+                        return;
+                    }
+
+                    await RenderPdfAsync();
+                }
+                else
+                {
+                    if (string.IsNullOrWhiteSpace(_htmlContent))
+                        return;
+
+                    // Switch to HTML view — show raw HTML in WebView2
+                    _viewModel.IsBusy = true;
+                    _viewModel.StatusText = "جاري عرض HTML...";
+
+                    await PdfWebView.EnsureCoreWebView2Async();
+                    PdfWebView.CoreWebView2.NavigateToString(_htmlContent);
+
+                    _viewModel.StatusText = "عرض HTML";
+                    _viewModel.IsBusy = false;
+                }
+            }
+            catch
+            {
+                _viewModel.StatusText = "تعذر التبديل بين أوضاع العرض.";
                 _viewModel.IsBusy = false;
             }
         }

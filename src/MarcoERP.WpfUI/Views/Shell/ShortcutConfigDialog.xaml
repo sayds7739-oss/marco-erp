@@ -4,9 +4,10 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="تخصيص الاختصارات"
         Width="480" Height="560"
+        MinHeight="400" MinWidth="400"
         WindowStartupLocation="CenterOwner"
         FlowDirection="RightToLeft"
-        ResizeMode="NoResize"
+        ResizeMode="CanResizeWithGrip"
         Style="{StaticResource MaterialDesignWindow}"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         Background="{DynamicResource MaterialDesignPaper}"
@@ -50,7 +51,7 @@
             <Button Content="حفظ" Click="OkButton_Click"
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     Margin="0,0,8,0" MinWidth="90" />
-            <Button Content="إلغاء" Click="CancelButton_Click"
+            <Button Content="إلغاء" Click="CancelButton_Click" IsCancel="True"
                     Style="{StaticResource MaterialDesignFlatButton}"
                     MinWidth="90" />
         </StackPanel>

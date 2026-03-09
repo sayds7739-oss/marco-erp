@@ -15,6 +15,8 @@ namespace MarcoERP.Application.DTOs.Inventory
         public string NameAr { get; set; }
         public string CategoryName { get; set; }
         public string BaseUnitName { get; set; }
+        public string MinorUnitName { get; set; }
+        public decimal MinorUnitConversionFactor { get; set; }
 
         // ── Optional Fields ──
         public string NameEn { get; set; }
@@ -34,6 +36,7 @@ namespace MarcoERP.Application.DTOs.Inventory
         // ── Resolved IDs (after lookup) ──
         public int? ResolvedCategoryId { get; set; }
         public int? ResolvedBaseUnitId { get; set; }
+        public int? ResolvedMinorUnitId { get; set; }
         public int? ResolvedSupplierId { get; set; }
     }
 

@@ -14,7 +14,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(q => q.Id);
             builder.Property(q => q.Id).UseIdentityColumn();
 
-            builder.Property(q => q.RowVersion).IsRowVersion().IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(q => q.QuotationNumber).IsRequired().HasMaxLength(30).IsUnicode(false);
             builder.Property(q => q.QuotationDate).IsRequired().HasColumnType("date");
@@ -63,11 +63,13 @@ namespace MarcoERP.Persistence.Configurations
                 .IsRequired(false);
 
             builder.HasMany(q => q.Lines).WithOne()
-                .HasForeignKey(l => l.SalesQuotationId).OnDelete(DeleteBehavior.Restrict);
+                .HasForeignKey(l => l.SalesQuotationId).OnDelete(DeleteBehavior.Cascade);
 
             // Indexes
-            builder.HasIndex(q => q.QuotationNumber).IsUnique()
-                .HasDatabaseName("IX_SalesQuotations_QuotationNumber");
+            builder.HasIndex(q => new { q.CompanyId, q.QuotationNumber })
+                .IsUnique()
+                .HasFilter(DbProviderHelper.SoftDeleteFilter())
+                .HasDatabaseName("IX_SalesQuotations_CompanyId_QuotationNumber");
             builder.HasIndex(q => q.QuotationDate)
                 .HasDatabaseName("IX_SalesQuotations_QuotationDate");
             builder.HasIndex(q => q.CustomerId)
@@ -78,10 +80,10 @@ namespace MarcoERP.Persistence.Configurations
                 .HasDatabaseName("IX_SalesQuotations_Status");
             builder.HasIndex(q => q.SalesRepresentativeId)
                 .HasDatabaseName("IX_SalesQuotations_SalesRepresentativeId")
-                .HasFilter("[SalesRepresentativeId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("SalesRepresentativeId"));
             builder.HasIndex(q => q.ConvertedToInvoiceId)
                 .HasDatabaseName("IX_SalesQuotations_ConvertedToInvoiceId")
-                .HasFilter("[ConvertedToInvoiceId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("ConvertedToInvoiceId"));
         }
     }
 }

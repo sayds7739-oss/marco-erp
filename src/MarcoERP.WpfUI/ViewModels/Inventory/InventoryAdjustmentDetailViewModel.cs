@@ -15,7 +15,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
     /// <summary>
     /// ViewModel for Inventory Adjustment detail screen — create / edit / post / cancel.
     /// </summary>
-    public sealed class InventoryAdjustmentDetailViewModel : BaseViewModel, INavigationAware
+    public sealed class InventoryAdjustmentDetailViewModel : BaseViewModel, INavigationAware, IDirtyStateAware
     {
         private readonly IInventoryAdjustmentService _adjustmentService;
         private readonly IWarehouseService _warehouseService;
@@ -23,6 +23,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         private readonly ISmartEntryQueryService _smartEntryQueryService;
         private readonly INavigationService _navigationService;
         private readonly ILineCalculationService _lineCalculationService;
+        private readonly IDialogService _dialog;
 
         public InventoryAdjustmentDetailViewModel(
             IInventoryAdjustmentService adjustmentService,
@@ -30,7 +31,8 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             IProductService productService,
             ISmartEntryQueryService smartEntryQueryService,
             INavigationService navigationService,
-            ILineCalculationService lineCalculationService)
+            ILineCalculationService lineCalculationService,
+            IDialogService dialog)
         {
             _adjustmentService = adjustmentService ?? throw new ArgumentNullException(nameof(adjustmentService));
             _warehouseService = warehouseService ?? throw new ArgumentNullException(nameof(warehouseService));
@@ -38,6 +40,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             _smartEntryQueryService = smartEntryQueryService ?? throw new ArgumentNullException(nameof(smartEntryQueryService));
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _lineCalculationService = lineCalculationService ?? throw new ArgumentNullException(nameof(lineCalculationService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             Lines = new ObservableCollection<InventoryAdjustmentLineDto>();
             Warehouses = new ObservableCollection<WarehouseDto>();
@@ -49,6 +52,18 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             BackCommand = new RelayCommand(_ => _navigationService.NavigateTo("InventoryAdjustments"));
             AddLineCommand = new RelayCommand(_ => AddLine());
             RemoveLineCommand = new RelayCommand(RemoveLine);
+        }
+
+        // ── IDirtyStateAware ──────────────────────────────────────
+        public void ResetDirtyState() => ResetDirtyTracking();
+
+        public async Task<bool> SaveChangesAsync()
+        {
+            if (!CanSave)
+                return false;
+
+            await SaveAsync();
+            return !IsDirty && !HasError;
         }
 
         // ── State ────────────────────────────────────────────────
@@ -88,7 +103,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         public DateTime AdjustmentDate
         {
             get => _adjustmentDate;
-            set => SetProperty(ref _adjustmentDate, value);
+            set { if (SetProperty(ref _adjustmentDate, value)) MarkDirty(); }
         }
 
         private int _warehouseId;
@@ -99,6 +114,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             {
                 if (SetProperty(ref _warehouseId, value))
                 {
+                    MarkDirty();
                     OnPropertyChanged(nameof(CanSave));
                     EnqueueDbWork(RefreshLineMetaAsync);
                 }
@@ -109,14 +125,14 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         public string Reason
         {
             get => _reason;
-            set { SetProperty(ref _reason, value); OnPropertyChanged(nameof(CanSave)); }
+            set { SetProperty(ref _reason, value); MarkDirty(); OnPropertyChanged(nameof(CanSave)); }
         }
 
         private string _notes;
         public string Notes
         {
             get => _notes;
-            set => SetProperty(ref _notes, value);
+            set { if (SetProperty(ref _notes, value)) MarkDirty(); }
         }
 
         public ObservableCollection<InventoryAdjustmentLineDto> Lines { get; }
@@ -221,12 +237,14 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                 {
                     AdjustmentNumber = "";
                 }
+
+                ResetDirtyTracking();
             }
         }
 
         public Task<bool> OnNavigatingFromAsync()
         {
-            return Task.FromResult(true);
+            return DirtyStateGuard.ConfirmContinueAsync(this);
         }
 
         // ── Load ─────────────────────────────────────────────────
@@ -269,6 +287,8 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                     Lines.Clear();
                     foreach (var line in dto.Lines)
                         Lines.Add(line);
+
+                    ResetDirtyTracking();
                 }
                 else
                 {
@@ -322,6 +342,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                         Notes = Notes,
                         Lines = Lines.Select(l => new CreateInventoryAdjustmentLineDto
                         {
+                            Id = l.Id,
                             ProductId = l.ProductId,
                             UnitId = l.UnitId,
                             ActualQuantity = l.ActualQuantity
@@ -335,6 +356,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                         IsNew = false;
                         AdjustmentNumber = result.Data.AdjustmentNumber;
                         StatusMessage = "تم الحفظ بنجاح";
+                        ResetDirtyTracking();
                         OnPropertyChanged(nameof(CanPost));
                         OnPropertyChanged(nameof(CanDelete));
                     }
@@ -354,6 +376,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                         Notes = Notes,
                         Lines = Lines.Select(l => new CreateInventoryAdjustmentLineDto
                         {
+                            Id = l.Id,
                             ProductId = l.ProductId,
                             UnitId = l.UnitId,
                             ActualQuantity = l.ActualQuantity
@@ -363,6 +386,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                     if (result.IsSuccess)
                     {
                         StatusMessage = "تم تحديث التسوية بنجاح";
+                        ResetDirtyTracking();
                     }
                     else
                     {
@@ -386,11 +410,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         {
             if (_editingId == null) return;
 
-            var confirm = MessageBox.Show(
-                "هل أنت متأكد من ترحيل هذه التسوية؟ لا يمكن التراجع.",
-                "تأكيد الترحيل",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm("هل أنت متأكد من ترحيل هذه التسوية؟ لا يمكن التراجع.", "تأكيد الترحيل")) return;
 
             IsBusy = true;
             ClearError();
@@ -427,11 +447,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         {
             if (_editingId == null) return;
 
-            var confirm = MessageBox.Show(
-                "هل أنت متأكد من إلغاء هذه التسوية؟",
-                "تأكيد الإلغاء",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm("هل أنت متأكد من إلغاء هذه التسوية؟", "تأكيد الإلغاء")) return;
 
             IsBusy = true;
             ClearError();
@@ -467,11 +483,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         {
             if (_editingId == null) return;
 
-            var confirm = MessageBox.Show(
-                "هل أنت متأكد من حذف هذه التسوية؟",
-                "تأكيد الحذف",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm("هل أنت متأكد من حذف هذه التسوية؟", "تأكيد الحذف")) return;
 
             IsBusy = true;
             ClearError();
@@ -514,7 +526,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                 ConversionFactor = LineConversion,
                 DifferenceInBaseUnit = _lineCalculationService.ConvertQuantity(diff, LineConversion),
                 UnitCost = LineUnitCost,
-                CostDifference = _lineCalculationService.ConvertQuantity(diff, LineConversion) * LineUnitCost
+                CostDifference = _lineCalculationService.CalculateCostDifference(diff, LineConversion, LineUnitCost)
             });
 
             LineProductId = 0;
@@ -524,6 +536,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             LineConversion = 1;
             LineUnitCost = 0;
 
+            MarkDirty();
             OnPropertyChanged(nameof(CanSave));
         }
 
@@ -531,6 +544,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         {
             if (parameter is InventoryAdjustmentLineDto line)
                 Lines.Remove(line);
+            MarkDirty();
             OnPropertyChanged(nameof(CanSave));
         }
 
@@ -554,7 +568,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                 LineUnitCost = product.WeightedAverageCost;
 
                 var stockBase = await _smartEntryQueryService.GetStockBaseQtyAsync(WarehouseId, LineProductId);
-                LineSystemQty = Math.Round(stockBase / factor, 4);
+                LineSystemQty = _lineCalculationService.ConvertBaseToUnitQuantity(stockBase, factor);
             }
             catch
             {

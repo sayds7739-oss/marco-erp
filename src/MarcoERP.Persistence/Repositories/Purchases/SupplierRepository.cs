@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -26,12 +27,14 @@ namespace MarcoERP.Persistence.Repositories.Purchases
         public async Task<Supplier> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.Suppliers
+                .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
         }
 
         public async Task<IReadOnlyList<Supplier>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _context.Suppliers
+                .AsNoTracking()
                 .OrderBy(s => s.Code)
                 .ToListAsync(cancellationToken);
         }
@@ -43,7 +46,12 @@ namespace MarcoERP.Persistence.Repositories.Purchases
 
         public void Update(Supplier entity)
         {
-            _context.Suppliers.Update(entity);
+            ArgumentNullException.ThrowIfNull(entity);
+            var local = _context.Suppliers.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && local != entity)
+                _context.Entry(local).CurrentValues.SetValues(entity);
+            else
+                _context.Entry(entity).State = EntityState.Modified;
         }
 
         public void Remove(Supplier entity)
@@ -56,6 +64,7 @@ namespace MarcoERP.Persistence.Repositories.Purchases
         public async Task<Supplier> GetByCodeAsync(string code, CancellationToken cancellationToken = default)
         {
             return await _context.Suppliers
+                .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.Code == code, cancellationToken);
         }
 
@@ -78,6 +87,7 @@ namespace MarcoERP.Persistence.Repositories.Purchases
 
             var pattern = $"%{searchTerm.Trim()}%";
             return await _context.Suppliers
+                .AsNoTracking()
                 .Where(s => EF.Functions.Like(s.Code, pattern)
                           || EF.Functions.Like(s.NameAr, pattern)
                           || (s.NameEn != null && EF.Functions.Like(s.NameEn, pattern))
@@ -90,6 +100,7 @@ namespace MarcoERP.Persistence.Repositories.Purchases
         public async Task<IReadOnlyList<Supplier>> GetActiveAsync(CancellationToken cancellationToken = default)
         {
             return await _context.Suppliers
+                .AsNoTracking()
                 .Where(s => s.IsActive)
                 .OrderBy(s => s.Code)
                 .ToListAsync(cancellationToken);
@@ -99,6 +110,7 @@ namespace MarcoERP.Persistence.Repositories.Purchases
         {
             // Auto-generate: SUP-0001, SUP-0002, ...
             var lastCode = await _context.Suppliers
+                .AsNoTracking()
                 .IgnoreQueryFilters()
                 .Where(s => s.Code.StartsWith("SUP-"))
                 .OrderByDescending(s => s.Code)

@@ -25,6 +25,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private readonly ILineCalculationService _lineCalculationService;
         private readonly ICashboxService _cashboxService;
         private readonly IWarehouseService _warehouseService;
+        private readonly IDialogService _dialog;
+
+        public event Action RequestBarcodeFocus;
 
         // ── Product Cache ────────────────────────────────────────
         private List<PosProductLookupDto> _productCache = new();
@@ -133,6 +136,13 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             set => SetProperty(ref _isPaymentPanelVisible, value);
         }
 
+        private bool _isCartResetting;
+        public bool IsCartResetting
+        {
+            get => _isCartResetting;
+            set => SetProperty(ref _isCartResetting, value);
+        }
+
         // ── Selected Cart Item ──────────────────────────────────
         private PosCartItemDto _selectedCartItem;
         public PosCartItemDto SelectedCartItem
@@ -153,6 +163,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         public ICommand ShowPaymentCommand { get; }
         public ICommand CompleteSaleCommand { get; }
         public ICommand CancelCartCommand { get; }
+        public ICommand ResetCommand { get; }
         public ICommand CashFullCommand { get; }
         public ICommand RefreshCacheCommand { get; }
         public ICommand InitializeCommand { get; }
@@ -162,12 +173,14 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         // ═══════════════════════════════════════════════════════════
 
         public PosViewModel(IPosService posService, ILineCalculationService lineCalculationService,
-                            ICashboxService cashboxService, IWarehouseService warehouseService)
+                            ICashboxService cashboxService, IWarehouseService warehouseService,
+                            IDialogService dialog)
         {
             _posService = posService ?? throw new ArgumentNullException(nameof(posService));
             _lineCalculationService = lineCalculationService ?? throw new ArgumentNullException(nameof(lineCalculationService));
             _cashboxService = cashboxService ?? throw new ArgumentNullException(nameof(cashboxService));
             _warehouseService = warehouseService ?? throw new ArgumentNullException(nameof(warehouseService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             OpenSessionCommand = new AsyncRelayCommand(OpenSessionAsync);
             CloseSessionCommand = new AsyncRelayCommand(CloseSessionAsync);
@@ -180,6 +193,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             ShowPaymentCommand = new RelayCommand(_ => ShowPaymentPanel());
             CompleteSaleCommand = new AsyncRelayCommand(CompleteSaleAsync);
             CancelCartCommand = new RelayCommand(_ => CancelCart());
+            ResetCommand = new AsyncRelayCommand(ResetSaleAsync);
             CashFullCommand = new RelayCommand(_ => SetCashFull());
             RefreshCacheCommand = new AsyncRelayCommand(LoadProductCacheAsync);
             InitializeCommand = new AsyncRelayCommand(InitializeAsync);
@@ -246,7 +260,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
                     return;
                 }
 
-                var dialog = new Views.Sales.PosOpenSessionDialog(cashboxResult.Data, warehouseResult.Data);
+                var dialog = new Views.Sales.PosOpenSessionDialog(cashboxResult.Data, warehouseResult.Data, _dialog);
                 dialog.Owner = System.Windows.Application.Current.Windows.OfType<Views.Sales.PosWindow>().FirstOrDefault();
                 if (dialog.ShowDialog() != true)
                     return;
@@ -293,7 +307,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
 
             try
             {
-                var dialog = new Views.Sales.PosCloseSessionDialog(CurrentSession);
+                var dialog = new Views.Sales.PosCloseSessionDialog(CurrentSession, _dialog);
                 dialog.Owner = System.Windows.Application.Current.Windows.OfType<Views.Sales.PosWindow>().FirstOrDefault();
                 if (dialog.ShowDialog() != true)
                     return;
@@ -559,6 +573,37 @@ private void ChangeQuantity(object parameter)
             ClearError();
         }
 
+        private async Task ResetSaleAsync()
+        {
+            if (CartItems.Count == 0)
+                return;
+
+            if (!_dialog.Confirm(
+                "هل تريد إعادة تعيين عملية البيع الحالية؟",
+                "إعادة تعيين")) return;
+
+            ClearError();
+            await AnimateCartResetAsync();
+            CancelCart();
+            RequestBarcodeFocus?.Invoke();
+            await ShowTemporaryStatusAsync("تم إعادة التعيين");
+        }
+
+        private async Task AnimateCartResetAsync()
+        {
+            IsCartResetting = true;
+            await Task.Delay(160);
+            IsCartResetting = false;
+        }
+
+        private async Task ShowTemporaryStatusAsync(string message)
+        {
+            StatusMessage = message;
+            await Task.Delay(1500);
+            if (StatusMessage == message)
+                StatusMessage = null;
+        }
+
         // ═══════════════════════════════════════════════════════════
         //  Payment
         // ═══════════════════════════════════════════════════════════
@@ -644,7 +689,10 @@ private void ChangeQuantity(object parameter)
                 var result = await _posService.CompleteSaleAsync(dto);
                 if (result.IsSuccess)
                 {
-                    StatusMessage = $"✓ تمت عملية البيع — فاتورة: {result.Data.InvoiceNumber}  الإجمالي: {result.Data.NetTotal:N2}";
+                    var baseMessage = $"✓ تمت عملية البيع — فاتورة: {result.Data.InvoiceNumber}  الإجمالي: {result.Data.NetTotal:N2}";
+                    StatusMessage = string.IsNullOrWhiteSpace(result.Data.WarningMessage)
+                        ? baseMessage
+                        : $"{baseMessage}  |  ⚠ {result.Data.WarningMessage}";
 
                     // Refresh session totals
                     var sessionResult = await _posService.GetCurrentSessionAsync();
@@ -672,8 +720,8 @@ private void ChangeQuantity(object parameter)
         {
             var payments = new List<PosPaymentDto>();
 
-            // Cash amount should exclude change returned to customer
-            var netCash = Math.Min(CashAmount, CartNetTotal - CardAmount - OnAccountAmount);
+            // Cash amount should exclude change returned to customer — delegated to service
+            var netCash = _lineCalculationService.CalculateNetCash(CashAmount, CartNetTotal, CardAmount, OnAccountAmount);
             if (netCash > 0)
                 payments.Add(new PosPaymentDto { PaymentMethod = "Cash", Amount = netCash });
 
@@ -727,7 +775,7 @@ private void ChangeQuantity(object parameter)
             item.VatAmount = result.VatAmount;
             item.TotalWithVat = result.TotalWithVat;
             item.CostTotal = result.CostTotal;
-            item.ProfitAmount = result.NetTotal - result.CostTotal;
+            item.ProfitAmount = result.TotalProfit;
             item.ProfitMarginPercent = result.ProfitMarginPercent;
         }
     }

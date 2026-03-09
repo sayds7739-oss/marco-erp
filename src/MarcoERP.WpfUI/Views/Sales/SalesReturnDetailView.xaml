@@ -89,6 +89,14 @@
                             <TextBlock Text="إلغاء مرتجع" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
                         </StackPanel>
                     </Button>
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding PrintCommand}" Margin="2,0" Height="28" Padding="8,0"
+                            ToolTip="طباعة المرتجع">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Printer" Width="14" Height="14" VerticalAlignment="Center" />
+                            <TextBlock Text="طباعة" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
+                        </StackPanel>
+                    </Button>
                     <Button Style="{StaticResource MaterialDesignRaisedButton}"
                             Background="{StaticResource DangerBrush}" Foreground="White"
                             Command="{Binding DeleteDraftCommand}" Margin="2,0" Height="28" Padding="8,0">

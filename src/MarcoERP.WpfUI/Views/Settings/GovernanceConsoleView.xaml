@@ -14,226 +14,330 @@
         </Grid.RowDefinitions>
 
         <!-- ── Header ─────────────────────────────────── -->
-        <Border Grid.Row="0" Background="{StaticResource PrimaryBrush}" Padding="20,14">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <TextBlock Text="وحدة التحكم في الميزات" FontSize="22" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="Feature Governance Console" FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" FlowDirection="LeftToRight" HorizontalAlignment="Left" Margin="0,2,0,0"/>
+        <Border Grid.Row="0" Background="{StaticResource PrimaryBrush}" Padding="14,10">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right">
+                    <TextBlock Text="وحدة التحكم في الميزات" FontSize="17" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="Feature Governance Console" FontSize="10" Foreground="#B0BEC5"
+                               FlowDirection="LeftToRight" HorizontalAlignment="Left" Margin="0,1,0,0"/>
                 </StackPanel>
-                <Button Grid.Column="1" Content="تحديث" Command="{Binding LoadCommand}"
-                        Style="{StaticResource MaterialDesignFlatLightBgButton}" Foreground="White"/>
-            </Grid>
+                <Button DockPanel.Dock="Left" Command="{Binding LoadCommand}"
+                        Style="{StaticResource MaterialDesignFlatLightBgButton}"
+                        Foreground="White" Height="30" Padding="10,0" HorizontalAlignment="Left"
+                        ToolTip="تحديث البيانات">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Refresh" Width="14" Height="14" VerticalAlignment="Center"/>
+                        <TextBlock Text="تحديث" Margin="4,0,0,0" FontSize="12" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </DockPanel>
         </Border>
 
-        <!-- ── Profile Selection ──────────────────────── -->
-        <Border Grid.Row="1" Background="{StaticResource BackgroundBrush}" Padding="14,12" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+        <!-- ── Profile Selection Bar ──────────────────── -->
+        <Border Grid.Row="1" Background="{StaticResource BackgroundBrush}" Padding="10,8"
+                BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="البروفايل:" VerticalAlignment="Center" FontWeight="SemiBold"
-                           FontSize="14" Margin="0,0,10,0"/>
+                <TextBlock Grid.Column="0" Text="البروفايل:" VerticalAlignment="Center"
+                           FontWeight="SemiBold" FontSize="13" Margin="0,0,8,0"/>
                 <ComboBox Grid.Column="1" ItemsSource="{Binding ProfileNames}"
                           SelectedItem="{Binding SelectedProfile}"
                           Style="{StaticResource MaterialDesignOutlinedComboBox}"
                           materialDesign:HintAssist.Hint="اختر بروفايل"
-                          Height="38"/>
-                <Button Grid.Column="2" Content="تطبيق البروفايل" Command="{Binding ApplyProfileCommand}"
+                          Height="32" FontSize="13"/>
+                <Button Grid.Column="2" Content="تطبيق" Command="{Binding ApplyProfileCommand}"
                         Style="{StaticResource MaterialDesignRaisedButton}"
                         Background="{StaticResource WarningBrush}" Foreground="White"
-                        Margin="10,0,0,0" Height="36" Padding="16,0"/>
-                <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="20,0,0,0">
+                        Margin="8,0,0,0" Height="30" Padding="14,0" FontSize="12"/>
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
                     <TextBlock Text="الحالي:" Foreground="#666" FontSize="12" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding CurrentProfileDisplay}" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}"
-                               FontSize="14" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding CurrentProfileDisplay}" FontWeight="Bold"
+                               Foreground="{StaticResource PrimaryBrush}"
+                               FontSize="13" Margin="4,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
+                <TextBlock Grid.Column="4" Text="{Binding StatusMessage}"
+                           Foreground="{StaticResource PrimaryBrush}" FontSize="11"
+                           VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0"
+                           TextTrimming="CharacterEllipsis"/>
             </Grid>
         </Border>
 
-        <!-- ── Features DataGrid ──────────────────────── -->
-        <TabControl Grid.Row="2" Margin="14,6" Background="White">
+        <!-- ── Tab Control ────────────────────────────── -->
+        <TabControl Grid.Row="2" Margin="8,4" Background="White"
+                    materialDesign:ColorZoneAssist.Mode="PrimaryLight">
             <TabControl.ItemContainerStyle>
                 <Style TargetType="TabItem">
-                    <Setter Property="FontSize" Value="15"/>
+                    <Setter Property="FontSize" Value="13"/>
                     <Setter Property="FontWeight" Value="SemiBold"/>
-                    <Setter Property="Padding" Value="18,10"/>
-                    <Setter Property="MinWidth" Value="180"/>
-                    <Setter Property="Height" Value="44"/>
+                    <Setter Property="Padding" Value="14,7"/>
+                    <Setter Property="MinWidth" Value="120"/>
+                    <Setter Property="Height" Value="36"/>
                 </Style>
             </TabControl.ItemContainerStyle>
 
-            <!-- ── Tab 1: Features ── -->
+            <!-- ══════════ Tab 1: Features ══════════ -->
             <TabItem Header="الميزات">
-        <DataGrid
-                  ItemsSource="{Binding Features}"
-                  AutoGenerateColumns="False"
-                  CanUserAddRows="False"
-                  CanUserDeleteRows="False"
-                  IsReadOnly="True"
-                  SelectionMode="Single"
-                  GridLinesVisibility="Horizontal"
-                  HeadersVisibility="Column"
-                  Margin="0,6"
-                  RowHeight="50"
-                  ColumnHeaderHeight="40"
-                  Background="White"
-                  BorderBrush="#E0E0E0"
-                  BorderThickness="1"
-                  HorizontalGridLinesBrush="#F0F0F0">
-
-            <DataGrid.ColumnHeaderStyle>
-                <Style TargetType="DataGridColumnHeader">
-                    <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
-                    <Setter Property="Foreground" Value="#333"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
-                    <Setter Property="FontSize" Value="13"/>
-                    <Setter Property="Padding" Value="10,8"/>
-                    <Setter Property="BorderBrush" Value="#E0E0E0"/>
-                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                </Style>
-            </DataGrid.ColumnHeaderStyle>
-
-            <DataGrid.Columns>
-                <!-- Feature Name (Arabic) -->
-                <DataGridTextColumn Header="الميزة" Binding="{Binding NameAr}" Width="180">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="FontWeight" Value="SemiBold"/>
-                            <Setter Property="FontSize" Value="14"/>
-                            <Setter Property="Padding" Value="8,0"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-
-                <!-- Feature Key -->
-                <DataGridTextColumn Header="المفتاح" Binding="{Binding FeatureKey}" Width="140">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="FlowDirection" Value="LeftToRight"/>
-                            <Setter Property="Foreground" Value="#666"/>
-                            <Setter Property="FontSize" Value="12"/>
-                            <Setter Property="Padding" Value="8,0"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-
-                <!-- Description -->
-                <DataGridTextColumn Header="الوصف" Binding="{Binding Description}" Width="*">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="TextWrapping" Value="Wrap"/>
-                            <Setter Property="FontSize" Value="12"/>
-                            <Setter Property="Padding" Value="8,0"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-
-                <!-- Risk Level -->
-                <DataGridTextColumn Header="مستوى الخطورة" Binding="{Binding RiskLevel}" Width="120">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                            <Setter Property="FlowDirection" Value="LeftToRight"/>
-                            <Setter Property="FontWeight" Value="SemiBold"/>
-                            <Setter Property="FontSize" Value="12"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding RiskLevel}" Value="High">
-                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding RiskLevel}" Value="Medium">
-                                    <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding RiskLevel}" Value="Low">
-                                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-
-                <!-- Depends On -->
-                <DataGridTextColumn Header="يعتمد على" Binding="{Binding DependsOn}" Width="140">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="VerticalAlignment" Value="Center"/>
-                            <Setter Property="FlowDirection" Value="LeftToRight"/>
-                            <Setter Property="Foreground" Value="#999"/>
-                            <Setter Property="FontSize" Value="11"/>
-                            <Setter Property="Padding" Value="8,0"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-
-                <!-- Toggle Button -->
-                <DataGridTemplateColumn Header="الحالة" Width="120">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Button Command="{Binding ToggleCommand}"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    Width="90" Height="30" FontSize="12" FontWeight="SemiBold"
-                                    Cursor="Hand">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
-                                        <Setter Property="Content" Value="مفعّل"/>
-                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsEnabled}" Value="False">
-                                                <Setter Property="Content" Value="معطّل"/>
-                                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
-            </TabItem>
-
-            <!-- ── Tab 2: Module Dependency Graph (Phase 8F) ── -->
-            <TabItem Header="خريطة التبعيات">
-                <DataGrid
-                    ItemsSource="{Binding DependencyRows}"
-                    AutoGenerateColumns="False"
-                    CanUserAddRows="False"
-                    CanUserDeleteRows="False"
-                    IsReadOnly="True"
-                    SelectionMode="Single"
-                    GridLinesVisibility="Horizontal"
-                    HeadersVisibility="Column"
-                    Margin="0,6"
-                    RowHeight="44"
-                    ColumnHeaderHeight="40"
-                    Background="White"
-                    BorderBrush="#E0E0E0"
-                    BorderThickness="1"
-                    HorizontalGridLinesBrush="#F0F0F0">
-
+                <DataGrid ItemsSource="{Binding Features}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          IsReadOnly="True" SelectionMode="Single"
+                          GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                          Margin="0,4" RowHeight="38" ColumnHeaderHeight="32"
+                          Background="White" BorderBrush="#E0E0E0" BorderThickness="1"
+                          HorizontalGridLinesBrush="#F0F0F0" FontSize="12"
+                          materialDesign:DataGridAssist.CellPadding="6 3"
+                          materialDesign:DataGridAssist.ColumnHeaderPadding="6 4">
                     <DataGrid.ColumnHeaderStyle>
                         <Style TargetType="DataGridColumnHeader">
                             <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
                             <Setter Property="Foreground" Value="#333"/>
                             <Setter Property="FontWeight" Value="SemiBold"/>
-                            <Setter Property="FontSize" Value="13"/>
-                            <Setter Property="Padding" Value="10,8"/>
+                            <Setter Property="FontSize" Value="12"/>
+                            <Setter Property="Padding" Value="6,4"/>
                             <Setter Property="BorderBrush" Value="#E0E0E0"/>
                             <Setter Property="BorderThickness" Value="0,0,0,1"/>
                         </Style>
                     </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="الميزة" Binding="{Binding NameAr}" Width="150">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="FontSize" Value="13"/>
+                                    <Setter Property="Padding" Value="4,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="المفتاح" Binding="{Binding FeatureKey}" Width="120">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="FlowDirection" Value="LeftToRight"/>
+                                    <Setter Property="Foreground" Value="#666"/>
+                                    <Setter Property="FontSize" Value="11"/>
+                                    <Setter Property="Padding" Value="4,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="الوصف" Binding="{Binding Description}" Width="*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                    <Setter Property="FontSize" Value="11"/>
+                                    <Setter Property="Padding" Value="4,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="الخطورة" Binding="{Binding RiskLevel}" Width="80">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                    <Setter Property="FlowDirection" Value="LeftToRight"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="FontSize" Value="11"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding RiskLevel}" Value="High">
+                                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding RiskLevel}" Value="Medium">
+                                            <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding RiskLevel}" Value="Low">
+                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="يعتمد على" Binding="{Binding DependsOn}" Width="100">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="FlowDirection" Value="LeftToRight"/>
+                                    <Setter Property="Foreground" Value="#999"/>
+                                    <Setter Property="FontSize" Value="10"/>
+                                    <Setter Property="Padding" Value="4,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTemplateColumn Header="الحالة" Width="90">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding ToggleCommand}"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Width="74" Height="26" FontSize="11" FontWeight="SemiBold" Cursor="Hand">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                                                <Setter Property="Content" Value="مفعّل"/>
+                                                <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                        <Setter Property="Content" Value="معطّل"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
 
+            <!-- ══════════ Tab 2: Custom Profile Designer ══════════ -->
+            <TabItem Header="بروفايل مخصص">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Top bar with Select All / Deselect All + stats -->
+                    <Border Grid.Row="0" Background="#F5F7FA" Padding="10,6" Margin="0,4,0,0"
+                            CornerRadius="4" BorderBrush="#E0E0E0" BorderThickness="1">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Content="تحديد الكل" Command="{Binding SelectAllFeaturesCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Height="28" Padding="10,0" FontSize="11" Margin="0,0,6,0"
+                                        materialDesign:ButtonAssist.CornerRadius="4"/>
+                                <Button Content="إلغاء الكل" Command="{Binding DeselectAllFeaturesCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Height="28" Padding="10,0" FontSize="11"
+                                        materialDesign:ButtonAssist.CornerRadius="4"/>
+                            </StackPanel>
+                            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                                <materialDesign:PackIcon Kind="FormatListChecks" Width="16" Height="16"
+                                                         Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center"/>
+                                <TextBlock FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center">
+                                    <Run Text="اختر الميزات المراد تفعيلها —"/>
+                                    <Run Text="{Binding CustomEnabledCount, Mode=OneWay}" FontWeight="Bold"
+                                         Foreground="{StaticResource SuccessBrush}"/>
+                                    <Run Text="/"/>
+                                    <Run Text="{Binding CustomTotalCount, Mode=OneWay}"/>
+                                    <Run Text="مفعلة"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Feature checkboxes list -->
+                    <Border Grid.Row="1" Margin="0,4" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding CustomProfileFeatures}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="10,7" BorderBrush="#F0F0F0" BorderThickness="0,0,0,1"
+                                                Background="White">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="#FAFBFC"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <CheckBox Grid.Column="0"
+                                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                          VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding NameAr}" FontSize="13" FontWeight="SemiBold"
+                                                               Foreground="#333"/>
+                                                    <TextBlock Text="{Binding Description}" FontSize="10"
+                                                               Foreground="#999" TextTrimming="CharacterEllipsis"
+                                                               MaxWidth="400" Margin="0,1,0,0"/>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="{Binding RiskLevel}"
+                                                           FontSize="10" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center" Margin="8,0"
+                                                           FlowDirection="LeftToRight">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding RiskLevel}" Value="High">
+                                                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding RiskLevel}" Value="Medium">
+                                                                    <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding RiskLevel}" Value="Low">
+                                                                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Grid.Column="3" Text="{Binding DependsOn}"
+                                                           FontSize="9" Foreground="#BBB" VerticalAlignment="Center"
+                                                           FlowDirection="LeftToRight"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Apply Custom Profile Button -->
+                    <Border Grid.Row="2" Padding="0,6">
+                        <Button Command="{Binding ApplyCustomProfileCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="{StaticResource PrimaryBrush}" Foreground="White"
+                                Height="34" Padding="20,0" FontSize="13" FontWeight="Bold"
+                                HorizontalAlignment="Center"
+                                materialDesign:ButtonAssist.CornerRadius="4">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Check" Width="16" Height="16" VerticalAlignment="Center"/>
+                                <TextBlock Text="تطبيق البروفايل المخصص" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- ══════════ Tab 3: Module Dependency Graph ══════════ -->
+            <TabItem Header="خريطة التبعيات">
+                <DataGrid ItemsSource="{Binding DependencyRows}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False" CanUserDeleteRows="False"
+                          IsReadOnly="True" SelectionMode="Single"
+                          GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                          Margin="0,4" RowHeight="34" ColumnHeaderHeight="32"
+                          Background="White" BorderBrush="#E0E0E0" BorderThickness="1"
+                          HorizontalGridLinesBrush="#F0F0F0" FontSize="12"
+                          materialDesign:DataGridAssist.CellPadding="6 3"
+                          materialDesign:DataGridAssist.ColumnHeaderPadding="6 4">
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
+                            <Setter Property="Foreground" Value="#333"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="FontSize" Value="12"/>
+                            <Setter Property="Padding" Value="6,4"/>
+                            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
                     <DataGrid.RowStyle>
                         <Style TargetType="DataGridRow">
                             <Style.Triggers>
@@ -243,39 +347,33 @@
                             </Style.Triggers>
                         </Style>
                     </DataGrid.RowStyle>
-
                     <DataGrid.Columns>
-                        <!-- Module Name -->
-                        <DataGridTextColumn Header="الوحدة" Binding="{Binding Module}" Width="180">
+                        <DataGridTextColumn Header="الوحدة" Binding="{Binding Module}" Width="150">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                     <Setter Property="FontWeight" Value="SemiBold"/>
-                                    <Setter Property="FontSize" Value="14"/>
-                                    <Setter Property="Padding" Value="8,0"/>
+                                    <Setter Property="FontSize" Value="13"/>
+                                    <Setter Property="Padding" Value="4,0"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
-
-                        <!-- Depends On -->
-                        <DataGridTextColumn Header="تعتمد على" Binding="{Binding DependsOn}" Width="180">
+                        <DataGridTextColumn Header="تعتمد على" Binding="{Binding DependsOn}" Width="150">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="VerticalAlignment" Value="Center"/>
-                                    <Setter Property="FontSize" Value="14"/>
-                                    <Setter Property="Padding" Value="8,0"/>
+                                    <Setter Property="FontSize" Value="13"/>
+                                    <Setter Property="Padding" Value="4,0"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
-
-                        <!-- Status (مصرح / غير مصرح) -->
-                        <DataGridTextColumn Header="الحالة" Binding="{Binding Status}" Width="120">
+                        <DataGridTextColumn Header="الحالة" Binding="{Binding Status}" Width="90">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                     <Setter Property="HorizontalAlignment" Value="Center"/>
                                     <Setter Property="FontWeight" Value="Bold"/>
-                                    <Setter Property="FontSize" Value="13"/>
+                                    <Setter Property="FontSize" Value="12"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsAllowed}" Value="True">
                                             <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
@@ -287,16 +385,14 @@
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
-
-                        <!-- Violation Detail -->
                         <DataGridTextColumn Header="التفاصيل" Binding="{Binding ViolationDetail}" Width="*">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                     <Setter Property="Foreground" Value="#999"/>
-                                    <Setter Property="FontSize" Value="11"/>
+                                    <Setter Property="FontSize" Value="10"/>
                                     <Setter Property="TextWrapping" Value="Wrap"/>
-                                    <Setter Property="Padding" Value="8,0"/>
+                                    <Setter Property="Padding" Value="4,0"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
@@ -305,16 +401,18 @@
             </TabItem>
         </TabControl>
 
-        <!-- ── Status Bar ─────────────────────────────── -->
-        <Border Grid.Row="3" Background="{StaticResource BackgroundBrush}" Padding="14,8">
-            <Grid>
-                <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource PrimaryBrush}"/>
+        <!-- ── Status / Error Bar ─────────────────────── -->
+        <Border Grid.Row="3" Background="{StaticResource BackgroundBrush}" Padding="10,5"
+                BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+            <DockPanel>
+                <ProgressBar DockPanel.Dock="Left" IsIndeterminate="True" Width="90" Height="3"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
+                             Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"
+                           FontSize="11" VerticalAlignment="Center"
                            Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}"
-                           HorizontalAlignment="Left"/>
-                <ProgressBar IsIndeterminate="True" HorizontalAlignment="Right" Width="120"
-                             Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-            </Grid>
+                           TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
         </Border>
     </Grid>
 </UserControl>

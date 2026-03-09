@@ -21,9 +21,7 @@ namespace MarcoERP.Persistence.Configurations
                 .UseIdentityColumn();
 
             // ── Concurrency Token ───────────────────────────────
-            builder.Property(c => c.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             // ── Properties ──────────────────────────────────────
             builder.Property(c => c.DocumentType)

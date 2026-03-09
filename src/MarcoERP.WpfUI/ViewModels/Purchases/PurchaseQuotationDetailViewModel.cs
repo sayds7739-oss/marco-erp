@@ -11,9 +11,12 @@ using MarcoERP.Application.DTOs.Purchases;
 using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Inventory;
 using MarcoERP.Application.Interfaces.Purchases;
+using MarcoERP.Application.DTOs.Printing;
+using MarcoERP.Application.Interfaces.Printing;
 using MarcoERP.Domain.Exceptions;
 using MarcoERP.WpfUI.Common;
 using MarcoERP.WpfUI.Navigation;
+using MarcoERP.WpfUI.Services;
 
 namespace MarcoERP.WpfUI.ViewModels.Purchases
 {
@@ -28,6 +31,9 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
         private readonly ISupplierService _supplierService;
         private readonly INavigationService _navigationService;
         private readonly ILineCalculationService _lineCalculationService;
+        private readonly IDialogService _dialog;
+        private readonly IInvoicePdfPreviewService _previewService;
+        private readonly IDocumentHtmlBuilder _htmlBuilder;
 
         // ── Collections ──────────────────────────────────────────
         public ObservableCollection<SupplierDto> Suppliers { get; } = new();
@@ -251,6 +257,7 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
         public ICommand GoToNextCommand { get; }
         public ICommand GoToPreviousCommand { get; }
         public ICommand JumpToQuotationCommand { get; }
+        public ICommand PrintCommand { get; }
 
         public PurchaseQuotationDetailViewModel(
             IPurchaseQuotationService quotationService,
@@ -258,7 +265,10 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             IWarehouseService warehouseService,
             ISupplierService supplierService,
             INavigationService navigationService,
-            ILineCalculationService lineCalculationService)
+            ILineCalculationService lineCalculationService,
+            IDialogService dialog,
+            IInvoicePdfPreviewService previewService,
+            IDocumentHtmlBuilder htmlBuilder)
         {
             _quotationService = quotationService ?? throw new ArgumentNullException(nameof(quotationService));
             _productService = productService ?? throw new ArgumentNullException(nameof(productService));
@@ -266,6 +276,9 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             _supplierService = supplierService ?? throw new ArgumentNullException(nameof(supplierService));
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _lineCalculationService = lineCalculationService ?? throw new ArgumentNullException(nameof(lineCalculationService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
+            _previewService = previewService ?? throw new ArgumentNullException(nameof(previewService));
+            _htmlBuilder = htmlBuilder ?? throw new ArgumentNullException(nameof(htmlBuilder));
 
             SaveCommand = new AsyncRelayCommand(SaveAsync, () => CanSave);
             SendCommand = new AsyncRelayCommand(SendAsync, () => CanSend);
@@ -282,6 +295,57 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             GoToNextCommand = new AsyncRelayCommand(GoToNextAsync, () => CanGoNext);
             GoToPreviousCommand = new AsyncRelayCommand(GoToPreviousAsync, () => CanGoPrevious);
             JumpToQuotationCommand = new AsyncRelayCommand(JumpToQuotationAsync);
+            PrintCommand = new AsyncRelayCommand(PrintAsync);
+        }
+
+        private async Task PrintAsync(object _)
+        {
+            if (CurrentQuotation == null) return;
+            IsBusy = true;
+            ClearError();
+            try
+            {
+                var data = new DocumentData
+                {
+                    Title = $"عرض سعر شراء رقم {CurrentQuotation.QuotationNumber}",
+                    DocumentType = PrintableDocumentType.PurchaseQuotation,
+                    MetaFields = new()
+                    {
+                        new("رقم العرض", CurrentQuotation.QuotationNumber),
+                        new("التاريخ", CurrentQuotation.QuotationDate.ToString("yyyy-MM-dd")),
+                        new("صالح حتى", CurrentQuotation.ValidUntil.ToString("yyyy-MM-dd")),
+                        new("المورد", CurrentQuotation.SupplierNameAr ?? "—"),
+                        new("المستودع", CurrentQuotation.WarehouseNameAr ?? "—"),
+                        new("الحالة", CurrentQuotation.Status, true)
+                    },
+                    Columns = new()
+                    {
+                        new("#"), new("كود الصنف"), new("اسم الصنف"),
+                        new("الوحدة"), new("الكمية", true), new("السعر", true),
+                        new("الخصم", true), new("الضريبة", true), new("الصافي", true)
+                    },
+                    Notes = CurrentQuotation.Notes
+                };
+                int row = 1;
+                foreach (var l in CurrentQuotation.Lines)
+                    data.Rows.Add(new() { (row++).ToString(), l.ProductCode, l.ProductNameAr, l.UnitNameAr,
+                        l.Quantity.ToString("N2"), l.UnitPrice.ToString("N2"), l.DiscountAmount.ToString("N2"),
+                        l.VatAmount.ToString("N2"), l.NetTotal.ToString("N2") });
+                data.SummaryFields = new()
+                {
+                    new("الإجمالي", CurrentQuotation.Subtotal.ToString("N2")),
+                    new("الخصم", CurrentQuotation.DiscountTotal.ToString("N2")),
+                    new("الضريبة", CurrentQuotation.VatTotal.ToString("N2")),
+                    new("الصافي", CurrentQuotation.NetTotal.ToString("N2"), true)
+                };
+                var html = await _htmlBuilder.BuildAsync(data);
+                await _previewService.ShowHtmlPreviewAsync(new InvoicePdfPreviewRequest
+                {
+                    Title = data.Title, FilePrefix = "purchase_quotation", HtmlContent = html
+                });
+            }
+            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("الطباعة", ex); }
+            finally { IsBusy = false; }
         }
 
         public async Task OnNavigatedToAsync(object parameter)
@@ -395,6 +459,7 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             {
                 var lines = FormLines.Select(l => new CreatePurchaseQuotationLineDto
                 {
+                    Id = l.Id,
                     ProductId = l.ProductId,
                     UnitId = l.UnitId,
                     Quantity = l.Quantity,
@@ -500,10 +565,7 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
         private async Task ConvertToInvoiceAsync()
         {
             if (CurrentQuotation == null) return;
-            var confirm = MessageBox.Show(
-                $"هل تريد تحويل طلب الشراء «{CurrentQuotation.QuotationNumber}» إلى فاتورة شراء؟",
-                "تأكيد التحويل", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"هل تريد تحويل طلب الشراء «{CurrentQuotation.QuotationNumber}» إلى فاتورة شراء؟", "تأكيد التحويل")) return;
 
             IsBusy = true; ClearError();
             try
@@ -519,10 +581,7 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
         private async Task CancelQuotationAsync()
         {
             if (CurrentQuotation == null) return;
-            var confirm = MessageBox.Show(
-                $"هل تريد إلغاء طلب الشراء «{CurrentQuotation.QuotationNumber}»؟",
-                "تأكيد الإلغاء", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"هل تريد إلغاء طلب الشراء «{CurrentQuotation.QuotationNumber}»؟", "تأكيد الإلغاء")) return;
 
             IsBusy = true; ClearError();
             try
@@ -538,10 +597,7 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
         private async Task DeleteDraftAsync()
         {
             if (CurrentQuotation == null) return;
-            var confirm = MessageBox.Show(
-                $"هل تريد حذف مسودة طلب الشراء «{CurrentQuotation.QuotationNumber}»؟",
-                "تأكيد الحذف", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"هل تريد حذف مسودة طلب الشراء «{CurrentQuotation.QuotationNumber}»؟", "تأكيد الحذف")) return;
 
             IsBusy = true; ClearError();
             try
@@ -590,6 +646,7 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             {
                 FormLines.Add(new PurchaseQuotationLineFormItem(this)
                 {
+                    Id = line.Id,
                     ProductId = line.ProductId,
                     UnitId = line.UnitId,
                     Quantity = line.Quantity,
@@ -651,7 +708,7 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
 
             if (!_quotationNumberToId.TryGetValue(JumpQuotationNumber.Trim(), out var id))
             {
-                MessageBox.Show("رقم طلب الشراء غير موجود.", "تنقل الطلبات", MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialog.ShowInfo("رقم طلب الشراء غير موجود.", "تنقل الطلبات");
                 return;
             }
 
@@ -674,6 +731,8 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
     public sealed class PurchaseQuotationLineFormItem : BaseViewModel
     {
         private readonly IInvoiceLineFormHost _parent;
+
+        public int Id { get; set; }
 
         public PurchaseQuotationLineFormItem(IInvoiceLineFormHost parent) { _parent = parent; }
 

@@ -1,3 +1,6 @@
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace MarcoERP.Application.Interfaces
 {
     /// <summary>
@@ -16,7 +19,9 @@ namespace MarcoERP.Application.Interfaces
         /// </summary>
         /// <param name="documentType">Document type prefix (e.g., "JV", "SI", "PI", "CR", "CP", "CT", "SR", "PR").</param>
         /// <param name="fiscalYearId">Fiscal year ID for sequence scoping.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Formatted code string (e.g., "SI-2026-00001").</returns>
-        string NextCode(string documentType, int fiscalYearId);
+        Task<string> NextCodeAsync(string documentType, int fiscalYearId,
+            CancellationToken cancellationToken = default);
     }
 }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Accounting;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Accounting;
 
 namespace MarcoERP.WpfUI.ViewModels.Accounting
@@ -16,10 +17,12 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
     public sealed class FiscalPeriodViewModel : BaseViewModel
     {
         private readonly IFiscalYearService _fiscalYearService;
+        private readonly IDialogService _dialog;
 
-        public FiscalPeriodViewModel(IFiscalYearService fiscalYearService)
+        public FiscalPeriodViewModel(IFiscalYearService fiscalYearService, IDialogService dialog)
         {
             _fiscalYearService = fiscalYearService ?? throw new ArgumentNullException(nameof(fiscalYearService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             FiscalYears = new ObservableCollection<FiscalYearDto>();
             Periods = new ObservableCollection<FiscalPeriodDto>();
@@ -130,10 +133,9 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         private async Task LockPeriodAsync()
         {
             if (SelectedPeriod == null) return;
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل أنت متأكد من قفل الفترة {SelectedPeriod.PeriodNumber} ({GetMonthName(SelectedPeriod.Month)})؟",
-                "تأكيد قفل الفترة", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد قفل الفترة")) return;
 
             IsBusy = true;
             ClearError();
@@ -171,10 +173,9 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
                 return;
             }
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل أنت متأكد من فتح الفترة {SelectedPeriod.PeriodNumber} ({GetMonthName(SelectedPeriod.Month)})؟\nالسبب: {UnlockReason}",
-                "تأكيد فتح الفترة", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد فتح الفترة")) return;
 
             IsBusy = true;
             ClearError();

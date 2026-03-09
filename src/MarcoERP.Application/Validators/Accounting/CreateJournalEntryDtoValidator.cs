@@ -48,12 +48,14 @@ namespace MarcoERP.Application.Validators.Accounting
             RuleFor(x => x.AccountId)
                 .GreaterThan(0).WithMessage("معرّف الحساب مطلوب لسطر القيد.");
 
-            // JE-INV-05: Non-negative
+            // JE-INV-05: Non-negative + precision
             RuleFor(x => x.DebitAmount)
-                .GreaterThanOrEqualTo(0).WithMessage("المبلغ المدين لا يمكن أن يكون سالباً.");
+                .GreaterThanOrEqualTo(0).WithMessage("المبلغ المدين لا يمكن أن يكون سالباً.")
+                .PrecisionScale(18, 2, false).WithMessage("المبلغ المدين يجب أن يكون برقمين عشريين كحد أقصى.");
 
             RuleFor(x => x.CreditAmount)
-                .GreaterThanOrEqualTo(0).WithMessage("المبلغ الدائن لا يمكن أن يكون سالباً.");
+                .GreaterThanOrEqualTo(0).WithMessage("المبلغ الدائن لا يمكن أن يكون سالباً.")
+                .PrecisionScale(18, 2, false).WithMessage("المبلغ الدائن يجب أن يكون برقمين عشريين كحد أقصى.");
 
             // JE-INV-03: Not both sides populated
             RuleFor(x => x)

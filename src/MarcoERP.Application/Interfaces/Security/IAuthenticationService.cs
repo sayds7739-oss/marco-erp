@@ -23,5 +23,12 @@ namespace MarcoERP.Application.Interfaces.Security
         /// Validates current password before allowing change.
         /// </summary>
         Task<ServiceResult> ChangePasswordAsync(int userId, ChangePasswordDto dto, CancellationToken ct = default);
+
+        /// <summary>
+        /// Retrieves user data for refresh token flow.
+        /// Loads the user by ID and returns a LoginResultDto with current permissions.
+        /// Used when issuing a new access token from a valid refresh token.
+        /// </summary>
+        Task<ServiceResult<LoginResultDto>> GetUserForRefreshAsync(int userId, CancellationToken ct = default);
     }
 }

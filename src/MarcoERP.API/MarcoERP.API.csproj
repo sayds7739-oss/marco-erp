@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\MarcoERP.Application\MarcoERP.Application.csproj" />
+    <ProjectReference Include="..\MarcoERP.Domain\MarcoERP.Domain.csproj" />
+    <ProjectReference Include="..\MarcoERP.Persistence\MarcoERP.Persistence.csproj" />
+    <ProjectReference Include="..\MarcoERP.Infrastructure\MarcoERP.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.*" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.*" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

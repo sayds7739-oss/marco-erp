@@ -13,7 +13,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(ct => ct.Id);
             builder.Property(ct => ct.Id).UseIdentityColumn();
 
-            builder.Property(ct => ct.RowVersion).IsRowVersion().IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(ct => ct.TransferNumber)
                 .IsRequired()
@@ -73,9 +73,10 @@ namespace MarcoERP.Persistence.Configurations
                 .IsRequired(false);
 
             // ── Indexes ─────────────────────────────────────────
-            builder.HasIndex(ct => ct.TransferNumber)
+            builder.HasIndex(ct => new { ct.CompanyId, ct.TransferNumber })
                 .IsUnique()
-                .HasDatabaseName("IX_CashTransfers_TransferNumber");
+                .HasFilter(DbProviderHelper.SoftDeleteFilter())
+                .HasDatabaseName("IX_CashTransfers_CompanyId_TransferNumber");
 
             builder.HasIndex(ct => ct.TransferDate)
                 .HasDatabaseName("IX_CashTransfers_TransferDate");
@@ -91,7 +92,7 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(ct => ct.JournalEntryId)
                 .HasDatabaseName("IX_CashTransfers_JournalEntryId")
-                .HasFilter("[JournalEntryId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("JournalEntryId"));
         }
     }
 }

@@ -47,6 +47,15 @@
                             Foreground="{StaticResource PrimaryBrush}">
                         <materialDesign:PackIcon Kind="ArrowRightBold" Width="18" Height="18" />
                     </Button>
+                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,4" />
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding PrintCommand}" Height="28" Padding="8,0"
+                            ToolTip="طباعة التحويل">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Printer" Width="14" Height="14" VerticalAlignment="Center" />
+                            <TextBlock Text="طباعة" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -86,12 +95,76 @@
                             <MouseBinding Gesture="LeftDoubleClick" Command="{Binding EditSelectedCommand}" />
                         </DataGrid.InputBindings>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="رقم التحويل" Binding="{Binding TransferNumber}" Width="120" FontWeight="SemiBold" />
-                            <DataGridTextColumn Header="التاريخ" Binding="{Binding TransferDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="100" />
+                            <DataGridTextColumn Header="رقم التحويل" Binding="{Binding TransferNumber}" Width="120">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                        <Setter Property="FlowDirection" Value="LeftToRight" />
+                                        <Setter Property="Foreground" Value="#546E7A" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="التاريخ" Binding="{Binding TransferDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="100">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FlowDirection" Value="LeftToRight" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                             <DataGridTextColumn Header="من خزنة" Binding="{Binding SourceCashboxName}" Width="*" />
                             <DataGridTextColumn Header="إلى خزنة" Binding="{Binding TargetCashboxName}" Width="*" />
-                            <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, StringFormat='{}{0:N2}'}" Width="100" />
-                            <DataGridTextColumn Header="الحالة" Binding="{Binding Status, Converter={StaticResource StatusToArabicConverter}}" Width="80" />
+                            <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, StringFormat='{}{0:N2}'}" Width="110">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                        <Setter Property="FlowDirection" Value="LeftToRight" />
+                                        <Setter Property="TextAlignment" Value="Right" />
+                                        <Setter Property="Foreground" Value="#1565C0" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}">
+                                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                            </DataGridTextColumn>
+                            <DataGridTemplateColumn Header="الحالة" Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" Padding="8,2" HorizontalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#FFF3E0" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Posted">
+                                                            <Setter Property="Background" Value="#E8F5E9" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                            <Setter Property="Background" Value="#FFEBEE" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Status, Converter={StaticResource StatusToArabicConverter}}" FontSize="11" HorizontalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#E65100" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Posted">
+                                                                <Setter Property="Foreground" Value="#2E7D32" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                                <Setter Property="Foreground" Value="#C62828" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>
@@ -104,68 +177,108 @@
             <Border Grid.Column="2" Style="{StaticResource CardPanel}" Margin="2,0,0,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitle}">
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0}">
-                                    <Binding Path="IsNew" Converter="{StaticResource BoolToNewEditConverter}" />
-                                </MultiBinding>
-                            </TextBlock.Text>
-                        </TextBlock>
+                        <!-- Header: Title + Status Badge -->
+                        <DockPanel Margin="0,0,0,8">
+                            <TextBlock Style="{StaticResource SectionTitle}" DockPanel.Dock="Right">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0}">
+                                        <Binding Path="IsNew" Converter="{StaticResource BoolToNewEditConverter}" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <Border DockPanel.Dock="Left" CornerRadius="12" Padding="12,4" Margin="0,0,8,0"
+                                    Visibility="{Binding SelectedItem, Converter={StaticResource NullToVisibilityConverter}}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="{StaticResource WarningBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanPost}" Value="False">
+                                                <Setter Property="Background" Value="{StaticResource SuccessBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding FormStatus}" Foreground="White" FontSize="12" FontWeight="SemiBold" />
+                            </Border>
+                        </DockPanel>
 
-                        <!-- Transfer Number -->
-                        <TextBlock Text="رقم التحويل" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,8,0,4" />
-                        <TextBox Text="{Binding FormTransferNumber}" IsEnabled="False"
-                                 FontSize="16" FontWeight="Bold" FlowDirection="LeftToRight" Padding="8,6" />
+                        <!-- Transfer Number + Date -->
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0"
+                                     materialDesign:HintAssist.Hint="رقم التحويل"
+                                     materialDesign:HintAssist.IsFloating="True"
+                                     Text="{Binding FormTransferNumber}" IsEnabled="False"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     FlowDirection="LeftToRight" />
+                            <DatePicker Grid.Column="2"
+                                        materialDesign:HintAssist.Hint="تاريخ التحويل"
+                                        materialDesign:HintAssist.IsFloating="True"
+                                        SelectedDate="{Binding FormTransferDate}"
+                                        IsEnabled="{Binding IsEditing}"
+                                        Style="{StaticResource MaterialDesignDatePicker}" />
+                        </Grid>
 
-                        <!-- Status -->
-                        <TextBlock Text="الحالة" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,8,0,4" />
-                        <TextBox Text="{Binding FormStatus}" IsEnabled="False"
-                                 FontSize="12" Padding="8,6" />
-
-                        <!-- Transfer Date -->
-                        <TextBlock Text="تاريخ التحويل" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,12,0,4" />
-                        <DatePicker SelectedDate="{Binding FormTransferDate}"
-                                    IsEnabled="{Binding IsEditing}" FontSize="12" />
-
-                        <!-- Source Cashbox -->
-                        <TextBlock Text="من خزنة" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,12,0,4" />
-                        <ComboBox ItemsSource="{Binding Cashboxes}"
-                                  SelectedValue="{Binding FormSourceCashboxId}"
-                                  SelectedValuePath="Id" DisplayMemberPath="NameAr"
-                                  IsEnabled="{Binding IsEditing}" IsEditable="True"
-                                  common:F1SearchBehavior.IsEnabled="True"
-                                  common:F1SearchBehavior.Title="بحث الصناديق"
-                                  FontSize="12" Padding="8,6" />
-
-                        <!-- Target Cashbox -->
-                        <TextBlock Text="إلى خزنة" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,12,0,4" />
-                        <ComboBox ItemsSource="{Binding Cashboxes}"
-                                  SelectedValue="{Binding FormTargetCashboxId}"
-                                  SelectedValuePath="Id" DisplayMemberPath="NameAr"
-                                  IsEnabled="{Binding IsEditing}" IsEditable="True"
-                                  common:F1SearchBehavior.IsEnabled="True"
-                                  common:F1SearchBehavior.Title="بحث الصناديق"
-                                  FontSize="12" Padding="8,6" />
+                        <!-- Source + Target Cashbox -->
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox Grid.Column="0"
+                                      materialDesign:HintAssist.Hint="من خزنة (F1 للبحث)"
+                                      materialDesign:HintAssist.IsFloating="True"
+                                      ItemsSource="{Binding Cashboxes}"
+                                      SelectedValue="{Binding FormSourceCashboxId}"
+                                      SelectedValuePath="Id" DisplayMemberPath="NameAr"
+                                      IsEnabled="{Binding IsEditing}" IsEditable="True"
+                                      common:F1SearchBehavior.IsEnabled="True"
+                                      common:F1SearchBehavior.Title="بحث الصناديق"
+                                      Style="{StaticResource MaterialDesignOutlinedComboBox}" />
+                            <ComboBox Grid.Column="2"
+                                      materialDesign:HintAssist.Hint="إلى خزنة (F1 للبحث)"
+                                      materialDesign:HintAssist.IsFloating="True"
+                                      ItemsSource="{Binding Cashboxes}"
+                                      SelectedValue="{Binding FormTargetCashboxId}"
+                                      SelectedValuePath="Id" DisplayMemberPath="NameAr"
+                                      IsEnabled="{Binding IsEditing}" IsEditable="True"
+                                      common:F1SearchBehavior.IsEnabled="True"
+                                      common:F1SearchBehavior.Title="بحث الصناديق"
+                                      Style="{StaticResource MaterialDesignOutlinedComboBox}" />
+                        </Grid>
 
                         <!-- Amount -->
-                        <TextBlock Text="المبلغ" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,12,0,4" />
-                        <TextBox Text="{Binding FormAmount, UpdateSourceTrigger=PropertyChanged, StringFormat='{}{0:N2}'}"
-                                 IsEnabled="{Binding IsEditing}" FontSize="14" Padding="8,6" FlowDirection="LeftToRight" />
+                        <TextBox materialDesign:HintAssist.Hint="المبلغ"
+                                 materialDesign:HintAssist.IsFloating="True"
+                                 Text="{Binding FormAmount, UpdateSourceTrigger=PropertyChanged, StringFormat='{}{0:N2}'}"
+                                 IsEnabled="{Binding IsEditing}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 FontSize="18" FontWeight="Bold" FlowDirection="LeftToRight"
+                                 Foreground="#1565C0" Margin="0,4,0,0" />
 
                         <!-- Description -->
-                        <TextBlock Text="الوصف" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,12,0,4" />
-                        <TextBox Text="{Binding FormDescription, UpdateSourceTrigger=PropertyChanged}"
-                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="8,6"
-                                 TextWrapping="Wrap" AcceptsReturn="True" MinHeight="50" />
+                        <TextBox materialDesign:HintAssist.Hint="الوصف"
+                                 materialDesign:HintAssist.IsFloating="True"
+                                 Text="{Binding FormDescription, UpdateSourceTrigger=PropertyChanged}"
+                                 IsEnabled="{Binding IsEditing}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 Margin="0,4,0,0" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="50" />
 
                         <!-- Notes -->
-                        <TextBlock Text="ملاحظات" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,12,0,4" />
-                        <TextBox Text="{Binding FormNotes, UpdateSourceTrigger=PropertyChanged}"
-                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="8,6"
-                                 TextWrapping="Wrap" AcceptsReturn="True" MinHeight="40" />
+                        <TextBox materialDesign:HintAssist.Hint="ملاحظات"
+                                 materialDesign:HintAssist.IsFloating="True"
+                                 Text="{Binding FormNotes, UpdateSourceTrigger=PropertyChanged}"
+                                 IsEnabled="{Binding IsEditing}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 Margin="0,8,0,0" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="40" />
 
                         <!-- Buttons -->
-                        <StackPanel Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,16,0,0" HorizontalAlignment="Center">
                             <Button Style="{StaticResource MaterialDesignRaisedButton}"
                                     Background="{StaticResource PrimaryBrush}" Foreground="White"
                                     Command="{Binding SaveCommand}"
@@ -187,21 +300,30 @@
                                     Command="{Binding PostCommand}"
                                     Visibility="{Binding CanPost, Converter={StaticResource BooleanToVisibilityConverter}}"
                                     Margin="4,0" MinWidth="80">
-                                <TextBlock Text="ترحيل" />
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="CheckAll" VerticalAlignment="Center" />
+                                    <TextBlock Text="ترحيل" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                             </Button>
                             <Button Style="{StaticResource MaterialDesignFlatButton}"
                                     Foreground="{StaticResource WarningBrush}"
                                     Command="{Binding CancelTransferCommand}"
                                     Visibility="{Binding CanCancelTransfer, Converter={StaticResource BooleanToVisibilityConverter}}"
                                     Margin="4,0">
-                                <TextBlock Text="إلغاء التحويل" />
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="UndoVariant" VerticalAlignment="Center" />
+                                    <TextBlock Text="إلغاء التحويل" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                             </Button>
                             <Button Style="{StaticResource MaterialDesignFlatButton}"
                                     Foreground="{StaticResource DangerBrush}"
                                     Command="{Binding DeleteCommand}"
                                     Visibility="{Binding CanDelete, Converter={StaticResource BooleanToVisibilityConverter}}"
                                     Margin="4,0">
-                                <TextBlock Text="حذف" />
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Delete" VerticalAlignment="Center" />
+                                    <TextBlock Text="حذف" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                </StackPanel>
                             </Button>
                         </StackPanel>
                     </StackPanel>
@@ -210,12 +332,13 @@
         </Grid>
 
         <!-- ══════ Status Bar ══════ -->
-        <Border Grid.Row="3" Padding="10,6" Margin="8,4,8,0">
+        <Border Grid.Row="3" Background="#ECEFF1" CornerRadius="4" Padding="10,6" Margin="8,4,8,0">
             <DockPanel>
-                <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource SubtitleBrush}" FontSize="12" />
+                <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource SubtitleBrush}" FontSize="12"
+                           DockPanel.Dock="Right" VerticalAlignment="Center" />
                 <ProgressBar IsIndeterminate="{Binding IsBusy}"
                              Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
-                             Height="3" DockPanel.Dock="Left" Width="100" Margin="16,0,0,0" />
+                             Height="3" DockPanel.Dock="Left" Width="120" Margin="0,0,10,0" VerticalAlignment="Center" />
             </DockPanel>
         </Border>
     </Grid>

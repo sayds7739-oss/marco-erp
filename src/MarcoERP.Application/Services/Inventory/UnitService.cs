@@ -14,6 +14,8 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Inventory;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Inventory
 {
@@ -25,19 +27,25 @@ namespace MarcoERP.Application.Services.Inventory
         private readonly ICurrentUserService _currentUser;
         private readonly IValidator<CreateUnitDto> _createValidator;
         private readonly IValidator<UpdateUnitDto> _updateValidator;
+        private readonly ILogger<UnitService> _logger;
+        private readonly IFeatureService _featureService;
 
         public UnitService(
             IUnitRepository unitRepo,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
             IValidator<CreateUnitDto> createValidator,
-            IValidator<UpdateUnitDto> updateValidator)
+            IValidator<UpdateUnitDto> updateValidator,
+            ILogger<UnitService> logger = null,
+            IFeatureService featureService = null)
         {
             _unitRepo = unitRepo ?? throw new ArgumentNullException(nameof(unitRepo));
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<UnitService>.Instance;
+            _featureService = featureService;
         }
 
         public async Task<ServiceResult<IReadOnlyList<UnitDto>>> GetAllAsync(CancellationToken ct)
@@ -64,8 +72,13 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult<UnitDto>> CreateAsync(CreateUnitDto dto, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check<UnitDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "Unit", 0);
+            // Feature Guard — block operation if Inventory module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<UnitDto>(_featureService, FeatureKeys.Inventory, ct);
+                if (guard != null) return guard;
+            }
 
             var vr = await _createValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
@@ -90,9 +103,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult<UnitDto>> UpdateAsync(UpdateUnitDto dto, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check<UnitDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "Unit", dto.Id);
             var vr = await _updateValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<UnitDto>.Failure(
@@ -120,9 +131,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "Unit", id);
             var entity = await _unitRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("الوحدة غير موجودة.");
 
@@ -134,9 +143,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "Unit", id);
             var entity = await _unitRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("الوحدة غير موجودة.");
 

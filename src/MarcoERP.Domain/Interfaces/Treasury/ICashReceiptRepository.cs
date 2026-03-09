@@ -14,6 +14,9 @@ namespace MarcoERP.Domain.Interfaces.Treasury
         /// <summary>Gets a cash receipt by ID with navigation properties.</summary>
         Task<CashReceipt> GetWithDetailsAsync(int id, CancellationToken ct = default);
 
+        /// <summary>Gets a cash receipt by ID with navigation properties and change tracking enabled.</summary>
+        Task<CashReceipt> GetWithDetailsTrackedAsync(int id, CancellationToken ct = default);
+
         /// <summary>Gets a cash receipt by its receipt number.</summary>
         Task<CashReceipt> GetByNumberAsync(string receiptNumber, CancellationToken ct = default);
 

@@ -22,20 +22,25 @@ namespace MarcoERP.Application.Interfaces.Sales
         Task<ServiceResult<string>> GetNextNumberAsync(CancellationToken ct = default);
 
         /// <summary>Creates a new draft sales invoice.</summary>
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult<SalesInvoiceDto>> CreateAsync(CreateSalesInvoiceDto dto, CancellationToken ct = default);
 
         /// <summary>Updates a draft sales invoice.</summary>
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult<SalesInvoiceDto>> UpdateAsync(UpdateSalesInvoiceDto dto, CancellationToken ct = default);
 
         /// <summary>
         /// Posts a draft invoice: generates revenue journal + COGS journal, deducts stock, creates inventory movements.
         /// </summary>
+        [RequiresPermission(PermissionKeys.SalesPost)]
         Task<ServiceResult<SalesInvoiceDto>> PostAsync(int id, CancellationToken ct = default);
 
         /// <summary>Cancels a posted invoice (reversal journals + stock restoration).</summary>
+        [RequiresPermission(PermissionKeys.SalesPost)]
         Task<ServiceResult> CancelAsync(int id, CancellationToken ct = default);
 
         /// <summary>Deletes a draft invoice (hard delete — not yet posted).</summary>
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult> DeleteDraftAsync(int id, CancellationToken ct = default);
     }
 }

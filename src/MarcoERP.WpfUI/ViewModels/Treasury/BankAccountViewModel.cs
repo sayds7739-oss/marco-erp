@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Accounting;
 using MarcoERP.Application.DTOs.Treasury;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Accounting;
 using MarcoERP.Application.Interfaces.Treasury;
 
@@ -17,11 +18,13 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
     {
         private readonly IBankAccountService _bankAccountService;
         private readonly IAccountService _accountService;
+        private readonly IDialogService _dialog;
 
-        public BankAccountViewModel(IBankAccountService bankAccountService, IAccountService accountService)
+        public BankAccountViewModel(IBankAccountService bankAccountService, IAccountService accountService, IDialogService dialog)
         {
             _bankAccountService = bankAccountService ?? throw new ArgumentNullException(nameof(bankAccountService));
             _accountService = accountService ?? throw new ArgumentNullException(nameof(accountService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllBankAccounts = new ObservableCollection<BankAccountDto>();
             Accounts = new ObservableCollection<AccountDto>();
@@ -303,11 +306,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         {
             if (SelectedItem == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل أنت متأكد من تعطيل الحساب البنكي «{SelectedItem.NameAr}»؟",
-                "تأكيد التعطيل",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد التعطيل")) return;
 
             IsBusy = true;
             ClearError();

@@ -6,12 +6,14 @@
         Title="سند صرف سريع"
         Height="620" Width="550"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize"
+        ResizeMode="CanResizeWithGrip"
+        MinHeight="500" MinWidth="450"
         FlowDirection="RightToLeft"
         Background="{DynamicResource MaterialDesignPaper}">
 
     <Grid Margin="16" local:LoadedCommandBehavior.Command="{Binding LoadedCommand}">
         <Border Style="{StaticResource CardPanel}" Padding="20">
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />   <!-- Header -->
@@ -161,7 +163,7 @@
                         </StackPanel>
                     </Button>
 
-                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}" IsCancel="True"
                             Command="{Binding CancelCommand}"
                             MinWidth="90" Margin="4,0">
                         <TextBlock Text="إلغاء" />
@@ -180,6 +182,7 @@
                                  Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </StackPanel>
             </Grid>
+          </ScrollViewer>
         </Border>
     </Grid>
 </Window>

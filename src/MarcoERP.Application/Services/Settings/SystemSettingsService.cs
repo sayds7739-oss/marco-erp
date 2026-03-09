@@ -65,9 +65,6 @@ namespace MarcoERP.Application.Services.Settings
 
         public async Task<ServiceResult> UpdateAsync(UpdateSystemSettingDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.SettingsManage);
-            if (authCheck != null) return authCheck;
-
             if (string.IsNullOrWhiteSpace(dto.SettingKey))
                 return ServiceResult.Failure("مفتاح الإعداد مطلوب.");
 
@@ -76,16 +73,12 @@ namespace MarcoERP.Application.Services.Settings
                 return ServiceResult.Failure($"الإعداد '{dto.SettingKey}' غير موجود.");
 
             entity.UpdateValue(dto.SettingValue);
-            _settingRepo.Update(entity);
             await _unitOfWork.SaveChangesAsync(ct);
             return ServiceResult.Success();
         }
 
         public async Task<ServiceResult> UpdateBatchAsync(IEnumerable<UpdateSystemSettingDto> dtos, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.SettingsManage);
-            if (authCheck != null) return authCheck;
-
             foreach (var dto in dtos)
             {
                 if (string.IsNullOrWhiteSpace(dto.SettingKey))
@@ -96,7 +89,6 @@ namespace MarcoERP.Application.Services.Settings
                     return ServiceResult.Failure($"الإعداد '{dto.SettingKey}' غير موجود.");
 
                 entity.UpdateValue(dto.SettingValue);
-                _settingRepo.Update(entity);
             }
 
             await _unitOfWork.SaveChangesAsync(ct);

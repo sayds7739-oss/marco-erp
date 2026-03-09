@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -7,77 +8,78 @@ namespace MarcoERP.Persistence.Seeds
 {
     /// <summary>
     /// Seeds complexity profiles and their feature mappings.
-    /// Idempotent — skips if profiles already exist.
+    /// Additive — only inserts profiles/mappings that do not already exist,
+    /// so new profiles added in updates are automatically seeded.
     /// Phase 3: Progressive Complexity Layer.
     /// </summary>
     public static class ProfileSeed
     {
         public static async Task SeedAsync(MarcoDbContext context)
         {
-            if (await context.SystemProfiles.AnyAsync())
-                return;
+            // ── Ensure Profiles Exist ─────────────────────────────
+            var existingProfileNames = await context.SystemProfiles
+                .Select(p => p.ProfileName)
+                .ToListAsync();
+            var existingProfileNameSet = new HashSet<string>(existingProfileNames);
 
-            // ── Create Profiles ─────────────────────────────────
-            var simple = new SystemProfile(
-                "Simple",
-                "بروفايل بسيط — المبيعات والمخزون والخزينة فقط",
-                false);
+            var simple = existingProfileNameSet.Contains("Simple")
+                ? await context.SystemProfiles.FirstAsync(p => p.ProfileName == "Simple")
+                : new SystemProfile("Simple", "بروفايل بسيط — المحاسبة والمبيعات والمخزون والخزينة وإدارة المستخدمين", false);
 
-            var standard = new SystemProfile(
-                "Standard",
-                "بروفايل قياسي — يشمل المشتريات والتقارير ونقاط البيع",
-                true); // Active by default
+            var standard = existingProfileNameSet.Contains("Standard")
+                ? await context.SystemProfiles.FirstAsync(p => p.ProfileName == "Standard")
+                : new SystemProfile("Standard", "بروفايل قياسي — يشمل المشتريات والتقارير ونقاط البيع", true);
 
-            var advanced = new SystemProfile(
-                "Advanced",
-                "بروفايل متقدم — جميع الميزات مفعّلة بما يشمل المحاسبة المتقدمة",
-                false);
+            var advanced = existingProfileNameSet.Contains("Advanced")
+                ? await context.SystemProfiles.FirstAsync(p => p.ProfileName == "Advanced")
+                : new SystemProfile("Advanced", "بروفايل متقدم — جميع الميزات مفعّلة بما يشمل المحاسبة المتقدمة", false);
 
-            await context.SystemProfiles.AddRangeAsync(simple, standard, advanced);
-            await context.SaveChangesAsync();
+            var newProfiles = new List<SystemProfile>();
+            if (!existingProfileNameSet.Contains("Simple")) newProfiles.Add(simple);
+            if (!existingProfileNameSet.Contains("Standard")) newProfiles.Add(standard);
+            if (!existingProfileNameSet.Contains("Advanced")) newProfiles.Add(advanced);
 
-            // ── Map Features to Profiles ────────────────────────
+            if (newProfiles.Any())
+            {
+                await context.SystemProfiles.AddRangeAsync(newProfiles);
+                await context.SaveChangesAsync();
+            }
+
+            // ── Ensure Profile-Feature Mappings Exist ─────────────
+            var existingMappings = await context.ProfileFeatures
+                .Select(pf => new { pf.ProfileId, pf.FeatureKey })
+                .ToListAsync();
+            var existingMappingSet = new HashSet<string>(
+                existingMappings.Select(m => $"{m.ProfileId}|{m.FeatureKey}"));
+
+            var allMappings = new List<ProfileFeature>();
 
             // Simple: basic operations
-            var simpleFeatures = new[]
+            foreach (var key in new[] { "Accounting", "Inventory", "Sales", "Treasury", "UserManagement" })
             {
-                new ProfileFeature(simple.Id, "Accounting"),
-                new ProfileFeature(simple.Id, "Inventory"),
-                new ProfileFeature(simple.Id, "Sales"),
-                new ProfileFeature(simple.Id, "Treasury"),
-                new ProfileFeature(simple.Id, "UserManagement"),
-            };
+                if (!existingMappingSet.Contains($"{simple.Id}|{key}"))
+                    allMappings.Add(new ProfileFeature(simple.Id, key));
+            }
 
             // Standard: Simple + Purchases, POS, Reporting
-            var standardFeatures = new[]
+            foreach (var key in new[] { "Accounting", "Inventory", "Sales", "Treasury", "UserManagement", "Purchases", "POS", "Reporting" })
             {
-                new ProfileFeature(standard.Id, "Accounting"),
-                new ProfileFeature(standard.Id, "Inventory"),
-                new ProfileFeature(standard.Id, "Sales"),
-                new ProfileFeature(standard.Id, "Treasury"),
-                new ProfileFeature(standard.Id, "UserManagement"),
-                new ProfileFeature(standard.Id, "Purchases"),
-                new ProfileFeature(standard.Id, "POS"),
-                new ProfileFeature(standard.Id, "Reporting"),
-            };
+                if (!existingMappingSet.Contains($"{standard.Id}|{key}"))
+                    allMappings.Add(new ProfileFeature(standard.Id, key));
+            }
 
             // Advanced: all features
-            var advancedFeatures = new[]
+            foreach (var key in new[] { "Accounting", "Inventory", "Sales", "Treasury", "UserManagement", "Purchases", "POS", "Reporting", "FEATURE_ALLOW_NEGATIVE_STOCK", "FEATURE_ALLOW_NEGATIVE_CASH", "FEATURE_RECEIPT_PRINTING" })
             {
-                new ProfileFeature(advanced.Id, "Accounting"),
-                new ProfileFeature(advanced.Id, "Inventory"),
-                new ProfileFeature(advanced.Id, "Sales"),
-                new ProfileFeature(advanced.Id, "Treasury"),
-                new ProfileFeature(advanced.Id, "UserManagement"),
-                new ProfileFeature(advanced.Id, "Purchases"),
-                new ProfileFeature(advanced.Id, "POS"),
-                new ProfileFeature(advanced.Id, "Reporting"),
-            };
+                if (!existingMappingSet.Contains($"{advanced.Id}|{key}"))
+                    allMappings.Add(new ProfileFeature(advanced.Id, key));
+            }
 
-            await context.ProfileFeatures.AddRangeAsync(simpleFeatures);
-            await context.ProfileFeatures.AddRangeAsync(standardFeatures);
-            await context.ProfileFeatures.AddRangeAsync(advancedFeatures);
-            await context.SaveChangesAsync();
+            if (allMappings.Any())
+            {
+                await context.ProfileFeatures.AddRangeAsync(allMappings);
+                await context.SaveChangesAsync();
+            }
         }
     }
 }

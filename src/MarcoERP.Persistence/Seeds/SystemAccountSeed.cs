@@ -142,6 +142,10 @@ namespace MarcoERP.Persistence.Seeds
                 new("2121", "ضريبة مخرجات مستحقة", "VAT Output Payable", AccountType.Liability, "2120", 4, IsParent: false),
                 new("2131", "مصروفات مستحقة — عام", "Accrued Expenses — General", AccountType.Liability, "2130", 4, IsParent: false),
 
+                // Commission Payable (under Current Liabilities)
+                new("2300", "العمولات المستحقة", "Commissions Payable", AccountType.Liability, "2000", 2, IsParent: true),
+                new("2301", "العمولات المستحقة — مندوبين", "Commissions Payable — Sales Rep", AccountType.Liability, "2300", 3, IsParent: false),
+
                 // ═══════════════ EQUITY (3xxx) ═══════════════
                 new("3000", "حقوق الملكية", "Equity", AccountType.Equity, null, 1, IsParent: true),
 
@@ -163,6 +167,7 @@ namespace MarcoERP.Persistence.Seeds
                 new("4130", "خصومات المبيعات", "Sales Discounts", AccountType.Revenue, "4100", 3, IsParent: true),
 
                 new("4111", "المبيعات — عام", "Sales — General", AccountType.Revenue, "4110", 4, IsParent: false),
+                new("4112", "فائض مخزني", "Inventory Surplus", AccountType.Revenue, "4110", 4, IsParent: false),
                 new("4121", "مردودات المبيعات — عام", "Sales Returns — General", AccountType.Revenue, "4120", 4, IsParent: false),
                 new("4131", "خصومات المبيعات — عام", "Sales Discounts — General", AccountType.Revenue, "4130", 4, IsParent: false),
 
@@ -174,6 +179,7 @@ namespace MarcoERP.Persistence.Seeds
                 new("5110", "تكلفة مباشرة", "COGS — Direct", AccountType.COGS, "5100", 3, IsParent: true),
 
                 new("5111", "تكلفة البضاعة المباعة — عام", "COGS — General", AccountType.COGS, "5110", 4, IsParent: false),
+                new("5112", "عجز وتالف مخزني", "Inventory Shortage & Damage", AccountType.COGS, "5110", 4, IsParent: false),
 
                 // ═══════════════ EXPENSES (6xxx) ═══════════════
                 new("6000", "المصروفات", "Expenses", AccountType.Expense, null, 1, IsParent: true),
@@ -192,6 +198,10 @@ namespace MarcoERP.Persistence.Seeds
                 new("6141", "حساب التقريب", "Rounding Account", AccountType.Expense, "6140", 4, IsParent: false),
                 new("6151", "حساب تسوية المخزون", "Inventory Adjustment Account", AccountType.Expense, "6150", 4, IsParent: false),
 
+                // Commission Expense (under Expenses)
+                new("6200", "مصروفات العمولات", "Commission Expenses", AccountType.Expense, "6000", 2, IsParent: true),
+                new("6201", "مصروف العمولات — مندوبين", "Commission Expense — Sales Rep", AccountType.Expense, "6200", 3, IsParent: false),
+
                 // ═══════════════ OTHER INCOME (7xxx) ═══════════════
                 new("7000", "إيرادات أخرى", "Other Income", AccountType.OtherIncome, null, 1, IsParent: true),
 
@@ -200,6 +210,10 @@ namespace MarcoERP.Persistence.Seeds
                 new("7110", "إيرادات أخرى — عام", "Other Income — General", AccountType.OtherIncome, "7100", 3, IsParent: true),
 
                 new("7111", "إيرادات أخرى — متنوع", "Other Income — Misc", AccountType.OtherIncome, "7110", 4, IsParent: false),
+
+                // Cash Over/Short (POS session close variance)
+                new("7200", "فروقات الصندوق", "Cash Over/Short", AccountType.OtherIncome, "7000", 2, IsParent: true),
+                new("7201", "فروقات الصندوق", "Cash Over/Short — POS", AccountType.OtherIncome, "7200", 3, IsParent: false),
 
                 // ═══════════════ OTHER EXPENSES (8xxx) ═══════════════
                 new("8000", "مصروفات أخرى", "Other Expenses", AccountType.OtherExpense, null, 1, IsParent: true),

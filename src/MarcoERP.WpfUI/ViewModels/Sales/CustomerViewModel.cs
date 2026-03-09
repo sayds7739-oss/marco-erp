@@ -1,10 +1,13 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Sales;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Sales;
+using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions;
 using MarcoERP.WpfUI.Common;
 
@@ -16,12 +19,20 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
     public sealed class CustomerViewModel : BaseViewModel
     {
         private readonly ICustomerService _customerService;
+        private readonly IDialogService _dialog;
 
-        public CustomerViewModel(ICustomerService customerService)
+        public CustomerViewModel(ICustomerService customerService, IDialogService dialog)
         {
             _customerService = customerService ?? throw new ArgumentNullException(nameof(customerService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllCustomers = new ObservableCollection<CustomerDto>();
+            CustomerTypeItems = new ObservableCollection<CustomerTypeOption>
+            {
+                new CustomerTypeOption(CustomerType.Individual, "فرد"),
+                new CustomerTypeOption(CustomerType.Company, "شركة"),
+                new CustomerTypeOption(CustomerType.Government, "جهة حكومية")
+            };
 
             LoadCommand = new AsyncRelayCommand(LoadCustomersAsync);
             NewCommand = new AsyncRelayCommand(PrepareNewAsync);
@@ -36,6 +47,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         // ── Collections ──────────────────────────────────────────
 
         public ObservableCollection<CustomerDto> AllCustomers { get; }
+        public ObservableCollection<CustomerTypeOption> CustomerTypeItems { get; }
 
         // ── Selection ────────────────────────────────────────────
 
@@ -148,6 +160,62 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             set => SetProperty(ref _formNotes, value);
         }
 
+        private string _formEmail;
+        public string FormEmail
+        {
+            get => _formEmail;
+            set => SetProperty(ref _formEmail, value);
+        }
+
+        private CustomerTypeOption _formCustomerType;
+        public CustomerTypeOption FormCustomerType
+        {
+            get => _formCustomerType;
+            set => SetProperty(ref _formCustomerType, value);
+        }
+
+        private string _formCommercialRegister;
+        public string FormCommercialRegister
+        {
+            get => _formCommercialRegister;
+            set => SetProperty(ref _formCommercialRegister, value);
+        }
+
+        private string _formCountry;
+        public string FormCountry
+        {
+            get => _formCountry;
+            set => SetProperty(ref _formCountry, value);
+        }
+
+        private string _formPostalCode;
+        public string FormPostalCode
+        {
+            get => _formPostalCode;
+            set => SetProperty(ref _formPostalCode, value);
+        }
+
+        private string _formContactPerson;
+        public string FormContactPerson
+        {
+            get => _formContactPerson;
+            set => SetProperty(ref _formContactPerson, value);
+        }
+
+        private string _formWebsite;
+        public string FormWebsite
+        {
+            get => _formWebsite;
+            set => SetProperty(ref _formWebsite, value);
+        }
+
+        private decimal _formDefaultDiscountPercent;
+        public decimal FormDefaultDiscountPercent
+        {
+            get => _formDefaultDiscountPercent;
+            set => SetProperty(ref _formDefaultDiscountPercent, value);
+        }
+
         // ── Commands ─────────────────────────────────────────────
 
         public ICommand LoadCommand { get; }
@@ -222,6 +290,14 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             FormAddress = "";
             FormCity = "";
             FormTaxNumber = "";
+            FormEmail = "";
+            FormCustomerType = CustomerTypeItems.FirstOrDefault(x => x.Value == CustomerType.Individual);
+            FormCommercialRegister = "";
+            FormCountry = "";
+            FormPostalCode = "";
+            FormContactPerson = "";
+            FormWebsite = "";
+            FormDefaultDiscountPercent = 0;
             FormPreviousBalance = 0;
             FormCreditLimit = 0;
             FormNotes = "";
@@ -248,6 +324,14 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
                         Address = FormAddress,
                         City = FormCity,
                         TaxNumber = FormTaxNumber,
+                        Email = FormEmail,
+                        CustomerType = FormCustomerType?.Value ?? CustomerType.Individual,
+                        CommercialRegister = FormCommercialRegister,
+                        Country = FormCountry,
+                        PostalCode = FormPostalCode,
+                        ContactPerson = FormContactPerson,
+                        Website = FormWebsite,
+                        DefaultDiscountPercent = FormDefaultDiscountPercent,
                         PreviousBalance = FormPreviousBalance,
                         CreditLimit = FormCreditLimit,
                         Notes = FormNotes
@@ -277,6 +361,14 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
                         Address = FormAddress,
                         City = FormCity,
                         TaxNumber = FormTaxNumber,
+                        Email = FormEmail,
+                        CustomerType = FormCustomerType?.Value ?? CustomerType.Individual,
+                        CommercialRegister = FormCommercialRegister,
+                        Country = FormCountry,
+                        PostalCode = FormPostalCode,
+                        ContactPerson = FormContactPerson,
+                        Website = FormWebsite,
+                        DefaultDiscountPercent = FormDefaultDiscountPercent,
                         CreditLimit = FormCreditLimit,
                         Notes = FormNotes
                     };
@@ -313,11 +405,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         {
             if (SelectedItem == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل أنت متأكد من حذف العميل «{SelectedItem.NameAr}»؟\nالحذف سيكون ناعم (Soft Delete).",
-                "تأكيد الحذف",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الحذف")) return;
 
             IsBusy = true;
             ClearError();
@@ -429,6 +519,15 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             FormAddress = item.Address;
             FormCity = item.City;
             FormTaxNumber = item.TaxNumber;
+            FormEmail = item.Email;
+            FormCustomerType = CustomerTypeItems.FirstOrDefault(x => x.Value == item.CustomerType)
+                               ?? CustomerTypeItems.FirstOrDefault();
+            FormCommercialRegister = item.CommercialRegister;
+            FormCountry = item.Country;
+            FormPostalCode = item.PostalCode;
+            FormContactPerson = item.ContactPerson;
+            FormWebsite = item.Website;
+            FormDefaultDiscountPercent = item.DefaultDiscountPercent;
             FormPreviousBalance = item.PreviousBalance;
             FormCreditLimit = item.CreditLimit;
             FormNotes = item.Notes;
@@ -443,6 +542,13 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             IsNew = false;
             PopulateForm(SelectedItem);
             IsEditing = true;
+        }
+
+        // ── Nested Types ─────────────────────────────────────────
+
+        public sealed record CustomerTypeOption(CustomerType Value, string DisplayName)
+        {
+            public override string ToString() => DisplayName;
         }
     }
 }

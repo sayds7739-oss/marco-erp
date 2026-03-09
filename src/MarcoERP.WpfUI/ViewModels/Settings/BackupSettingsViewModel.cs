@@ -16,11 +16,13 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
     {
         private readonly IBackupService _backupService;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IDialogService _dialog;
 
-        public BackupSettingsViewModel(IBackupService backupService, IDateTimeProvider dateTimeProvider)
+        public BackupSettingsViewModel(IBackupService backupService, IDateTimeProvider dateTimeProvider, IDialogService dialog)
         {
             _backupService = backupService ?? throw new ArgumentNullException(nameof(backupService));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             BackupHistory = new ObservableCollection<BackupHistoryDto>();
 
@@ -153,14 +155,9 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
                 }
 
                 // Confirm with user
-                var confirmResult = System.Windows.MessageBox.Show(
+                if (!_dialog.Confirm(
                     "تحذير: سيتم استبدال قاعدة البيانات الحالية بالكامل.\nهل أنت متأكد من الاستعادة؟",
-                    "تأكيد الاستعادة",
-                    System.Windows.MessageBoxButton.YesNo,
-                    System.Windows.MessageBoxImage.Warning,
-                    System.Windows.MessageBoxResult.No);
-
-                if (confirmResult != System.Windows.MessageBoxResult.Yes)
+                    "تأكيد الاستعادة"))
                 {
                     IsBusy = false;
                     return;
@@ -172,11 +169,9 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
                 if (result.IsSuccess)
                 {
                     StatusMessage = "تمت الاستعادة بنجاح. يُنصح بإعادة تشغيل التطبيق.";
-                    System.Windows.MessageBox.Show(
+                    _dialog.ShowInfo(
                         "تمت استعادة قاعدة البيانات بنجاح.\nيُنصح بإعادة تشغيل التطبيق.",
-                        "نجاح",
-                        System.Windows.MessageBoxButton.OK,
-                        System.Windows.MessageBoxImage.Information);
+                        "نجاح");
                 }
                 else
                 {

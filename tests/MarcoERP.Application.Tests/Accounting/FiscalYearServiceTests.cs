@@ -361,8 +361,8 @@ namespace MarcoERP.Application.Tests.Accounting
                 .ReturnsAsync(new List<Account> { retainedEarnings, revenueAccount, expenseAccount });
 
             _journalNumberGenMock
-                .Setup(g => g.NextNumber(It.IsAny<int>()))
-                .Returns("JV-202412-0001");
+                .Setup(g => g.NextNumberAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync("JV-202412-0001");
 
             // Idempotency guard: no existing closing entry for last period
             _journalEntryRepoMock

@@ -10,7 +10,9 @@ using MarcoERP.Application.Common;
 using MarcoERP.Application.DTOs.Reports;
 using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Reports;
+using MarcoERP.Application.Interfaces.Settings;
 using MarcoERP.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Reports
 {
@@ -21,19 +23,30 @@ namespace MarcoERP.Application.Services.Reports
     public sealed class ReportExportService : IReportExportService
     {
         private readonly IDateTimeProvider _dateTime;
+        private readonly IFeatureService _featureService;
+        private readonly ILogger<ReportExportService> _logger;
 
         static ReportExportService()
         {
             QuestPDF.Settings.License = LicenseType.Community;
         }
 
-        public ReportExportService(IDateTimeProvider dateTime)
+        public ReportExportService(IDateTimeProvider dateTime, IFeatureService featureService = null, ILogger<ReportExportService> logger = null)
         {
             _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            _featureService = featureService;
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ReportExportService>.Instance;
         }
 
-        public Task<ServiceResult<string>> ExportToPdfAsync(ReportExportRequest request, string outputPath, CancellationToken ct)
+        public async Task<ServiceResult<string>> ExportToPdfAsync(ReportExportRequest request, string outputPath, CancellationToken ct)
         {
+            // Feature Guard — block operation if Reporting module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<string>(_featureService, FeatureKeys.Reporting, ct);
+                if (guard != null) return guard;
+            }
+
             try
             {
                 var dir = Path.GetDirectoryName(outputPath);
@@ -122,16 +135,24 @@ namespace MarcoERP.Application.Services.Reports
                     });
                 }).GeneratePdf(outputPath);
 
-                return Task.FromResult(ServiceResult<string>.Success(outputPath));
+                return ServiceResult<string>.Success(outputPath);
             }
             catch (Exception ex)
             {
-                return Task.FromResult(ServiceResult<string>.Failure($"خطأ في تصدير PDF: {ex.Message}"));
+                _logger.LogError(ex, "ExportToPdfAsync failed.");
+                return ServiceResult<string>.Failure(ErrorSanitizer.SanitizeGeneric(ex, "تصدير PDF"));
             }
         }
 
-        public Task<ServiceResult<string>> ExportToExcelAsync(ReportExportRequest request, string outputPath, CancellationToken ct)
+        public async Task<ServiceResult<string>> ExportToExcelAsync(ReportExportRequest request, string outputPath, CancellationToken ct)
         {
+            // Feature Guard — block operation if Reporting module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<string>(_featureService, FeatureKeys.Reporting, ct);
+                if (guard != null) return guard;
+            }
+
             try
             {
                 var dir = Path.GetDirectoryName(outputPath);
@@ -202,11 +223,12 @@ namespace MarcoERP.Application.Services.Reports
                 ws.Columns().AdjustToContents();
 
                 workbook.SaveAs(outputPath);
-                return Task.FromResult(ServiceResult<string>.Success(outputPath));
+                return ServiceResult<string>.Success(outputPath);
             }
             catch (Exception ex)
             {
-                return Task.FromResult(ServiceResult<string>.Failure($"خطأ في تصدير Excel: {ex.Message}"));
+                _logger.LogError(ex, "ExportToExcelAsync failed.");
+                return ServiceResult<string>.Failure(ErrorSanitizer.SanitizeGeneric(ex, "تصدير Excel"));
             }
         }
     }

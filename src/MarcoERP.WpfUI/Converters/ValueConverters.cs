@@ -128,7 +128,7 @@ namespace MarcoERP.WpfUI.Converters
                 case "Active": return "نشط";
                 case "Inactive": return "غير نشط";
                 case "Discontinued": return "متوقف";
-                case "Closed": return "مُقفلة";
+                case "Closed": return "مُغلقة";
                 case "Open": return "مفتوحة";
                 case "Locked": return "مُقفلة";
                 case "Sent": return "مُرسل";
@@ -193,6 +193,118 @@ namespace MarcoERP.WpfUI.Converters
                 case "CashTransfer": return "تحويل نقدي";
                 default: return src;
             }
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Converts InvoiceType enum to Arabic display string.
+    /// </summary>
+    public sealed class InvoiceTypeToArabicConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value == null) return "";
+            var type = value.ToString();
+            switch (type)
+            {
+                case "Cash": return "نقدي";
+                case "Credit": return "آجل";
+                default: return type;
+            }
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Converts PaymentMethod enum to Arabic display string.
+    /// </summary>
+    public sealed class PaymentMethodToArabicConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value == null) return "";
+            var method = value.ToString();
+            switch (method)
+            {
+                case "Cash": return "نقدي";
+                case "Card": return "بطاقة";
+                case "OnAccount": return "آجل";
+                case "Check": return "شيك";
+                case "BankTransfer": return "تحويل بنكي";
+                case "EWallet": return "محفظة إلكترونية";
+                default: return method;
+            }
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Two-way converter between string "true"/"false" and bool.
+    /// Used for settings editor ToggleButton binding.
+    /// </summary>
+    public sealed class StringBoolConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is string s)
+                return s.Equals("true", StringComparison.OrdinalIgnoreCase);
+            return false;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return value is true ? "true" : "false";
+        }
+    }
+
+    /// <summary>
+    /// Converts AccountType enum values to Arabic display strings.
+    /// </summary>
+    public sealed class AccountTypeToArabicConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value == null) return "";
+            var type = value.ToString();
+            switch (type)
+            {
+                case "Asset": return "أصول";
+                case "Liability": return "خصوم";
+                case "Equity": return "حقوق ملكية";
+                case "Revenue": return "إيرادات";
+                case "COGS": return "تكلفة مبيعات";
+                case "Expense": return "مصروفات";
+                case "OtherIncome": return "إيرادات أخرى";
+                case "OtherExpense": return "مصروفات أخرى";
+                default: return type;
+            }
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Converts an integer Level to a left Thickness for indentation in flat grids.
+    /// Level 1 = 0px, Level 2 = 20px, Level 3 = 40px, Level 4 = 60px.
+    /// </summary>
+    public sealed class LevelToIndentConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is int level)
+            {
+                double indent = Math.Max(0, (level - 1)) * 20.0;
+                return new Thickness(indent, 0, 0, 0);
+            }
+            return new Thickness(0);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

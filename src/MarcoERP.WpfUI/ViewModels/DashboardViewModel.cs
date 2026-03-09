@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using MarcoERP.Application.DTOs.Reports;
 using MarcoERP.Application.Interfaces.Reports;
 using MarcoERP.WpfUI.Models;
@@ -24,6 +25,7 @@ namespace MarcoERP.WpfUI.ViewModels
     {
         private readonly IReportService _reportService;
         private readonly INavigationService _navigationService;
+        private readonly DispatcherTimer _refreshTimer;
 
         private static readonly string ShortcutsFilePath =
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dashboard_shortcuts.json");
@@ -86,8 +88,19 @@ namespace MarcoERP.WpfUI.ViewModels
 
             RefreshCommand = new AsyncRelayCommand(LoadDataAsync);
             ConfigureShortcutsCommand = new RelayCommand(ShowConfigureShortcutsDialog);
+            ConfigureKpiCommand = new RelayCommand(ShowConfigureKpiDialog);
 
+            LoadKpiConfig();
             LoadShortcuts();
+            EnqueueDbWork(LoadDataAsync);
+
+            _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
+            _refreshTimer.Tick += OnRefreshTimerTick;
+            _refreshTimer.Start();
+        }
+
+        private void OnRefreshTimerTick(object sender, EventArgs e)
+        {
             EnqueueDbWork(LoadDataAsync);
         }
 
@@ -221,7 +234,10 @@ namespace MarcoERP.WpfUI.ViewModels
                     return JsonSerializer.Deserialize<List<DashboardShortcut>>(json) ?? DefaultShortcuts;
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Dashboard] Failed to load shortcuts: {ex.Message}");
+            }
             return DefaultShortcuts;
         }
 
@@ -247,6 +263,21 @@ namespace MarcoERP.WpfUI.ViewModels
         private int _todayPurchasesCount;
         public int TodayPurchasesCount { get => _todayPurchasesCount; set => SetProperty(ref _todayPurchasesCount, value); }
 
+        private decimal _dailyNetProfit;
+        public decimal DailyNetProfit { get => _dailyNetProfit; set => SetProperty(ref _dailyNetProfit, value); }
+
+        private decimal _todaySalesDelta;
+        public decimal TodaySalesDelta { get => _todaySalesDelta; set => SetProperty(ref _todaySalesDelta, value); }
+
+        private decimal _todayPurchasesDelta;
+        public decimal TodayPurchasesDelta { get => _todayPurchasesDelta; set => SetProperty(ref _todayPurchasesDelta, value); }
+
+        private decimal _todayReceiptsDelta;
+        public decimal TodayReceiptsDelta { get => _todayReceiptsDelta; set => SetProperty(ref _todayReceiptsDelta, value); }
+
+        private decimal _todayPaymentsDelta;
+        public decimal TodayPaymentsDelta { get => _todayPaymentsDelta; set => SetProperty(ref _todayPaymentsDelta, value); }
+
         // ── Month ──
         private decimal _monthSales;
         public decimal MonthSales { get => _monthSales; set => SetProperty(ref _monthSales, value); }
@@ -259,6 +290,21 @@ namespace MarcoERP.WpfUI.ViewModels
 
         private decimal _monthPayments;
         public decimal MonthPayments { get => _monthPayments; set => SetProperty(ref _monthPayments, value); }
+
+        private decimal _grossMarginPercent;
+        public decimal GrossMarginPercent { get => _grossMarginPercent; set => SetProperty(ref _grossMarginPercent, value); }
+
+        private decimal _monthSalesDelta;
+        public decimal MonthSalesDelta { get => _monthSalesDelta; set => SetProperty(ref _monthSalesDelta, value); }
+
+        private decimal _monthPurchasesDelta;
+        public decimal MonthPurchasesDelta { get => _monthPurchasesDelta; set => SetProperty(ref _monthPurchasesDelta, value); }
+
+        private decimal _monthReceiptsDelta;
+        public decimal MonthReceiptsDelta { get => _monthReceiptsDelta; set => SetProperty(ref _monthReceiptsDelta, value); }
+
+        private decimal _monthPaymentsDelta;
+        public decimal MonthPaymentsDelta { get => _monthPaymentsDelta; set => SetProperty(ref _monthPaymentsDelta, value); }
 
         // ── Alerts ──
         private int _lowStockCount;
@@ -289,6 +335,83 @@ namespace MarcoERP.WpfUI.ViewModels
         private decimal _monthGrossProfit;
         public decimal MonthGrossProfit { get => _monthGrossProfit; set => SetProperty(ref _monthGrossProfit, value); }
 
+        // ── Chart Data ──
+        public ObservableCollection<DailyTrendPoint> SalesTrendData { get; } = new();
+        public ObservableCollection<TopProductDto> TopProductsData { get; } = new();
+
+        // ── KPI Widget Visibility (Feature 17) ──
+        private static readonly string KpiConfigFilePath =
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dashboard_kpi_config.json");
+
+        private bool _showTodaySection = true;
+        public bool ShowTodaySection { get => _showTodaySection; set { if (SetProperty(ref _showTodaySection, value)) SaveKpiConfig(); } }
+
+        private bool _showMonthSection = true;
+        public bool ShowMonthSection { get => _showMonthSection; set { if (SetProperty(ref _showMonthSection, value)) SaveKpiConfig(); } }
+
+        private bool _showAlertsSection = true;
+        public bool ShowAlertsSection { get => _showAlertsSection; set { if (SetProperty(ref _showAlertsSection, value)) SaveKpiConfig(); } }
+
+        private bool _showBalancesSection = true;
+        public bool ShowBalancesSection { get => _showBalancesSection; set { if (SetProperty(ref _showBalancesSection, value)) SaveKpiConfig(); } }
+
+        private bool _showChartsSection = true;
+        public bool ShowChartsSection { get => _showChartsSection; set { if (SetProperty(ref _showChartsSection, value)) SaveKpiConfig(); } }
+
+        private bool _showShortcutsSection = true;
+        public bool ShowShortcutsSection { get => _showShortcutsSection; set { if (SetProperty(ref _showShortcutsSection, value)) SaveKpiConfig(); } }
+
+        public ICommand ConfigureKpiCommand { get; }
+
+        private void LoadKpiConfig()
+        {
+            try
+            {
+                if (File.Exists(KpiConfigFilePath))
+                {
+                    var json = File.ReadAllText(KpiConfigFilePath);
+                    var cfg = JsonSerializer.Deserialize<KpiWidgetConfig>(json);
+                    if (cfg != null)
+                    {
+                        _showTodaySection = cfg.ShowToday;
+                        _showMonthSection = cfg.ShowMonth;
+                        _showAlertsSection = cfg.ShowAlerts;
+                        _showBalancesSection = cfg.ShowBalances;
+                        _showChartsSection = cfg.ShowCharts;
+                        _showShortcutsSection = cfg.ShowShortcuts;
+                    }
+                }
+            }
+            catch { /* use defaults */ }
+        }
+
+        private void SaveKpiConfig()
+        {
+            try
+            {
+                var cfg = new KpiWidgetConfig
+                {
+                    ShowToday = ShowTodaySection,
+                    ShowMonth = ShowMonthSection,
+                    ShowAlerts = ShowAlertsSection,
+                    ShowBalances = ShowBalancesSection,
+                    ShowCharts = ShowChartsSection,
+                    ShowShortcuts = ShowShortcutsSection
+                };
+                var json = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(KpiConfigFilePath, json);
+            }
+            catch { /* non-critical */ }
+        }
+
+        private void ShowConfigureKpiDialog()
+        {
+            // Toggle visibility directly — the section bindings auto-update
+            // A simple dialog with checkboxes would be ideal, but for now
+            // we expose the toggle properties and let the dashboard UI
+            // offer a settings gear that opens a popup.
+        }
+
         private async Task LoadDataAsync()
         {
             if (IsBusy) return;
@@ -307,10 +430,20 @@ namespace MarcoERP.WpfUI.ViewModels
                     TodayPayments = d.TodayPayments;
                     TodaySalesCount = d.TodaySalesCount;
                     TodayPurchasesCount = d.TodayPurchasesCount;
+                    DailyNetProfit = d.DailyNetProfit;
+                    TodaySalesDelta = d.TodaySalesDelta;
+                    TodayPurchasesDelta = d.TodayPurchasesDelta;
+                    TodayReceiptsDelta = d.TodayReceiptsDelta;
+                    TodayPaymentsDelta = d.TodayPaymentsDelta;
                     MonthSales = d.MonthSales;
                     MonthPurchases = d.MonthPurchases;
                     MonthReceipts = d.MonthReceipts;
                     MonthPayments = d.MonthPayments;
+                    GrossMarginPercent = d.GrossMarginPercent;
+                    MonthSalesDelta = d.MonthSalesDelta;
+                    MonthPurchasesDelta = d.MonthPurchasesDelta;
+                    MonthReceiptsDelta = d.MonthReceiptsDelta;
+                    MonthPaymentsDelta = d.MonthPaymentsDelta;
                     LowStockCount = d.LowStockCount;
                     TotalProducts = d.TotalProducts;
                     PendingSalesInvoices = d.PendingSalesInvoices;
@@ -326,6 +459,28 @@ namespace MarcoERP.WpfUI.ViewModels
                 {
                     ErrorMessage = result.ErrorMessage ?? "فشل تحميل بيانات لوحة التحكم.";
                 }
+
+                // Load chart data in parallel
+                var trendTask = _reportService.GetWeeklySalesTrendAsync(4);
+                var topTask = _reportService.GetTopProductsAsync(5);
+
+                await Task.WhenAll(trendTask, topTask);
+
+                var trendResult = trendTask.Result;
+                if (trendResult.IsSuccess && trendResult.Data != null)
+                {
+                    SalesTrendData.Clear();
+                    foreach (var point in trendResult.Data)
+                        SalesTrendData.Add(point);
+                }
+
+                var topResult = topTask.Result;
+                if (topResult.IsSuccess && topResult.Data != null)
+                {
+                    TopProductsData.Clear();
+                    foreach (var item in topResult.Data)
+                        TopProductsData.Add(item);
+                }
             }
             catch (System.Exception ex)
             {
@@ -335,6 +490,20 @@ namespace MarcoERP.WpfUI.ViewModels
             {
                 IsBusy = false;
             }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_refreshTimer != null)
+                {
+                    _refreshTimer.Stop();
+                    _refreshTimer.Tick -= OnRefreshTimerTick;
+                }
+            }
+
+            base.Dispose(disposing);
         }
     }
 
@@ -347,5 +516,16 @@ namespace MarcoERP.WpfUI.ViewModels
         public PackIconKind IconKind { get; set; }
         public Brush IconBrush { get; set; } = Brushes.Gray;
         public ICommand NavigateCommand { get; set; }
+    }
+
+    /// <summary>Persisted KPI widget visibility configuration.</summary>
+    public sealed class KpiWidgetConfig
+    {
+        public bool ShowToday { get; set; } = true;
+        public bool ShowMonth { get; set; } = true;
+        public bool ShowAlerts { get; set; } = true;
+        public bool ShowBalances { get; set; } = true;
+        public bool ShowCharts { get; set; } = true;
+        public bool ShowShortcuts { get; set; } = true;
     }
 }

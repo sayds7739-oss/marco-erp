@@ -1,8 +1,10 @@
+using System.Threading.Tasks;
+
 namespace MarcoERP.WpfUI.Services
 {
     public interface IWindowService
     {
-        void ShowMainWindow();
+        Task ShowMainWindowAsync();
 
         void OpenPosWindow();
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,10 +12,13 @@ using MarcoERP.Application.Interfaces.Purchases;
 using MarcoERP.Application.Mappers.Purchases;
 using MarcoERP.Domain.Entities.Purchases;
 using MarcoERP.Domain.Enums;
+using MarcoERP.Domain.Exceptions;
 using MarcoERP.Domain.Exceptions.Purchases;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Purchases;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Purchases
 {
@@ -33,6 +37,8 @@ namespace MarcoERP.Application.Services.Purchases
         private readonly IDateTimeProvider _dateTime;
         private readonly IValidator<CreatePurchaseQuotationDto> _createValidator;
         private readonly IValidator<UpdatePurchaseQuotationDto> _updateValidator;
+        private readonly ILogger<PurchaseQuotationService> _logger;
+        private readonly IFeatureService _featureService;
 
         private const string QuotationNotFoundMessage = "طلب الشراء غير موجود.";
 
@@ -45,7 +51,9 @@ namespace MarcoERP.Application.Services.Purchases
             ICurrentUserService currentUser,
             IDateTimeProvider dateTime,
             IValidator<CreatePurchaseQuotationDto> createValidator,
-            IValidator<UpdatePurchaseQuotationDto> updateValidator)
+            IValidator<UpdatePurchaseQuotationDto> updateValidator,
+            ILogger<PurchaseQuotationService> logger = null,
+            IFeatureService featureService = null)
         {
             _quotationRepo = quotationRepo ?? throw new ArgumentNullException(nameof(quotationRepo));
             _invoiceRepo = invoiceRepo ?? throw new ArgumentNullException(nameof(invoiceRepo));
@@ -56,6 +64,8 @@ namespace MarcoERP.Application.Services.Purchases
             _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PurchaseQuotationService>.Instance;
+            _featureService = featureService;
         }
 
         public async Task<ServiceResult<IReadOnlyList<PurchaseQuotationListDto>>> GetAllAsync(CancellationToken ct = default)
@@ -81,8 +91,14 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult<PurchaseQuotationDto>> CreateAsync(CreatePurchaseQuotationDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<PurchaseQuotationDto>(_currentUser, PermissionKeys.PurchaseQuotationCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "PurchaseQuotation", 0);
+
+            // Feature Guard — block operation if Purchases module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<PurchaseQuotationDto>(_featureService, FeatureKeys.Purchases, ct);
+                if (guard != null) return guard;
+            }
 
             var vr = await _createValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
@@ -127,15 +143,13 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult<PurchaseQuotationDto>> UpdateAsync(UpdatePurchaseQuotationDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<PurchaseQuotationDto>(_currentUser, PermissionKeys.PurchaseQuotationCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "PurchaseQuotation", dto.Id);
             var vr = await _updateValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<PurchaseQuotationDto>.Failure(
                     string.Join(" | ", vr.Errors.Select(e => e.ErrorMessage)));
 
-            var quotation = await _quotationRepo.GetWithLinesAsync(dto.Id, ct);
+            var quotation = await _quotationRepo.GetWithLinesTrackedAsync(dto.Id, ct);
             if (quotation == null)
                 return ServiceResult<PurchaseQuotationDto>.Failure(QuotationNotFoundMessage);
 
@@ -159,11 +173,12 @@ namespace MarcoERP.Application.Services.Purchases
                     newLines.Add(new PurchaseQuotationLine(
                         lineDto.ProductId, lineDto.UnitId, lineDto.Quantity,
                         lineDto.UnitPrice, productUnit.ConversionFactor,
-                        lineDto.DiscountPercent, product.VatRate));
+                        lineDto.DiscountPercent, product.VatRate,
+                        lineDto.Id));
                 }
 
                 quotation.ReplaceLines(newLines);
-                _quotationRepo.Update(quotation);
+                // Entity is already tracked — no need for _quotationRepo.Update(quotation)
                 await _unitOfWork.SaveChangesAsync(ct);
 
                 var saved = await _quotationRepo.GetWithLinesAsync(quotation.Id, ct);
@@ -177,9 +192,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult> SendAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.PurchaseQuotationCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "SendAsync", "PurchaseQuotation", id);
             var quotation = await _quotationRepo.GetWithLinesAsync(id, ct);
             if (quotation == null) return ServiceResult.Failure(QuotationNotFoundMessage);
 
@@ -189,9 +202,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult> AcceptAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.PurchaseQuotationCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "AcceptAsync", "PurchaseQuotation", id);
             var quotation = await _quotationRepo.GetByIdAsync(id, ct);
             if (quotation == null) return ServiceResult.Failure(QuotationNotFoundMessage);
 
@@ -201,9 +212,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult> RejectAsync(int id, string reason = null, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.PurchaseQuotationCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "RejectAsync", "PurchaseQuotation", id);
             var quotation = await _quotationRepo.GetByIdAsync(id, ct);
             if (quotation == null) return ServiceResult.Failure(QuotationNotFoundMessage);
 
@@ -213,9 +222,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult> CancelAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.PurchaseQuotationCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CancelAsync", "PurchaseQuotation", id);
             var quotation = await _quotationRepo.GetByIdAsync(id, ct);
             if (quotation == null) return ServiceResult.Failure(QuotationNotFoundMessage);
 
@@ -225,9 +232,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult> DeleteDraftAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.PurchaseQuotationCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteDraftAsync", "PurchaseQuotation", id);
             var quotation = await _quotationRepo.GetByIdAsync(id, ct);
             if (quotation == null) return ServiceResult.Failure(QuotationNotFoundMessage);
 
@@ -237,9 +242,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult<int>> ConvertToInvoiceAsync(int quotationId, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<int>(_currentUser, PermissionKeys.PurchasesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ConvertToInvoiceAsync", "PurchaseQuotation", quotationId);
             var quotation = await _quotationRepo.GetWithLinesAsync(quotationId, ct);
             if (quotation == null)
                 return ServiceResult<int>.Failure(QuotationNotFoundMessage);
@@ -252,31 +255,60 @@ namespace MarcoERP.Application.Services.Purchases
 
             try
             {
-                var invoiceNumber = await _invoiceRepo.GetNextNumberAsync(ct);
+                const int maxRetries = 3;
+                var attempt = 0;
 
-                var invoice = new PurchaseInvoice(
-                    invoiceNumber,
-                    _dateTime.UtcNow.Date,
-                    quotation.SupplierId,
-                    quotation.WarehouseId,
-                    $"محوّل من طلب شراء رقم {quotation.QuotationNumber}");
-
-                foreach (var qLine in quotation.Lines)
+                while (attempt < maxRetries)
                 {
-                    invoice.AddLine(
-                        qLine.ProductId, qLine.UnitId, qLine.Quantity,
-                        qLine.UnitPrice, qLine.ConversionFactor,
-                        qLine.DiscountPercent, qLine.VatRate);
+                    attempt++;
+
+                    try
+                    {
+                        int invoiceId = 0;
+
+                        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+                        {
+                            var invoiceNumber = await _invoiceRepo.GetNextNumberAsync(ct);
+
+                            var invoice = new PurchaseInvoice(
+                                invoiceNumber,
+                                _dateTime.UtcNow.Date,
+                                quotation.SupplierId,
+                                quotation.WarehouseId,
+                                $"محوّل من طلب شراء رقم {quotation.QuotationNumber}");
+
+                            foreach (var qLine in quotation.Lines)
+                            {
+                                invoice.AddLine(
+                                    qLine.ProductId, qLine.UnitId, qLine.Quantity,
+                                    qLine.UnitPrice, qLine.ConversionFactor,
+                                    qLine.DiscountPercent, qLine.VatRate);
+                            }
+
+                            await _invoiceRepo.AddAsync(invoice, ct);
+                            await _unitOfWork.SaveChangesAsync(ct);
+
+                            quotation.MarkAsConverted(invoice.Id, _dateTime.UtcNow);
+                            _quotationRepo.Update(quotation);
+                            await _unitOfWork.SaveChangesAsync(ct);
+
+                            invoiceId = invoice.Id;
+                        }, IsolationLevel.Serializable, ct);
+
+                        return ServiceResult<int>.Success(invoiceId);
+                    }
+                    catch (DuplicateRecordException) when (attempt < maxRetries)
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(100 * attempt), ct);
+                        continue;
+                    }
+                    catch (DuplicateRecordException)
+                    {
+                        return ServiceResult<int>.Failure("تعذر تحويل طلب الشراء بسبب تعارض بيانات فريدة. يرجى إعادة المحاولة.");
+                    }
                 }
 
-                await _invoiceRepo.AddAsync(invoice, ct);
-                await _unitOfWork.SaveChangesAsync(ct);
-
-                quotation.MarkAsConverted(invoice.Id, _dateTime.UtcNow);
-                _quotationRepo.Update(quotation);
-                await _unitOfWork.SaveChangesAsync(ct);
-
-                return ServiceResult<int>.Success(invoice.Id);
+                return ServiceResult<int>.Failure("فشل تحويل طلب الشراء لفاتورة بعد عدة محاولات.");
             }
             catch (PurchaseQuotationDomainException ex) { return ServiceResult<int>.Failure(ex.Message); }
             catch (PurchaseInvoiceDomainException ex) { return ServiceResult<int>.Failure(ex.Message); }

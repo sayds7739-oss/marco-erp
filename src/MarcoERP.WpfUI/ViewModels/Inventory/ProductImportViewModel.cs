@@ -103,8 +103,15 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         public int FailedCount
         {
             get => _failedCount;
-            set => SetProperty(ref _failedCount, value);
+            set
+            {
+                if (SetProperty(ref _failedCount, value))
+                    OnPropertyChanged(nameof(HasFailures));
+            }
         }
+
+        /// <summary>True when at least one row failed import — used for Visibility binding.</summary>
+        public bool HasFailures => _failedCount > 0;
 
         // ══════════════════════════════════════════════════════════
         // COMMANDS
@@ -159,7 +166,17 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                     }
 
                     IsPreviewed = true;
-                    StatusMessage = $"تم تحليل {TotalRows} صنف — {ValidRows} صالح، {InvalidRows} يحتاج مراجعة";
+                    var topReasons = result.Data
+                        .Where(r => !r.IsValid)
+                        .SelectMany(r => r.Errors)
+                        .GroupBy(e => e)
+                        .OrderByDescending(g => g.Count())
+                        .Take(3)
+                        .Select(g => $"{g.Key} ({g.Count()})");
+
+                    var reasonsText = string.Join(" | ", topReasons);
+                    StatusMessage = $"تم تحليل {TotalRows} صنف — {ValidRows} صالح، {InvalidRows} يحتاج مراجعة"
+                        + (string.IsNullOrWhiteSpace(reasonsText) ? string.Empty : $" | الأسباب الأكثر تكراراً: {reasonsText}");
                 }
                 else
                 {

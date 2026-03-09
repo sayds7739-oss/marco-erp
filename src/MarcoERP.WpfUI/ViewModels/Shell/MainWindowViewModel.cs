@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -9,6 +10,7 @@ using System.Windows.Threading;
 using MaterialDesignThemes.Wpf;
 using Microsoft.Extensions.DependencyInjection;
 using MarcoERP.Application.Common;
+using MarcoERP.Application.DTOs.Common;
 using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Search;
 using MarcoERP.Application.Interfaces.Settings;
@@ -21,12 +23,14 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
     public sealed class MainWindowViewModel : BaseViewModel
     {
         private readonly INavigationService _navigationService;
+        private readonly TabNavigationService _tabNavigationService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IWindowService _windowService;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly DispatcherTimer _clockTimer;
         private readonly IServiceProvider _serviceProvider;
         private readonly DispatcherTimer _commandPaletteDebounceTimer;
+        private readonly DispatcherTimer _performanceTimer;
 
         public MainWindowViewModel(
             INavigationService navigationService,
@@ -36,6 +40,8 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
             IServiceProvider serviceProvider)
         {
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+            _tabNavigationService = navigationService as TabNavigationService
+                ?? throw new InvalidOperationException("خطأ في تهيئة خدمة التنقل — يجب أن يكون INavigationService من نوع TabNavigationService.");
             _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
             _windowService = windowService ?? throw new ArgumentNullException(nameof(windowService));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
@@ -59,6 +65,7 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
             CloseAllTabsCommand = new AsyncRelayCommand(CloseAllTabsAsync);
 
             _navigationService.NavigationChanged += OnNavigationChanged;
+            _tabNavigationService.PropertyChanged += OnTabNavigationPropertyChanged;
 
             BuildNavigationItems();
 
@@ -75,6 +82,12 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
             _clockTimer.Start();
             UpdateDateTime();
 
+            // Performance monitor: update memory usage every 5 seconds
+            _performanceTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+            _performanceTimer.Tick += (_, _) => UpdatePerformanceMetrics();
+            _performanceTimer.Start();
+            UpdatePerformanceMetrics();
+
             _commandPaletteDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             _commandPaletteDebounceTimer.Tick += async (_, _) =>
             {
@@ -89,23 +102,18 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
 
         public ObservableCollection<NavigationItem> NavigationItems { get; }
 
-        public ObservableCollection<DocumentTab> OpenTabs { get; } = new();
+        public ObservableCollection<DocumentTab> OpenTabs => _tabNavigationService.OpenTabs;
 
         private NavigationItem _activeItem;
 
-        private DocumentTab _activeTab;
         public DocumentTab ActiveTab
         {
-            get => _activeTab;
+            get => _tabNavigationService.ActiveTab;
             set
             {
-                if (SetProperty(ref _activeTab, value))
+                if (_tabNavigationService.ActiveTab != value)
                 {
-                    foreach (var tab in OpenTabs)
-                        tab.IsActive = tab == _activeTab;
-
-                    PageTitle = _activeTab?.Title ?? "لوحة التحكم";
-                    CurrentView = _activeTab?.View;
+                    _ = _tabNavigationService.ActivateTabAsync(value);
                 }
             }
         }
@@ -208,17 +216,56 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
 
         public ICommand CloseAllTabsCommand { get; }
 
-        private System.Windows.Controls.UserControl _currentView;
         public System.Windows.Controls.UserControl CurrentView
         {
-            get => _currentView;
-            set => SetProperty(ref _currentView, value);
+            get => _tabNavigationService.CurrentView;
         }
 
         private void UpdateDateTime()
         {
             var now = _dateTimeProvider.UtcNow.ToLocalTime();
             CurrentDateTime = now.ToString("yyyy-MM-dd  hh:mm tt");
+        }
+
+        // ── Performance Monitor ──
+
+        private double _memoryUsageMb;
+        public double MemoryUsageMb
+        {
+            get => _memoryUsageMb;
+            set => SetProperty(ref _memoryUsageMb, value);
+        }
+
+        private long _activeViewLoadTimeMs;
+        public long ActiveViewLoadTimeMs
+        {
+            get => _activeViewLoadTimeMs;
+            set => SetProperty(ref _activeViewLoadTimeMs, value);
+        }
+
+        private int _activeViewRecordCount;
+        public int ActiveViewRecordCount
+        {
+            get => _activeViewRecordCount;
+            set => SetProperty(ref _activeViewRecordCount, value);
+        }
+
+        private void UpdatePerformanceMetrics()
+        {
+            MemoryUsageMb = Math.Round(GC.GetTotalMemory(false) / (1024.0 * 1024.0), 1);
+
+            // Read performance data from the active tab's ViewModel
+            var vm = ActiveTab?.View?.DataContext as BaseViewModel;
+            if (vm != null)
+            {
+                ActiveViewLoadTimeMs = vm.LastLoadTimeMs;
+                ActiveViewRecordCount = vm.CurrentRecordCount;
+            }
+            else
+            {
+                ActiveViewLoadTimeMs = 0;
+                ActiveViewRecordCount = 0;
+            }
         }
 
         private void ToggleSidebar()
@@ -262,6 +309,45 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
             {
                 Notifications.Clear();
                 using var scope = _serviceProvider.CreateScope();
+
+                // ── Smart business notifications ──
+                var notificationService = scope.ServiceProvider.GetService<MarcoERP.Application.Interfaces.INotificationService>();
+                if (notificationService != null)
+                {
+                    try
+                    {
+                        await notificationService.RefreshAsync();
+                        var alerts = await notificationService.GetUnreadAsync();
+                        if (alerts.IsSuccess && alerts.Data?.Count > 0)
+                        {
+                            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                foreach (var n in alerts.Data.Take(10))
+                                {
+                                    Notifications.Add(new NotificationItemViewModel
+                                    {
+                                        Title = n.Title,
+                                        Detail = n.Message,
+                                        Timestamp = n.TimeAgo,
+                                        Icon = n.Level switch
+                                        {
+                                            NotificationLevel.Warning => PackIconKind.Alert,
+                                            NotificationLevel.Error => PackIconKind.AlertCircle,
+                                            NotificationLevel.Success => PackIconKind.CheckCircle,
+                                            _ => PackIconKind.InformationOutline,
+                                        },
+                                    });
+                                }
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Notifications] Smart alerts: {ex.Message}");
+                    }
+                }
+
+                // ── Audit log notifications ──
                 var auditLogService = scope.ServiceProvider.GetRequiredService<MarcoERP.Application.Interfaces.Settings.IAuditLogService>();
 
                 var today = _dateTimeProvider.UtcNow.Date;
@@ -277,17 +363,25 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
                             {
                                 Title = GetNotificationTitle(log.Action, log.EntityType),
                                 Detail = log.Details ?? string.Empty,
-                                Timestamp = log.Timestamp.ToLocalTime().ToString("MM/dd HH:mm"),
+                                Timestamp = log.Timestamp.ToLocalTime().ToString("dd/MM HH:mm"),
                                 Icon = GetNotificationIcon(log.Action),
                             });
                         }
                         NotificationCount = Notifications.Count;
                     });
                 }
+                else
+                {
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        NotificationCount = Notifications.Count;
+                    });
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // Best-effort notification loading
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] {ex.Message}");
+                StatusMessage = "تعذر تحميل الإشعارات";
             }
         }
 
@@ -382,8 +476,9 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
                         FilteredCommandItems.Add(searchItem);
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] {ex.Message}");
                 // Search is best-effort; ignore transient failures
             }
         }
@@ -470,10 +565,29 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
             }
         }
 
-        private void Logout()
+        private async void Logout()
         {
+            // Check ALL open tabs for unsaved changes before logging out
+            var dirtyTabs = OpenTabs
+                .Where(t => t.View?.DataContext is IDirtyStateAware d && d.IsDirty)
+                .ToList();
+
+            if (dirtyTabs.Count > 0)
+            {
+                foreach (var tab in dirtyTabs)
+                {
+                    if (tab.View?.DataContext is not IDirtyStateAware dirty)
+                        continue;
+
+                    var canContinue = await DirtyStateGuard.ConfirmContinueAsync(dirty, tab.Title);
+                    if (!canContinue)
+                        return; // User chose to cancel — abort logout
+                }
+            }
+
             _clockTimer.Stop();
             _navigationService.NavigationChanged -= OnNavigationChanged;
+            _tabNavigationService.PropertyChanged -= OnTabNavigationPropertyChanged;
             _windowService.LogoutToLogin();
         }
 
@@ -494,6 +608,8 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
                 "Cancel" => TryExecuteActiveViewModelCommand("CancelEditCommand"),
                 "Next" => TryExecuteActiveViewModelCommand("GoToNextCommand"),
                 "Previous" => TryExecuteActiveViewModelCommand("GoToPreviousCommand"),
+                "Undo" => TryExecuteActiveViewModelCommand("UndoCommand"),
+                "Redo" => TryExecuteActiveViewModelCommand("RedoCommand"),
                 _ => false
             };
         }
@@ -521,10 +637,29 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
         private void OnNavigationChanged(object sender, NavigationChangedEventArgs e)
         {
             SyncActiveItemByViewKey(e?.Key);
-            OpenOrActivateTab(e);
+            PageTitle = ActiveTab?.Title ?? "لوحة التحكم";
+            OnPropertyChanged(nameof(ActiveTab));
+            OnPropertyChanged(nameof(CurrentView));
             StatusMessage = CurrentView != null
                 ? $"تم فتح: {e.Title}"
                 : $"تعذر فتح: {e?.Title}";
+            UpdatePerformanceMetrics();
+        }
+
+        private void OnTabNavigationPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            // ActiveTab/CurrentView updates are already handled by OnNavigationChanged.
+            // This handler only covers edge cases where ActiveTab changes without
+            // NavigationChanged firing (e.g., last tab disposed via CloseView).
+            if (e.PropertyName is nameof(TabNavigationService.ActiveTab) or nameof(TabNavigationService.CurrentView))
+            {
+                if (ActiveTab == null)
+                {
+                    PageTitle = "لوحة التحكم";
+                    OnPropertyChanged(nameof(ActiveTab));
+                    OnPropertyChanged(nameof(CurrentView));
+                }
+            }
         }
 
         private void SyncActiveItemByViewKey(string viewKey)
@@ -541,72 +676,18 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
                 SetActiveItem(match);
         }
 
-        private void OpenOrActivateTab(NavigationChangedEventArgs e)
-        {
-            if (e == null) return;
-
-            var tabKey = BuildTabKey(e.Key, e.Parameter);
-            var existing = OpenTabs.FirstOrDefault(t => string.Equals(t.TabKey, tabKey, StringComparison.OrdinalIgnoreCase));
-            if (existing != null)
-            {
-                ActiveTab = existing;
-                return;
-            }
-
-            // Look up icon from the matching sidebar navigation item
-            var navItem = NavigationItems.FirstOrDefault(i =>
-                i.ItemType == NavigationItemType.Item &&
-                !string.IsNullOrWhiteSpace(i.ViewKey) &&
-                string.Equals(i.ViewKey, e.Key, StringComparison.OrdinalIgnoreCase));
-
-            var tab = new DocumentTab(tabKey, e.Title, e.View, e.Parameter)
-            {
-                ViewKey = e.Key,
-                IconKind = navItem?.IconKind ?? MaterialDesignThemes.Wpf.PackIconKind.FileDocumentOutline,
-                IconBrush = navItem?.IconBrush
-            };
-
-            OpenTabs.Add(tab);
-            ActiveTab = tab;
-        }
-
         private async Task ActivateTabAsync(object parameter)
         {
             if (parameter is not DocumentTab tab) return;
-            if (ActiveTab == tab) return;
-
-            if (ActiveTab?.View?.DataContext is IDirtyStateAware dirty)
-            {
-                var canContinue = await DirtyStateGuard.ConfirmContinueAsync(dirty);
-                if (!canContinue)
-                    return;
-            }
-
-            ActiveTab = tab;
+            await _tabNavigationService.ActivateTabAsync(tab);
         }
 
         private async Task CloseTabAsync(object parameter)
         {
             if (parameter is not DocumentTab tab) return;
-
-            if (tab.View?.DataContext is IDirtyStateAware dirty)
-            {
-                var canClose = await DirtyStateGuard.ConfirmContinueAsync(dirty);
-                if (!canClose)
-                    return;
-            }
-
-            var wasActive = ActiveTab == tab;
-            tab.UnhookDirtyTracking();
-            OpenTabs.Remove(tab);
-            _navigationService.CloseView(tab.ViewKey, tab.Parameter);
-
-            if (wasActive)
-            {
-                ActiveTab = OpenTabs.LastOrDefault();
-                if (ActiveTab == null)
-                    PageTitle = "لوحة التحكم";
-            }
+            await _tabNavigationService.CloseTabAsync(tab);
+            if (ActiveTab == null)
+                PageTitle = "لوحة التحكم";
         }
 
         private async Task ActivateNextTabAsync()
@@ -647,48 +728,13 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
         {
             var keepTab = parameter as DocumentTab ?? ActiveTab;
             if (keepTab == null) return;
-
-            var tabsToClose = OpenTabs.Where(t => t != keepTab).ToList();
-            foreach (var tab in tabsToClose)
-            {
-                if (tab.View?.DataContext is IDirtyStateAware dirty)
-                {
-                    var canClose = await DirtyStateGuard.ConfirmContinueAsync(dirty);
-                    if (!canClose) return;
-                }
-
-                tab.UnhookDirtyTracking();
-                OpenTabs.Remove(tab);
-                _navigationService.CloseView(tab.ViewKey, tab.Parameter);
-            }
-
-            ActiveTab = keepTab;
+            await _tabNavigationService.CloseOtherTabsAsync(keepTab);
         }
 
         private async Task CloseAllTabsAsync()
         {
-            var tabsToClose = OpenTabs.ToList();
-            foreach (var tab in tabsToClose)
-            {
-                if (tab.View?.DataContext is IDirtyStateAware dirty)
-                {
-                    var canClose = await DirtyStateGuard.ConfirmContinueAsync(dirty);
-                    if (!canClose) return;
-                }
-
-                tab.UnhookDirtyTracking();
-                OpenTabs.Remove(tab);
-                _navigationService.CloseView(tab.ViewKey, tab.Parameter);
-            }
-
-            ActiveTab = null;
+            await _tabNavigationService.CloseAllTabsAsync();
             PageTitle = "لوحة التحكم";
-        }
-
-        private static string BuildTabKey(string key, object parameter)
-        {
-            if (parameter == null) return key;
-            return key + ":" + parameter;
         }
 
         private void Navigate(NavigationItem item)
@@ -787,7 +833,7 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
                 CreateItem("مندوبي المبيعات", "SalesRepresentatives", MaterialDesignThemes.Wpf.PackIconKind.BadgeAccount, new SolidColorBrush(Color.FromRgb(239, 154, 154)), PermissionKeys.SalesView),
                 CreateItem("قوائم الأسعار", "PriceLists", MaterialDesignThemes.Wpf.PackIconKind.CurrencyUsd, new SolidColorBrush(Color.FromRgb(239, 154, 154)), PermissionKeys.PriceListView),
                 CreateItem("عروض الأسعار", "SalesQuotations", MaterialDesignThemes.Wpf.PackIconKind.FileDocumentEdit, new SolidColorBrush(Color.FromRgb(239, 154, 154)), PermissionKeys.SalesQuotationView),
-                CreateCommandItem("نقطة البيع", MaterialDesignThemes.Wpf.PackIconKind.Store, new SolidColorBrush(Color.FromRgb(239, 154, 154)), new RelayCommand(_ => _windowService.OpenPosWindow())));
+                CreateCommandItem("نقطة البيع", MaterialDesignThemes.Wpf.PackIconKind.Store, new SolidColorBrush(Color.FromRgb(239, 154, 154)), new RelayCommand(_ => _windowService.OpenPosWindow()), PermissionKeys.PosAccess));
 
             AddSection("المشتريات",
                 CreateItem("فواتير الشراء", "PurchaseInvoices", MaterialDesignThemes.Wpf.PackIconKind.CartOutline, new SolidColorBrush(Color.FromRgb(206, 147, 216)), PermissionKeys.PurchasesView),
@@ -811,6 +857,7 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
             AddSection("الإعدادات",
                 CreateItem("السنة المالية", "FiscalYear", MaterialDesignThemes.Wpf.PackIconKind.Calendar, new SolidColorBrush(Color.FromRgb(176, 190, 197))),
                 CreateItem("إعدادات النظام", "SystemSettings", MaterialDesignThemes.Wpf.PackIconKind.Cog, new SolidColorBrush(Color.FromRgb(176, 190, 197)), PermissionKeys.SettingsManage),
+                CreateItem("مركز الطباعة", "PrintCenter", MaterialDesignThemes.Wpf.PackIconKind.Printer, new SolidColorBrush(Color.FromRgb(176, 190, 197)), PermissionKeys.SettingsManage),
                 CreateItem("إدارة المستخدمين", "UserManagement", MaterialDesignThemes.Wpf.PackIconKind.AccountMultiple, new SolidColorBrush(Color.FromRgb(176, 190, 197)), PermissionKeys.UsersManage),
                 CreateItem("إدارة الأدوار", "RoleManagement", MaterialDesignThemes.Wpf.PackIconKind.ShieldAccount, new SolidColorBrush(Color.FromRgb(176, 190, 197)), PermissionKeys.RolesManage),
                 CreateItem("سجل المراجعة", "AuditLog", MaterialDesignThemes.Wpf.PackIconKind.ClipboardTextClock, new SolidColorBrush(Color.FromRgb(176, 190, 197)), PermissionKeys.AuditLogView),
@@ -852,6 +899,15 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
             { "المشتريات",  "Purchases" },
             { "الخزينة",    "Treasury" },
             { "التقارير",   "Reporting" },
+        };
+
+        // Maps individual navigation item titles to their feature key.
+        // Used for items that live inside a section not directly mapped (e.g. POS under Sales, users under Settings).
+        private static readonly System.Collections.Generic.Dictionary<string, string> _itemFeatureMap = new(StringComparer.OrdinalIgnoreCase)
+        {
+            { "نقطة البيع",       "POS" },
+            { "إدارة المستخدمين", "UserManagement" },
+            { "إدارة الأدوار",    "UserManagement" },
         };
 
         /// <summary>
@@ -907,7 +963,13 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
                         }
                         else if (item.ItemType == NavigationItemType.Item)
                         {
-                            if (currentSection != null && _sectionFeatureMap.ContainsKey(currentSection))
+                            // Per-item feature gating (e.g. POS, UserManagement)
+                            if (_itemFeatureMap.TryGetValue(item.Title, out var itemFeatureKey))
+                            {
+                                bool itemFeatureEnabled = !enabledSet.Any() || enabledSet.Contains(itemFeatureKey);
+                                item.IsVisible = currentSectionVisible && itemFeatureEnabled && IsVisibleForUser(item.PermissionKey);
+                            }
+                            else if (currentSection != null && _sectionFeatureMap.ContainsKey(currentSection))
                             {
                                 item.IsVisible = currentSectionVisible && IsVisibleForUser(item.PermissionKey);
                             }
@@ -933,8 +995,9 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
                     }
                 });
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] {ex.Message}");
                 // Feature check is best-effort; ensure all navigation stays visible
                 EnsureAllNavigationVisible();
             }
@@ -959,7 +1022,7 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
                     }
                 });
             }
-            catch { /* UI thread safety */ }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"[MainWindow] {ex.Message}"); /* UI thread safety */ }
         }
     }
 }

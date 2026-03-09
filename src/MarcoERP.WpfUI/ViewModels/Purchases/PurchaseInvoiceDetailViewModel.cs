@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -26,9 +26,9 @@ using MarcoERP.WpfUI.Views.Common;
 namespace MarcoERP.WpfUI.ViewModels.Purchases
 {
     /// <summary>
-    /// Full-screen ViewModel for Purchase Invoice detail — create, edit, post, cancel.
+    /// Full-screen ViewModel for Purchase Invoice detail â€” create, edit, post, cancel.
     /// </summary>
-    public sealed class PurchaseInvoiceDetailViewModel : BaseViewModel, INavigationAware, IInvoiceLineFormHost, IDirtyStateAware
+    public sealed partial class PurchaseInvoiceDetailViewModel : BaseViewModel, INavigationAware, IInvoiceLineFormHost, IDirtyStateAware
     {
         private readonly IPurchaseInvoiceService _invoiceService;
         private readonly IProductService _productService;
@@ -41,6 +41,8 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
         private readonly ISmartEntryQueryService _smartEntryQueryService;
         private readonly IInvoicePdfPreviewService _invoicePdfPreviewService;
         private readonly ILineCalculationService _lineCalculationService;
+        private readonly IDialogService _dialog;
+        private readonly IAttachmentService _attachmentService;
 
         private readonly Dictionary<PurchaseInvoiceLineFormItem, int> _smartRefreshVersions = new();
 
@@ -51,7 +53,23 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
         public ObservableCollection<ProductDto> Products { get; } = new();
         public ObservableCollection<PurchaseInvoiceLineFormItem> FormLines { get; } = new();
 
-        // ── Invoice Navigation ───────────────────────────────────
+        // ── Attachments ────────────────────────────────────────────
+        public ObservableCollection<AttachmentDto> Attachments { get; } = new();
+
+        private AttachmentDto _selectedAttachment;
+        public AttachmentDto SelectedAttachment
+        {
+            get => _selectedAttachment;
+            set => SetProperty(ref _selectedAttachment, value);
+        }
+
+        public bool HasNoAttachments => Attachments.Count == 0;
+
+        public ICommand UploadAttachmentCommand { get; private set; }
+        public ICommand DeleteAttachmentCommand { get; private set; }
+        public ICommand OpenAttachmentCommand { get; private set; }
+
+        // â”€â”€ Invoice Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         private List<int> _invoiceIds = new();
         private int _currentInvoiceIndex = -1;
         private Dictionary<string, int> _invoiceNumberToId = new(StringComparer.OrdinalIgnoreCase);
@@ -62,7 +80,7 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             ? $"{_currentInvoiceIndex + 1} / {_invoiceIds.Count}"
             : string.Empty;
 
-        // ── IDirtyStateAware ─────────────────────────────────────
+        // â”€â”€ IDirtyStateAware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         public void ResetDirtyState() => ResetDirtyTracking();
 
         public async Task<bool> SaveChangesAsync()
@@ -192,7 +210,98 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
         }
 
         private string _formNotes;
-        public string FormNotes { get => _formNotes; set { if (SetProperty(ref _formNotes, value)) MarkDirty(); } }
+        public string FormNotes
+        {
+            get => _formNotes;
+            set
+            {
+                var old = _formNotes;
+                if (SetProperty(ref _formNotes, value))
+                {
+                    MarkDirty();
+                    if (UndoManager is { IsSuppressed: false })
+                        UndoManager.RecordChange(nameof(FormNotes), old, value, v => FormNotes = (string)v);
+                }
+            }
+        }
+
+        private decimal _formHeaderDiscountPercent;
+        public decimal FormHeaderDiscountPercent
+        {
+            get => _formHeaderDiscountPercent;
+            set
+            {
+                var old = _formHeaderDiscountPercent;
+                if (SetProperty(ref _formHeaderDiscountPercent, value))
+                {
+                    MarkDirty();
+                    RefreshTotals();
+                    if (UndoManager is { IsSuppressed: false })
+                        UndoManager.RecordChange(nameof(FormHeaderDiscountPercent), old, value, v => FormHeaderDiscountPercent = (decimal)v);
+                }
+            }
+        }
+
+        private decimal _formHeaderDiscountAmount;
+        public decimal FormHeaderDiscountAmount
+        {
+            get => _formHeaderDiscountAmount;
+            set
+            {
+                var old = _formHeaderDiscountAmount;
+                if (SetProperty(ref _formHeaderDiscountAmount, value))
+                {
+                    MarkDirty();
+                    RefreshTotals();
+                    if (UndoManager is { IsSuppressed: false })
+                        UndoManager.RecordChange(nameof(FormHeaderDiscountAmount), old, value, v => FormHeaderDiscountAmount = (decimal)v);
+                }
+            }
+        }
+
+        private decimal _formDeliveryFee;
+        public decimal FormDeliveryFee
+        {
+            get => _formDeliveryFee;
+            set
+            {
+                var old = _formDeliveryFee;
+                if (SetProperty(ref _formDeliveryFee, value))
+                {
+                    MarkDirty();
+                    RefreshTotals();
+                    if (UndoManager is { IsSuppressed: false })
+                        UndoManager.RecordChange(nameof(FormDeliveryFee), old, value, v => FormDeliveryFee = (decimal)v);
+                }
+            }
+        }
+
+        private InvoiceType _formInvoiceType = InvoiceType.Cash;
+        public InvoiceType FormInvoiceType { get => _formInvoiceType; set => SetProperty(ref _formInvoiceType, value); }
+
+        private PaymentMethod _formPaymentMethod = PaymentMethod.Cash;
+        public PaymentMethod FormPaymentMethod { get => _formPaymentMethod; set => SetProperty(ref _formPaymentMethod, value); }
+
+        /// <summary>Static list for InvoiceType ComboBox binding.</summary>
+        public static IReadOnlyList<KeyValuePair<InvoiceType, string>> InvoiceTypes { get; } = new[]
+        {
+            new KeyValuePair<InvoiceType, string>(InvoiceType.Cash, "نقدي"),
+            new KeyValuePair<InvoiceType, string>(InvoiceType.Credit, "آجل")
+        };
+
+        /// <summary>Static list for PaymentMethod ComboBox binding.</summary>
+        public static IReadOnlyList<KeyValuePair<PaymentMethod, string>> PaymentMethods { get; } = new[]
+        {
+            new KeyValuePair<PaymentMethod, string>(PaymentMethod.Cash, "نقدي"),
+            new KeyValuePair<PaymentMethod, string>(PaymentMethod.Card, "بطاقة"),
+            new KeyValuePair<PaymentMethod, string>(PaymentMethod.OnAccount, "آجل"),
+            new KeyValuePair<PaymentMethod, string>(PaymentMethod.Check, "شيك"),
+            new KeyValuePair<PaymentMethod, string>(PaymentMethod.BankTransfer, "تحويل بنكي"),
+            new KeyValuePair<PaymentMethod, string>(PaymentMethod.EWallet, "محفظة إلكترونية")
+        };
+
+        private DateTime? _formDueDate;
+        public DateTime? FormDueDate { get => _formDueDate; set => SetProperty(ref _formDueDate, value); }
 
         private string _jumpInvoiceNumber;
         public string JumpInvoiceNumber
@@ -247,9 +356,14 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
         {
             var totals = CalculateTotals(FormLines.Select(l => l.GetCalculationRequest()));
             TotalSubtotal = totals.Subtotal;
-            TotalDiscount = totals.DiscountTotal;
-            TotalVat = totals.VatTotal;
-            TotalNet = totals.NetTotal;
+
+            // Apply header-level discount via Application layer service
+            var header = _lineCalculationService.ApplyHeaderDiscount(
+                totals, FormHeaderDiscountPercent, FormHeaderDiscountAmount, FormDeliveryFee);
+            TotalDiscount = header.TotalDiscount;
+            TotalVat = header.VatTotal;
+            TotalNet = header.NetTotal;
+
             OnPropertyChanged(nameof(BalanceAmount));
             OnPropertyChanged(nameof(RemainingAmount));
             OnPropertyChanged(nameof(CanSave));
@@ -327,7 +441,9 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             IInvoiceTreasuryIntegrationService invoiceTreasuryIntegrationService,
             ISmartEntryQueryService smartEntryQueryService,
             IInvoicePdfPreviewService invoicePdfPreviewService,
-            ILineCalculationService lineCalculationService)
+            ILineCalculationService lineCalculationService,
+            IDialogService dialog,
+            IAttachmentService attachmentService)
         {
             _invoiceService = invoiceService ?? throw new ArgumentNullException(nameof(invoiceService));
             _productService = productService ?? throw new ArgumentNullException(nameof(productService));
@@ -340,6 +456,8 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             _smartEntryQueryService = smartEntryQueryService ?? throw new ArgumentNullException(nameof(smartEntryQueryService));
             _invoicePdfPreviewService = invoicePdfPreviewService ?? throw new ArgumentNullException(nameof(invoicePdfPreviewService));
             _lineCalculationService = lineCalculationService ?? throw new ArgumentNullException(nameof(lineCalculationService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
+            _attachmentService = attachmentService ?? throw new ArgumentNullException(nameof(attachmentService));
 
             SaveCommand = new AsyncRelayCommand(SaveAsync, () => CanSave);
             PostCommand = new AsyncRelayCommand(PostAsync, () => CanPost);
@@ -357,648 +475,67 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             OpenAddLinePopupCommand = new RelayCommand(_ => OpenAddLinePopup());
             EditLineCommand = new RelayCommand(EditLinePopup);
             OpenPriceHistoryCommand = new AsyncRelayCommand(OpenPriceHistoryAsync);
+
+            // Attachment commands
+            UploadAttachmentCommand = CreateCommand(UploadAttachmentAsync, () => CurrentInvoice != null);
+            DeleteAttachmentCommand = CreateCommand(DeleteAttachmentAsync, () => SelectedAttachment != null);
+            OpenAttachmentCommand = CreateCommand(OpenAttachmentAsync, () => SelectedAttachment != null);
+            Attachments.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoAttachments));
         }
 
-        private async Task OpenPriceHistoryAsync(object parameter)
+        private async Task UploadAttachmentAsync()
         {
-            int productId = 0;
-            int unitId = 0;
-            Action<decimal> applyPrice = null;
-
-            if (parameter is InvoiceLinePopupState popup)
+            if (CurrentInvoice == null) return;
+            var dlg = new Microsoft.Win32.OpenFileDialog
             {
-                productId = popup.ProductId;
-                unitId = popup.SelectedUnitId;
-                applyPrice = popup.ApplyUnitPrice;
-            }
-            else if (parameter is PurchaseInvoiceLineFormItem line)
+                Title = "اختر ملف مرفق",
+                Filter = "كل الملفات|*.*|PDF|*.pdf|صور|*.png;*.jpg;*.jpeg|Excel|*.xlsx;*.xls"
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            var result = await _attachmentService.UploadAsync("PurchaseInvoice", CurrentInvoice.Id, dlg.FileName);
+            if (result.IsSuccess)
             {
-                productId = line.ProductId;
-                unitId = line.UnitId;
-                applyPrice = price => line.UnitPrice = price;
-            }
-
-            if (productId <= 0 || unitId <= 0 || applyPrice == null)
-                return;
-
-            var owner = System.Windows.Application.Current?.MainWindow;
-            var selectedPrice = await PriceHistoryHelper.ShowAsync(
-                _smartEntryQueryService,
-                PriceHistorySource.Purchase,
-                FormCounterpartyType,
-                FormCounterpartyCustomerId,
-                FormSupplierId,
-                productId,
-                unitId,
-                owner);
-
-            if (selectedPrice.HasValue)
-                applyPrice(selectedPrice.Value);
-        }
-
-        public async Task OnNavigatedToAsync(object parameter)
-        {
-            await RunDbGuardedAsync(async () =>
-            {
-                await LoadLookupsAsync();
-                await LoadInvoiceIdsAsync();
-                if (parameter is int id && id > 0)
-                {
-                    _currentInvoiceIndex = _invoiceIds.IndexOf(id);
-                    await LoadDetailAsync(id);
-                }
-                else
-                {
-                    await PrepareNewAsync();
-                }
-
-                UpdateNavigationState();
-            });
-        }
-
-        private async Task LoadLookupsAsync()
-        {
-            var suppResult = await _supplierService.GetAllAsync();
-            Suppliers.Clear();
-            if (suppResult.IsSuccess)
-                foreach (var s in suppResult.Data.Where(x => x.IsActive))
-                    Suppliers.Add(s);
-
-            var custResult = await _customerService.GetAllAsync();
-            Customers.Clear();
-            if (custResult.IsSuccess)
-                foreach (var c in custResult.Data.Where(x => x.IsActive))
-                    Customers.Add(c);
-
-            var repResult = await _salesRepresentativeService.GetActiveAsync();
-            SalesRepresentatives.Clear();
-            if (repResult.IsSuccess)
-                foreach (var rep in repResult.Data)
-                    SalesRepresentatives.Add(rep);
-
-            var whResult = await _warehouseService.GetAllAsync();
-            Warehouses.Clear();
-            if (whResult.IsSuccess)
-                foreach (var w in whResult.Data.Where(x => x.IsActive))
-                    Warehouses.Add(w);
-
-            var prodResult = await _productService.GetAllAsync();
-            Products.Clear();
-            if (prodResult.IsSuccess)
-                foreach (var p in prodResult.Data.Where(x => x.Status == "Active"))
-                    Products.Add(p);
-        }
-
-        private async Task LoadDetailAsync(int id)
-        {
-            IsBusy = true;
-            ClearError();
-            try
-            {
-                var result = await _invoiceService.GetByIdAsync(id);
-                if (result.IsSuccess) { CurrentInvoice = result.Data; PopulateForm(result.Data); StatusMessage = $"فاتورة شراء «{result.Data.InvoiceNumber}»"; }
-                else ErrorMessage = result.ErrorMessage;
-            }
-            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("تحميل الفاتورة", ex); }
-            finally { IsBusy = false; }
-        }
-
-        private async Task PrepareNewAsync()
-        {
-            IsEditing = true; IsNew = true; CurrentInvoice = null; ClearError();
-            try { var r = await _invoiceService.GetNextNumberAsync(); FormNumber = r.IsSuccess ? r.Data : ""; }
-            catch { FormNumber = ""; }
-            FormDate = DateTime.Today;
-            FormCounterpartyType = CounterpartyType.Supplier;
-            FormSupplierId = null;
-            FormCounterpartyCustomerId = null;
-            FormSalesRepresentativeId = null;
-            FormWarehouseId = null;
-            FormNotes = "";
-            UnhookAllLines();
-            FormLines.Clear(); RefreshTotals();
-            StatusMessage = "إنشاء فاتورة شراء جديدة...";
-            ResetDirtyTracking();
-        }
-
-        private void AddLine(object _)
-        {
-            if (!IsEditing && !IsNew) return;
-            OpenAddLinePopup();
-        }
-
-        private void RemoveLine(object parameter)
-        {
-            if (!IsEditing && !IsNew) return;
-            if (parameter is PurchaseInvoiceLineFormItem line)
-            {
-                UnhookLine(line);
-                FormLines.Remove(line);
-                RefreshTotals();
-                MarkDirty();
-            }
-        }
-
-        private void HookLine(PurchaseInvoiceLineFormItem line)
-        {
-            if (line == null) return;
-            if (_smartRefreshVersions.ContainsKey(line))
-                return;
-
-            _smartRefreshVersions[line] = 0;
-            line.PropertyChanged += LineOnPropertyChanged;
-        }
-
-        private void UnhookLine(PurchaseInvoiceLineFormItem line)
-        {
-            if (line == null) return;
-            if (_smartRefreshVersions.ContainsKey(line))
-                _smartRefreshVersions.Remove(line);
-            line.PropertyChanged -= LineOnPropertyChanged;
-        }
-
-        private void UnhookAllLines()
-        {
-            foreach (var line in FormLines)
-                UnhookLine(line);
-        }
-
-        private void LineOnPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
-        {
-            if (sender is not PurchaseInvoiceLineFormItem line)
-                return;
-
-            if (IsUserEditableLineProperty(e.PropertyName))
-                MarkDirty();
-
-            if (e.PropertyName == nameof(PurchaseInvoiceLineFormItem.ProductId) || e.PropertyName == nameof(PurchaseInvoiceLineFormItem.UnitId))
-                EnqueueDbWork(() => RefreshSmartEntryForLineAsync(line));
-        }
-
-        private static bool IsUserEditableLineProperty(string propertyName)
-        {
-            return propertyName == nameof(PurchaseInvoiceLineFormItem.ProductId)
-                   || propertyName == nameof(PurchaseInvoiceLineFormItem.UnitId)
-                   || propertyName == nameof(PurchaseInvoiceLineFormItem.Quantity)
-                   || propertyName == nameof(PurchaseInvoiceLineFormItem.UnitPrice)
-                   || propertyName == nameof(PurchaseInvoiceLineFormItem.DiscountPercent);
-        }
-
-        private async Task RefreshSmartEntryForAllLinesAsync()
-        {
-            foreach (var line in FormLines.ToList())
-                await RefreshSmartEntryForLineAsync(line);
-        }
-
-        private async Task RefreshSmartEntryForLineAsync(PurchaseInvoiceLineFormItem line)
-        {
-            if (line == null) return;
-            if (line.ProductId <= 0 || line.UnitId <= 0) return;
-            if (!FormWarehouseId.HasValue || FormWarehouseId <= 0) return;
-
-            if (!_smartRefreshVersions.TryGetValue(line, out var version))
-                _smartRefreshVersions[line] = 0;
-            version = ++_smartRefreshVersions[line];
-
-            var warehouseId = FormWarehouseId.Value;
-            var supplierId = FormSupplierId ?? 0;
-
-            try
-            {
-                var stockBase = await _smartEntryQueryService.GetStockBaseQtyAsync(warehouseId, line.ProductId);
-                var lastPurchase = supplierId > 0
-                    ? await _smartEntryQueryService.GetLastPurchaseUnitPriceForSupplierAsync(supplierId, line.ProductId, line.UnitId)
-                    : await _smartEntryQueryService.GetLastPurchaseUnitPriceAsync(line.ProductId, line.UnitId);
-
-                if (!_smartRefreshVersions.TryGetValue(line, out var current) || current != version)
-                    return;
-
-                line.SetSmartEntry(stockBase, lastPurchase);
-
-                if (lastPurchase.HasValue && line.IsUnitPriceAtMasterDefault())
-                    line.UnitPrice = lastPurchase.Value;
-            }
-            catch
-            {
-                // Non-critical.
-            }
-        }
-
-        private async Task SaveAsync()
-        {
-            await RunDbGuardedAsync(async () =>
-            {
-                IsBusy = true; ClearError();
-
-                // ── Pre-save validation ──
-                if (FormLines.Count == 0)
-                {
-                    ErrorMessage = "لا يمكن حفظ فاتورة بدون بنود. أضف صنف واحد على الأقل.";
-                    IsBusy = false;
-                    return;
-                }
-                var invalidLines = FormLines.Where(l => l.ProductId <= 0 || l.Quantity <= 0 || l.UnitPrice < 0).ToList();
-                if (invalidLines.Any())
-                {
-                    ErrorMessage = "يوجد بنود غير مكتملة (صنف أو كمية أو سعر = صفر). يرجى مراجعة البنود.";
-                    IsBusy = false;
-                    return;
-                }
-                // Duplicate products are allowed (user confirmed during add)
-
-                try
-                {
-                    var lines = FormLines.Select(l => new CreatePurchaseInvoiceLineDto
-                    { ProductId = l.ProductId, UnitId = l.UnitId, Quantity = l.Quantity, UnitPrice = l.UnitPrice, DiscountPercent = l.DiscountPercent }).ToList();
-
-                    if (IsNew)
-                    {
-                        var dto = new CreatePurchaseInvoiceDto
-                        {
-                            InvoiceDate = FormDate,
-                            SupplierId = FormSupplierId,
-                            WarehouseId = FormWarehouseId ?? 0,
-                            Notes = FormNotes?.Trim(),
-                            SalesRepresentativeId = FormSalesRepresentativeId,
-                            CounterpartyType = FormCounterpartyType,
-                            CounterpartyCustomerId = FormCounterpartyCustomerId,
-                            Lines = lines
-                        };
-                        var result = await _invoiceService.CreateAsync(dto);
-                        if (result.IsSuccess)
-                        {
-                            StatusMessage = $"تم إنشاء فاتورة الشراء «{result.Data.InvoiceNumber}» بنجاح";
-                            CurrentInvoice = result.Data;
-                            PopulateForm(result.Data);
-
-                            await RefreshInvoicePaymentsAsync();
-                        }
-                        else ErrorMessage = result.ErrorMessage;
-                    }
-                    else
-                    {
-                        var dto = new UpdatePurchaseInvoiceDto
-                        {
-                            Id = CurrentInvoice.Id,
-                            InvoiceDate = FormDate,
-                            SupplierId = FormSupplierId,
-                            WarehouseId = FormWarehouseId ?? 0,
-                            Notes = FormNotes?.Trim(),
-                            SalesRepresentativeId = FormSalesRepresentativeId,
-                            CounterpartyType = FormCounterpartyType,
-                            CounterpartyCustomerId = FormCounterpartyCustomerId,
-                            Lines = lines
-                        };
-                        var result = await _invoiceService.UpdateAsync(dto);
-                        if (result.IsSuccess) { StatusMessage = $"تم تحديث فاتورة الشراء «{result.Data.InvoiceNumber}» بنجاح"; CurrentInvoice = result.Data; PopulateForm(result.Data); }
-                        else ErrorMessage = result.ErrorMessage;
-
-                        await RefreshInvoicePaymentsAsync();
-                    }
-                }
-                catch (ConcurrencyConflictException) { ErrorMessage = "حدث تعارض في البيانات. يرجى إعادة تحميل الفاتورة."; }
-                catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("حفظ الفاتورة", ex); }
-                finally { IsBusy = false; }
-            });
-        }
-
-        private async Task RefreshInvoicePaymentsAsync()
-        {
-            if (CurrentInvoice?.Id > 0)
-            {
-                PaidAmount = await _invoiceTreasuryIntegrationService.GetPostedPaidForPurchaseInvoiceAsync(CurrentInvoice.Id);
+                Attachments.Add(result.Data);
+                StatusMessage = "تم إضافة المرفق بنجاح.";
             }
             else
+                ErrorMessage = result.ErrorMessage;
+        }
+
+        private async Task DeleteAttachmentAsync()
+        {
+            if (SelectedAttachment == null) return;
+            var confirm = MessageBox.Show("هل تريد حذف هذا المرفق؟", "تأكيد الحذف",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes) return;
+
+            var result = await _attachmentService.DeleteAsync(SelectedAttachment.Id);
+            if (result.IsSuccess)
             {
-                PaidAmount = 0m;
-            }
-
-            OnPropertyChanged(nameof(BalanceAmount));
-            OnPropertyChanged(nameof(RemainingAmount));
-        }
-
-        private async Task PromptCreatePaymentFromInvoiceAsync(PurchaseInvoiceDto invoice)
-        {
-            if (invoice == null) return;
-
-            if (!invoice.SupplierId.HasValue || invoice.SupplierId <= 0)
-            {
-                MessageBox.Show(
-                    "لا يمكن إنشاء سند صرف تلقائياً لأن المورد غير محدد للفاتورة.",
-                    "تنبيه", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            var supplier = Suppliers.FirstOrDefault(s => s.Id == invoice.SupplierId.Value);
-            if (supplier?.AccountId is not int supplierAccountId || supplierAccountId <= 0)
-            {
-                MessageBox.Show(
-                    "لا يمكن إنشاء سند صرف تلقائياً لأن حساب المورد غير محدد.\nيمكنك إنشاء السند يدوياً من شاشة سندات الصرف.",
-                    "تنبيه", MessageBoxButton.OK, MessageBoxImage.Warning);
-
-                _navigationService.NavigateTo(
-                    "CashPayments",
-                    new CashPaymentNavigationParams
-                    {
-                        PurchaseInvoiceId = invoice.Id,
-                        SupplierId = invoice.SupplierId,
-                        Date = invoice.InvoiceDate,
-                        Amount = invoice.NetTotal,
-                        Description = $"سداد فاتورة شراء {invoice.InvoiceNumber}",
-                        Notes = invoice.Notes
-                    });
-                return;
-            }
-
-            var createResult = await _invoiceTreasuryIntegrationService.PromptAndCreatePurchasePaymentAsync(invoice, supplierAccountId);
-            if (createResult.Created)
-            {
-                StatusMessage = $"تم إنشاء سند صرف مرتبط بالفاتورة «{invoice.InvoiceNumber}» بنجاح";
-                await RefreshInvoicePaymentsAsync();
-            }
-            else if (!string.IsNullOrWhiteSpace(createResult.ErrorMessage))
-            {
-                ErrorMessage = createResult.ErrorMessage;
-            }
-        }
-
-        private async Task PostAsync()
-        {
-            if (CurrentInvoice == null) return;
-            if (MessageBox.Show($"هل تريد ترحيل فاتورة الشراء «{CurrentInvoice.InvoiceNumber}»؟\nبعد الترحيل لا يمكن التعديل.", "تأكيد الترحيل", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
-            IsBusy = true; ClearError();
-            try { var r = await _invoiceService.PostAsync(CurrentInvoice.Id); if (r.IsSuccess) { StatusMessage = $"تم ترحيل فاتورة الشراء «{r.Data.InvoiceNumber}»"; CurrentInvoice = r.Data; PopulateForm(r.Data); await PromptCreatePaymentFromInvoiceAsync(r.Data); } else ErrorMessage = r.ErrorMessage; }
-            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("ترحيل الفاتورة", ex); }
-            finally { IsBusy = false; }
-        }
-
-        /// <summary>Serializes DB access within this ViewModel.</summary>
-        private async Task RunDbGuardedAsync(Func<Task> work)
-        {
-            await DbGuard.WaitAsync().ConfigureAwait(false);
-            try
-            {
-                await work().ConfigureAwait(false);
-            }
-            finally
-            {
-                DbGuard.Release();
-            }
-        }
-
-        private async Task CancelInvoiceAsync()
-        {
-            if (CurrentInvoice == null) return;
-            if (MessageBox.Show($"هل تريد إلغاء فاتورة الشراء «{CurrentInvoice.InvoiceNumber}»؟", "تأكيد الإلغاء", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
-            IsBusy = true; ClearError();
-            try { var r = await _invoiceService.CancelAsync(CurrentInvoice.Id); if (r.IsSuccess) { StatusMessage = "تم إلغاء الفاتورة"; await LoadDetailAsync(CurrentInvoice.Id); } else ErrorMessage = r.ErrorMessage; }
-            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("إلغاء الفاتورة", ex); }
-            finally { IsBusy = false; }
-        }
-
-        private async Task DeleteDraftAsync()
-        {
-            if (CurrentInvoice == null) return;
-            if (MessageBox.Show($"هل تريد حذف مسودة الفاتورة «{CurrentInvoice.InvoiceNumber}»؟", "تأكيد الحذف", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
-            IsBusy = true; ClearError();
-            try { var r = await _invoiceService.DeleteDraftAsync(CurrentInvoice.Id); if (r.IsSuccess) { StatusMessage = "تم حذف المسودة"; NavigateBack(); } else ErrorMessage = r.ErrorMessage; }
-            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("حذف المسودة", ex); }
-            finally { IsBusy = false; }
-        }
-
-        private void StartEditing()
-        {
-            if (CurrentInvoice != null && IsDraft)
-            {
-                IsEditing = true;
-                IsNew = false;
-            }
-        }
-
-        private void CancelEditing(object _)
-        {
-            IsEditing = false;
-            IsNew = false;
-            ClearError();
-
-            if (CurrentInvoice != null)
-                PopulateForm(CurrentInvoice);
-            else
-                NavigateBack();
-
-            ResetDirtyTracking();
-        }
-        private void NavigateBack() => _navigationService.NavigateTo("PurchaseInvoices");
-
-        private void PopulateForm(PurchaseInvoiceDto inv)
-        {
-            FormNumber = inv.InvoiceNumber;
-            FormDate = inv.InvoiceDate;
-            FormCounterpartyType = inv.CounterpartyType;
-            FormSupplierId = inv.SupplierId;
-            FormCounterpartyCustomerId = inv.CounterpartyCustomerId;
-            FormSalesRepresentativeId = inv.SalesRepresentativeId;
-            FormWarehouseId = inv.WarehouseId;
-            FormNotes = inv.Notes;
-            UnhookAllLines();
-            FormLines.Clear();
-            foreach (var line in inv.Lines ?? new List<PurchaseInvoiceLineDto>())
-            {
-                var formLine = new PurchaseInvoiceLineFormItem(this) { ProductId = line.ProductId, UnitId = line.UnitId, Quantity = line.Quantity, UnitPrice = line.UnitPrice, DiscountPercent = line.DiscountPercent };
-                HookLine(formLine);
-                FormLines.Add(formLine);
-            }
-            IsEditing = false; IsNew = false; RefreshTotals();
-            ResetDirtyTracking();
-
-            EnqueueDbWork(RefreshSmartEntryForAllLinesAsync);
-        }
-
-        // ── Invoice Navigation ───────────────────────────────
-        private async Task LoadInvoiceIdsAsync()
-        {
-            try
-            {
-                var result = await _invoiceService.GetAllAsync();
-                if (result.IsSuccess)
-                {
-                    var list = result.Data.ToList();
-                    _invoiceIds = list.Select(i => i.Id).ToList();
-                    _invoiceNumberToId = list
-                        .Where(i => !string.IsNullOrWhiteSpace(i.InvoiceNumber))
-                        .GroupBy(i => i.InvoiceNumber)
-                        .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
-                }
-            }
-            catch { /* non-critical */ }
-        }
-
-        private async Task GoToNextAsync()
-        {
-            if (!await DirtyStateGuard.ConfirmContinueAsync(this))
-                return;
-            if (!CanGoNext) return;
-            _currentInvoiceIndex++;
-            await LoadDetailAsync(_invoiceIds[_currentInvoiceIndex]);
-            UpdateNavigationState();
-        }
-
-        private async Task GoToPreviousAsync()
-        {
-            if (!await DirtyStateGuard.ConfirmContinueAsync(this))
-                return;
-            if (!CanGoPrevious) return;
-            _currentInvoiceIndex--;
-            await LoadDetailAsync(_invoiceIds[_currentInvoiceIndex]);
-            UpdateNavigationState();
-        }
-
-        private async Task JumpToInvoiceAsync()
-        {
-            if (!await DirtyStateGuard.ConfirmContinueAsync(this))
-                return;
-
-            if (string.IsNullOrWhiteSpace(JumpInvoiceNumber))
-                return;
-
-            if (!_invoiceNumberToId.TryGetValue(JumpInvoiceNumber.Trim(), out var id))
-            {
-                MessageBox.Show("رقم الفاتورة غير موجود.", "تنقل الفواتير", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            _currentInvoiceIndex = _invoiceIds.IndexOf(id);
-            await LoadDetailAsync(id);
-            UpdateNavigationState();
-        }
-
-        private void UpdateNavigationState()
-        {
-            OnPropertyChanged(nameof(CanGoNext));
-            OnPropertyChanged(nameof(CanGoPrevious));
-            OnPropertyChanged(nameof(NavigationPositionText));
-            RelayCommand.RaiseCanExecuteChanged();
-        }
-
-        private async Task ViewPdfAsync()
-        {
-            if (CurrentInvoice == null) return;
-            await _invoicePdfPreviewService.ShowPurchaseInvoiceAsync(CurrentInvoice);
-        }
-
-        // ── Add/Edit Line Popup ──────────────────────────────────
-
-        private void OpenAddLinePopup()
-        {
-            if (!IsEditing && !IsNew) return;
-            var state = new InvoiceLinePopupState(this, InvoicePopupMode.Purchase, _lineCalculationService);
-            LinePopup = state;
-            state.PropertyChanged += PopupState_PropertyChanged;
-            ShowPopupLoop(state);
-            state.PropertyChanged -= PopupState_PropertyChanged;
-            LinePopup = null;
-        }
-
-        private void EditLinePopup(object parameter)
-        {
-            if (!IsEditing && !IsNew) return;
-            if (parameter is not PurchaseInvoiceLineFormItem line) return;
-            var index = FormLines.IndexOf(line);
-            if (index < 0) return;
-
-            var state = new InvoiceLinePopupState(this, InvoicePopupMode.Purchase, _lineCalculationService);
-            LinePopup = state;
-            state.PropertyChanged += PopupState_PropertyChanged;
-            state.LoadFromLine(line.ProductId, line.UnitId, line.Quantity, line.UnitPrice,
-                line.DiscountPercent, line.SmartStockQty ?? 0, line.SmartLastPurchaseUnitPrice ?? 0,
-                line.SmartAverageCost, null, index);
-            EnqueueDbWork(() => RefreshSmartEntryForPopupAsync(state));
-
-            var popup = new InvoiceAddLineWindow { Owner = System.Windows.Application.Current.MainWindow, DataContext = this };
-            if (popup.ShowDialog() == true && popup.LineAdded && state.IsValid)
-                ApplyPopupStateToLine(state, index);
-
-            state.PropertyChanged -= PopupState_PropertyChanged;
-            LinePopup = null;
-        }
-
-        private void ShowPopupLoop(InvoiceLinePopupState state)
-        {
-            var parent = System.Windows.Application.Current.MainWindow;
-            var keepAdding = true;
-            while (keepAdding)
-            {
-                state.Reset();
-                var popup = new InvoiceAddLineWindow { Owner = parent, DataContext = this };
-                if (popup.ShowDialog() == true && popup.LineAdded && state.IsValid)
-                {
-                    ApplyPopupStateToLine(state, editIndex: null);
-                    keepAdding = popup.AddAnother;
-                }
-                else keepAdding = false;
-            }
-        }
-
-        private void ApplyPopupStateToLine(InvoiceLinePopupState state, int? editIndex)
-        {
-            // ── Duplicate product check ──
-            var existingIndex = editIndex ?? -1;
-            var isDuplicate = FormLines
-                .Where((l, i) => i != existingIndex && l.ProductId == state.ProductId && l.ProductId > 0)
-                .Any();
-            if (isDuplicate)
-            {
-                var confirm = MessageBox.Show(
-                    "هذا الصنف موجود بالفعل في الفاتورة.\nهل تريد إضافته مرة أخرى؟",
-                    "صنف مكرر", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-                if (confirm != MessageBoxResult.Yes)
-                    return;
-            }
-
-            if (editIndex.HasValue && editIndex.Value >= 0 && editIndex.Value < FormLines.Count)
-            {
-                var existing = FormLines[editIndex.Value];
-                existing.ProductId = state.ProductId;
-                existing.UnitId = state.SelectedUnitId;
-                existing.Quantity = state.SelectedQty;
-                existing.UnitPrice = state.SelectedUnitPrice;
-                existing.DiscountPercent = state.DiscountPercent;
+                Attachments.Remove(SelectedAttachment);
+                StatusMessage = "تم حذف المرفق.";
             }
             else
-            {
-                var line = new PurchaseInvoiceLineFormItem(this)
-                { ProductId = state.ProductId, UnitId = state.SelectedUnitId, Quantity = state.SelectedQty, UnitPrice = state.SelectedUnitPrice, DiscountPercent = state.DiscountPercent };
-                HookLine(line);
-                FormLines.Add(line);
-            }
-            RefreshTotals();
-            MarkDirty();
+                ErrorMessage = result.ErrorMessage;
         }
 
-        private void PopupState_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private async Task OpenAttachmentAsync()
         {
-            if (sender is InvoiceLinePopupState state && e.PropertyName == nameof(InvoiceLinePopupState.ProductId))
-                EnqueueDbWork(() => RefreshSmartEntryForPopupAsync(state));
+            if (SelectedAttachment == null) return;
+            var result = await _attachmentService.OpenAsync(SelectedAttachment.Id);
+            if (!result.IsSuccess)
+                ErrorMessage = result.ErrorMessage;
         }
 
-        private async Task RefreshSmartEntryForPopupAsync(InvoiceLinePopupState state)
+        internal async Task LoadAttachmentsAsync()
         {
-            if (state == null || state.ProductId <= 0) return;
-            if (!FormWarehouseId.HasValue || FormWarehouseId <= 0) return;
-            var warehouseId = FormWarehouseId.Value;
-            var supplierId = FormSupplierId ?? 0;
-            var unitId = state.SelectedUnitId > 0 ? state.SelectedUnitId : (state.SecondaryUnit?.UnitId ?? 0);
-            try
-            {
-                var stock = await _smartEntryQueryService.GetStockBaseQtyAsync(warehouseId, state.ProductId);
-                state.StockQty = stock;
-                var lastPurch = supplierId > 0
-                    ? await _smartEntryQueryService.GetLastPurchaseUnitPriceForSupplierAsync(supplierId, state.ProductId, unitId)
-                    : await _smartEntryQueryService.GetLastPurchaseUnitPriceAsync(state.ProductId, unitId);
-                state.LastPurchasePrice = lastPurch ?? 0m;
-            }
-            catch { }
+            if (CurrentInvoice == null) return;
+            var result = await _attachmentService.GetAttachmentsAsync("PurchaseInvoice", CurrentInvoice.Id);
+            Attachments.Clear();
+            if (result.IsSuccess)
+                foreach (var a in result.Data)
+                    Attachments.Add(a);
         }
-
     }
 }

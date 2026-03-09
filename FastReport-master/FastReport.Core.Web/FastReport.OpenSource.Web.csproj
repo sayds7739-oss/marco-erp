@@ -1,0 +1,65 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+
+    <PackageId>FastReport.OpenSource.Web</PackageId>
+
+    <Designer>true</Designer>
+
+    <TargetFrameworks>net6.0</TargetFrameworks>
+    <DefineConstants>OPENSOURCE;</DefineConstants>
+    <Version>1.0.0</Version>
+    <PackageLicenseFile>FastReport MIT license.md</PackageLicenseFile>
+    <Configurations>Debug;Release</Configurations>
+
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!--See https://devblogs.microsoft.com/dotnet/producing-packages-with-source-link/#deterministic-builds -->
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <TargetFrameworks>$(TargetFrameworks);net6.0-windows</TargetFrameworks>
+  </PropertyGroup>
+
+  <Import Project="FastReport.Web.Shared.props" />
+
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>../FastReport.OpenSource.snk</AssemblyOriginatorKeyFile>
+    <Description>
+      FastReport Open Source provides a free report generator for .NET/.NET Framework. You can use the FastReport Open Source in MVC, Web API, console applications.
+      FastReport is written in C# and it is compatible with .NET Framework 4.6.2, .NET 6 and higher. Extendable FastReport architecture allows creating your own objects, export filters, wizards, and DB engines.
+      FastReport Open Source can save documents in HTML, BMP, PNG, JPEG, GIF, TIFF, EMF. PDF export is available as a plugin.
+    </Description>
+    <RepositoryUrl>https://github.com/FastReports/FastReport</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(SolutionDir)FastReport.OpenSource\FastReport.OpenSource.csproj" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Include="..\Pack\FastReport MIT license.md">
+      <Pack>True</Pack>
+      <Visible>false</Visible>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+  <Import Project="..\UsedPackages.version" />
+  <ItemGroup>
+    <!--For buildScript only (it can't implicitly restore System.Drawing.Common)-->
+    <PackageReference Include="System.Drawing.Common" Version="$(SystemDrawingCommonVersion)" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!--Source Link-->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Application\Dialog\**" />
+  </ItemGroup>
+</Project>

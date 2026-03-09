@@ -19,7 +19,7 @@
                     <Button Content="عرض" Command="{Binding GenerateCommand}"
                             Style="{StaticResource MaterialDesignRaisedButton}"
                             materialDesign:ButtonAssist.CornerRadius="4" Padding="16,6" />
-                    <Button Content="PDF" Command="{Binding ExportPdfCommand}" Margin="8,0,0,0"
+                    <Button Content="معاينة PDF" Command="{Binding ExportPdfCommand}" Margin="8,0,0,0"
                             Style="{StaticResource MaterialDesignOutlinedButton}"
                             materialDesign:ButtonAssist.CornerRadius="4" Padding="12,4" />
                     <Button Content="Excel" Command="{Binding ExportExcelCommand}" Margin="4,0,0,0"

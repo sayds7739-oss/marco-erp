@@ -17,6 +17,8 @@ namespace MarcoERP.Application.Mappers.Treasury
                 NameAr = entity.NameAr,
                 NameEn = entity.NameEn,
                 AccountId = entity.AccountId,
+                AccountName = entity.Account?.AccountNameAr,
+                Balance = entity.Balance,
                 IsActive = entity.IsActive,
                 IsDefault = entity.IsDefault
             };

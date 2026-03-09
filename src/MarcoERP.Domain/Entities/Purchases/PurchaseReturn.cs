@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using MarcoERP.Domain.Entities.Common;
+using MarcoERP.Domain.Entities.Inventory;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Purchases;
 
@@ -92,6 +93,9 @@ namespace MarcoERP.Domain.Entities.Purchases
         /// <summary>FK to Warehouse the goods are returned from.</summary>
         public int WarehouseId { get; private set; }
 
+        /// <summary>Navigation property to Warehouse (read-only for queries).</summary>
+        public Warehouse Warehouse { get; private set; }
+
         /// <summary>FK to SalesRepresentative (optional — مندوب).</summary>
         public int? SalesRepresentativeId { get; private set; }
 
@@ -118,6 +122,9 @@ namespace MarcoERP.Domain.Entities.Purchases
 
         /// <summary>Net total = Subtotal - DiscountTotal + VatTotal.</summary>
         public decimal NetTotal { get; private set; }
+
+        /// <summary>Delivery / shipping fee (if any) included in the return credit.</summary>
+        public decimal DeliveryFee { get; private set; }
 
         /// <summary>Optional notes.</summary>
         public string Notes { get; private set; }
@@ -232,9 +239,48 @@ namespace MarcoERP.Domain.Entities.Purchases
         {
             EnsureDraft("لا يمكن تعديل بنود مرتجع مرحّل أو ملغى.");
 
-            _lines.Clear();
-            if (newLines != null)
-                _lines.AddRange(newLines);
+            var incomingLines = (newLines ?? Enumerable.Empty<PurchaseReturnLine>()).ToList();
+            var existingById = _lines
+                .Where(l => l.Id > 0)
+                .ToDictionary(l => l.Id);
+
+            var incomingIds = new HashSet<int>();
+            var newIncomingLines = new List<PurchaseReturnLine>();
+
+            foreach (var incoming in incomingLines)
+            {
+                if (incoming.Id > 0)
+                {
+                    if (!incomingIds.Add(incoming.Id))
+                        throw new PurchaseReturnDomainException("تكرار معرف بند المرتجع غير مسموح.");
+
+                    if (!existingById.TryGetValue(incoming.Id, out var existingLine))
+                        throw new PurchaseReturnDomainException("لا يمكن تحديث بند غير موجود في المرتجع.");
+
+                    existingLine.UpdateDetails(
+                        incoming.ProductId,
+                        incoming.UnitId,
+                        incoming.Quantity,
+                        incoming.UnitPrice,
+                        incoming.ConversionFactor,
+                        incoming.DiscountPercent,
+                        incoming.VatRate);
+                }
+                else
+                {
+                    newIncomingLines.Add(incoming);
+                }
+            }
+
+            var linesToRemove = existingById.Values
+                .Where(l => !incomingIds.Contains(l.Id))
+                .ToList();
+
+            foreach (var line in linesToRemove)
+                _lines.Remove(line);
+
+            _lines.RemoveAll(l => l.Id == 0);
+            _lines.AddRange(newIncomingLines);
 
             RecalculateTotals();
         }

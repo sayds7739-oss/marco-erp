@@ -22,6 +22,7 @@ namespace MarcoERP.Application.Interfaces.Settings
         Task<ServiceResult<bool>> IsEnabledAsync(string featureKey, CancellationToken ct = default);
 
         /// <summary>Toggles a feature on/off. Records change in FeatureChangeLog.</summary>
+        [RequiresPermission(PermissionKeys.SettingsManage)]
         Task<ServiceResult> ToggleAsync(ToggleFeatureDto dto, CancellationToken ct = default);
     }
 }

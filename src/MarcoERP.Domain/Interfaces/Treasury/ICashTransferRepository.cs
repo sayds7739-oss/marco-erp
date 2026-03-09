@@ -14,6 +14,9 @@ namespace MarcoERP.Domain.Interfaces.Treasury
         /// <summary>Gets a cash transfer by ID with navigation properties.</summary>
         Task<CashTransfer> GetWithDetailsAsync(int id, CancellationToken ct = default);
 
+        /// <summary>Gets a cash transfer by ID with tracking enabled for mutation operations.</summary>
+        Task<CashTransfer> GetWithDetailsTrackedAsync(int id, CancellationToken ct = default);
+
         /// <summary>Gets a cash transfer by its transfer number.</summary>
         Task<CashTransfer> GetByNumberAsync(string transferNumber, CancellationToken ct = default);
 

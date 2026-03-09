@@ -38,7 +38,11 @@ namespace MarcoERP.Domain.Entities.Inventory
             decimal reorderLevel,
             decimal vatRate,
             string barcode = null,
-            string description = null)
+            string description = null,
+            decimal wholesalePrice = 0,
+            decimal retailPrice = 0,
+            string imagePath = null,
+            decimal maximumStock = 0)
         {
             // ── PRD-INV-01: Code is required ──
             if (string.IsNullOrWhiteSpace(code))
@@ -72,6 +76,10 @@ namespace MarcoERP.Domain.Entities.Inventory
             BaseUnitId = baseUnitId;
             CostPrice = initialCostPrice;
             DefaultSalePrice = defaultSalePrice;
+            WholesalePrice = wholesalePrice;
+            RetailPrice = retailPrice;
+            ImagePath = imagePath?.Trim();
+            MaximumStock = maximumStock;
             MinimumStock = minimumStock;
             ReorderLevel = reorderLevel;
             VatRate = vatRate;
@@ -103,6 +111,18 @@ namespace MarcoERP.Domain.Entities.Inventory
 
         /// <summary>Default selling price (per base unit).</summary>
         public decimal DefaultSalePrice { get; private set; }
+
+        /// <summary>سعر الجملة (للوحدة الأساسية).</summary>
+        public decimal WholesalePrice { get; private set; }
+
+        /// <summary>سعر القطاعي (للوحدة الأساسية).</summary>
+        public decimal RetailPrice { get; private set; }
+
+        /// <summary>مسار صورة الصنف.</summary>
+        public string ImagePath { get; private set; }
+
+        /// <summary>الحد الأقصى للمخزون.</summary>
+        public decimal MaximumStock { get; private set; }
 
         /// <summary>Weighted Average Cost — updated on each purchase receipt.</summary>
         public decimal WeightedAverageCost { get; private set; }
@@ -161,7 +181,11 @@ namespace MarcoERP.Domain.Entities.Inventory
             decimal vatRate,
             string barcode,
             string description,
-            int? defaultSupplierId = null)
+            int? defaultSupplierId = null,
+            decimal wholesalePrice = 0,
+            decimal retailPrice = 0,
+            string imagePath = null,
+            decimal maximumStock = 0)
         {
             if (string.IsNullOrWhiteSpace(nameAr))
                 throw new InventoryDomainException("اسم الصنف بالعربي مطلوب.");
@@ -172,10 +196,20 @@ namespace MarcoERP.Domain.Entities.Inventory
             if (vatRate < 0 || vatRate > 100)
                 throw new InventoryDomainException("نسبة الضريبة يجب أن تكون بين 0 و 100.");
 
+            if (wholesalePrice < 0)
+                throw new InventoryDomainException("سعر الجملة لا يمكن أن يكون سالباً.");
+
+            if (retailPrice < 0)
+                throw new InventoryDomainException("سعر التجزئة لا يمكن أن يكون سالباً.");
+
             NameAr = nameAr.Trim();
             NameEn = nameEn?.Trim();
             CategoryId = categoryId;
             DefaultSalePrice = defaultSalePrice;
+            WholesalePrice = wholesalePrice;
+            RetailPrice = retailPrice;
+            ImagePath = imagePath?.Trim();
+            MaximumStock = maximumStock;
             MinimumStock = minimumStock;
             ReorderLevel = reorderLevel;
             VatRate = vatRate;
@@ -199,16 +233,20 @@ namespace MarcoERP.Domain.Entities.Inventory
             if (unitCost < 0)
                 throw new InventoryDomainException("تكلفة الوحدة لا يمكن أن تكون سالبة.");
 
-            decimal totalExistingValue = existingQuantity * WeightedAverageCost;
-            decimal totalNewValue = receivedQuantity * unitCost;
-            decimal totalQuantity = existingQuantity + receivedQuantity;
-
-            if (totalQuantity == 0)
+            // C-07 fix: When existing stock is zero or negative (possible after
+            // AllowNegativeStock cancel/adjustment flows), the standard WAC blending
+            // formula produces distorted or negative results.  Standard accounting
+            // practice: reset WAC to the new purchase cost — treat as fresh start.
+            if (existingQuantity <= 0)
             {
-                WeightedAverageCost = unitCost;
+                WeightedAverageCost = Math.Round(unitCost, 4);
             }
             else
             {
+                decimal totalExistingValue = existingQuantity * WeightedAverageCost;
+                decimal totalNewValue = receivedQuantity * unitCost;
+                decimal totalQuantity = existingQuantity + receivedQuantity;
+
                 WeightedAverageCost = Math.Round((totalExistingValue + totalNewValue) / totalQuantity, 4);
             }
 
@@ -278,6 +316,27 @@ namespace MarcoERP.Domain.Entities.Inventory
         public void Discontinue()
         {
             Status = ProductStatus.Discontinued;
+        }
+
+        /// <summary>تحديث صورة الصنف.</summary>
+        public void SetImagePath(string imagePath)
+        {
+            ImagePath = imagePath?.Trim();
+        }
+
+        /// <summary>تحديث أسعار البيع المتعددة.</summary>
+        public void UpdatePrices(decimal defaultSalePrice, decimal wholesalePrice, decimal retailPrice)
+        {
+            if (defaultSalePrice < 0)
+                throw new InventoryDomainException("سعر البيع لا يمكن أن يكون سالباً.");
+            if (wholesalePrice < 0)
+                throw new InventoryDomainException("سعر الجملة لا يمكن أن يكون سالباً.");
+            if (retailPrice < 0)
+                throw new InventoryDomainException("سعر التجزئة لا يمكن أن يكون سالباً.");
+
+            DefaultSalePrice = defaultSalePrice;
+            WholesalePrice = wholesalePrice;
+            RetailPrice = retailPrice;
         }
     }
 }

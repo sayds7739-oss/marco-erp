@@ -12,9 +12,13 @@ using MarcoERP.Domain.Entities.Accounting;
 using MarcoERP.Domain.Entities.Accounting.Policies;
 using MarcoERP.Domain.Entities.Inventory;
 using MarcoERP.Domain.Enums;
+using MarcoERP.Domain.Exceptions;
 using MarcoERP.Domain.Exceptions.Inventory;
+using MarcoERP.Application.Interfaces.Settings;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
+using MarcoERP.Domain.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Inventory
 {
@@ -38,6 +42,10 @@ namespace MarcoERP.Application.Services.Inventory
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
         private readonly IDateTimeProvider _dateTime;
+        private readonly ISystemSettingRepository _systemSettingRepository;
+        private readonly ILogger<InventoryAdjustmentService> _logger;
+        private readonly JournalEntryFactory _journalFactory;
+        private readonly IFeatureService _featureService;
 
         // GL Account codes
         private const string InventoryAccountCode = "1131";
@@ -55,7 +63,11 @@ namespace MarcoERP.Application.Services.Inventory
             IJournalNumberGenerator journalNumberGen,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
-            IDateTimeProvider dateTime)
+            IDateTimeProvider dateTime,
+            ISystemSettingRepository systemSettingRepository,
+            JournalEntryFactory journalFactory,
+            ILogger<InventoryAdjustmentService> logger,
+            IFeatureService featureService = null)
         {
             _adjustmentRepo = adjustmentRepo ?? throw new ArgumentNullException(nameof(adjustmentRepo));
             _productRepo = productRepo ?? throw new ArgumentNullException(nameof(productRepo));
@@ -68,6 +80,10 @@ namespace MarcoERP.Application.Services.Inventory
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            _systemSettingRepository = systemSettingRepository ?? throw new ArgumentNullException(nameof(systemSettingRepository));
+            _journalFactory = journalFactory ?? throw new ArgumentNullException(nameof(journalFactory));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _featureService = featureService;
         }
 
         public async Task<ServiceResult<IReadOnlyList<InventoryAdjustmentListDto>>> GetAllAsync(CancellationToken ct = default)
@@ -107,8 +123,17 @@ namespace MarcoERP.Application.Services.Inventory
         public async Task<ServiceResult<InventoryAdjustmentDto>> CreateAsync(
             CreateInventoryAdjustmentDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<InventoryAdjustmentDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
+            // Feature Guard — block operation if Inventory module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<InventoryAdjustmentDto>(_featureService, FeatureKeys.Inventory, ct);
+                if (guard != null) return guard;
+            }
+
+            _logger.LogInformation(
+                "CreateAsync started for {Entity} operation {Operation}.",
+                nameof(InventoryAdjustment),
+                "Create");
 
             if (dto.WarehouseId <= 0)
                 return ServiceResult<InventoryAdjustmentDto>.Failure("يجب اختيار المخزن.");
@@ -160,13 +185,20 @@ namespace MarcoERP.Application.Services.Inventory
             {
                 return ServiceResult<InventoryAdjustmentDto>.Failure(ex.Message);
             }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult<InventoryAdjustmentDto>.Failure("تعذر حفظ التسوية بسبب تعارض تزامن. الرجاء إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult<InventoryAdjustmentDto>.Failure("رقم التسوية مستخدم بالفعل. الرجاء إعادة المحاولة.");
+            }
         }
 
         public async Task<ServiceResult<InventoryAdjustmentDto>> UpdateAsync(
             UpdateInventoryAdjustmentDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<InventoryAdjustmentDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "InventoryAdjustment", dto.Id);
 
             if (dto.WarehouseId <= 0)
                 return ServiceResult<InventoryAdjustmentDto>.Failure("يجب اختيار المخزن.");
@@ -177,7 +209,7 @@ namespace MarcoERP.Application.Services.Inventory
             if (dto.Lines.Any(l => l.ProductId <= 0 || l.UnitId <= 0 || l.ActualQuantity < 0))
                 return ServiceResult<InventoryAdjustmentDto>.Failure("يوجد بنود غير مكتملة (صنف أو وحدة أو كمية غير صحيحة).");
 
-            var adjustment = await _adjustmentRepo.GetWithLinesAsync(dto.Id, ct);
+            var adjustment = await _adjustmentRepo.GetWithLinesTrackedAsync(dto.Id, ct);
             if (adjustment == null)
                 return ServiceResult<InventoryAdjustmentDto>.Failure("التسوية غير موجودة.");
 
@@ -201,11 +233,12 @@ namespace MarcoERP.Application.Services.Inventory
 
                     newLines.Add(new InventoryAdjustmentLine(
                         lineDto.ProductId, lineDto.UnitId, systemQty, actualInBaseUnit,
-                        1m, product.WeightedAverageCost));
+                        1m, product.WeightedAverageCost,
+                        lineDto.Id));
                 }
 
                 adjustment.ReplaceLines(newLines);
-                _adjustmentRepo.Update(adjustment);
+                // Entity is already tracked — no need for _adjustmentRepo.Update(adjustment)
                 await _unitOfWork.SaveChangesAsync(ct);
 
                 var saved = await _adjustmentRepo.GetWithLinesAsync(adjustment.Id, ct);
@@ -219,8 +252,11 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult<InventoryAdjustmentDto>> PostAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<InventoryAdjustmentDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation(
+                "PostAsync started for {Entity}Id {EntityId} operation {Operation}.",
+                nameof(InventoryAdjustment),
+                id,
+                "Post");
 
             var adjustment = await _adjustmentRepo.GetWithLinesAsync(id, ct);
             if (adjustment == null)
@@ -238,6 +274,23 @@ namespace MarcoERP.Application.Services.Inventory
             {
                 await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
+                    // Reload as TRACKED inside transaction to avoid
+                    // unsafe graph traversal on Update with detached entities
+                    adjustment = await _adjustmentRepo.GetWithLinesTrackedAsync(id, ct)
+                        ?? throw new InventoryDomainException("التسوية غير موجودة.");
+
+                    if (adjustment.Status != InvoiceStatus.Draft)
+                        throw new InventoryDomainException("لا يمكن ترحيل تسوية مرحّلة بالفعل أو ملغاة.");
+
+                    if (!adjustment.Lines.Any())
+                        throw new InventoryDomainException("لا يمكن ترحيل تسوية بدون بنود.");
+
+                    if (await ProductionHardening.IsProductionModeAsync(_systemSettingRepository, ct)
+                        && ProductionHardening.IsBackdated(adjustment.AdjustmentDate, _dateTime.UtcNow))
+                    {
+                        throw new InventoryDomainException("لا يمكن الترحيل بتاريخ سابق أثناء وضع الإنتاج.");
+                    }
+
                     var fiscalYear = await _fiscalYearRepo.GetActiveYearAsync(ct)
                         ?? throw new InventoryDomainException("لا توجد سنة مالية نشطة.");
 
@@ -248,21 +301,14 @@ namespace MarcoERP.Application.Services.Inventory
                     if (!period.IsOpen)
                         throw new InventoryDomainException($"الفترة المالية ({period.Year}-{period.Month:D2}) مقفلة.");
 
-                    var inventoryAccount = await _accountRepo.GetByCodeAsync(InventoryAccountCode, ct);
+                    var inventoryAccount = await _accountRepo.GetByCodeAsync(InventoryAccountCode, ct)
+                        ?? throw new InventoryDomainException("حساب المخزون غير موجود في شجرة الحسابات.");
                     var now = _dateTime.UtcNow;
                     var username = _currentUser.Username ?? "System";
 
-                    // Create journal entry
-                    var journal = JournalEntry.CreateDraft(
-                        adjustment.AdjustmentDate,
-                        $"تسوية مخزنية رقم {adjustment.AdjustmentNumber} — {adjustment.Reason}",
-                        SourceType.Adjustment,
-                        fiscalYear.Id,
-                        period.Id,
-                        referenceNumber: adjustment.AdjustmentNumber);
-
                     decimal totalSurplus = 0;
                     decimal totalShortage = 0;
+                    var allowNegativeStock = await IsNegativeStockAllowedAsync(ct);
 
                     foreach (var line in adjustment.Lines)
                     {
@@ -282,6 +328,8 @@ namespace MarcoERP.Application.Services.Inventory
                         {
                             if (line.DifferenceInBaseUnit > 0)
                                 whProduct.IncreaseStock(absQty);
+                            else if (allowNegativeStock)
+                                whProduct.DecreaseStockAllowNegative(absQty);
                             else
                                 whProduct.DecreaseStock(absQty);
 
@@ -302,42 +350,56 @@ namespace MarcoERP.Application.Services.Inventory
                                 sourceId: adjustment.Id,
                                 notes: $"تسوية مخزنية — {adjustment.Reason}");
 
-                            movement.SetBalanceAfter(whProduct.Quantity);
+                            if (allowNegativeStock)
+                                movement.SetBalanceAfterAllowNegative(whProduct.Quantity);
+                            else
+                                movement.SetBalanceAfter(whProduct.Quantity);
                             await _movementRepo.AddAsync(movement, ct);
                         }
                     }
 
                     // Surplus: DR Inventory / CR AdjustmentIncome
+                    // Shortage: DR AdjustmentExpense / CR Inventory
+                    var journalLines = new List<JournalLineSpec>();
+
                     if (totalSurplus > 0)
                     {
-                        var incomeAccount = await _accountRepo.GetByCodeAsync(AdjustmentIncomeAccountCode, ct);
-                        if (inventoryAccount != null)
-                            journal.AddLine(inventoryAccount.Id, totalSurplus, 0, now,
-                                $"فائض مخزني — تسوية {adjustment.AdjustmentNumber}");
-                        if (incomeAccount != null)
-                            journal.AddLine(incomeAccount.Id, 0, totalSurplus, now,
-                                $"إيراد فائض مخزني — تسوية {adjustment.AdjustmentNumber}");
+                        var incomeAccount = await _accountRepo.GetByCodeAsync(AdjustmentIncomeAccountCode, ct)
+                            ?? throw new InventoryDomainException("حساب إيراد فائض المخزون غير موجود في شجرة الحسابات.");
+                        journalLines.Add(new JournalLineSpec(inventoryAccount.Id, totalSurplus, 0,
+                            $"فائض مخزني — تسوية {adjustment.AdjustmentNumber}"));
+                        journalLines.Add(new JournalLineSpec(incomeAccount.Id, 0, totalSurplus,
+                            $"إيراد فائض مخزني — تسوية {adjustment.AdjustmentNumber}"));
                     }
 
-                    // Shortage: DR AdjustmentExpense / CR Inventory
                     if (totalShortage > 0)
                     {
-                        var expenseAccount = await _accountRepo.GetByCodeAsync(AdjustmentExpenseAccountCode, ct);
-                        if (expenseAccount != null)
-                            journal.AddLine(expenseAccount.Id, totalShortage, 0, now,
-                                $"عجز مخزني — تسوية {adjustment.AdjustmentNumber}");
-                        if (inventoryAccount != null)
-                            journal.AddLine(inventoryAccount.Id, 0, totalShortage, now,
-                                $"مخزون — عجز تسوية {adjustment.AdjustmentNumber}");
+                        var expenseAccount = await _accountRepo.GetByCodeAsync(AdjustmentExpenseAccountCode, ct)
+                            ?? throw new InventoryDomainException("حساب عجز المخزون غير موجود في شجرة الحسابات.");
+                        journalLines.Add(new JournalLineSpec(expenseAccount.Id, totalShortage, 0,
+                            $"عجز مخزني — تسوية {adjustment.AdjustmentNumber}"));
+                        journalLines.Add(new JournalLineSpec(inventoryAccount.Id, 0, totalShortage,
+                            $"مخزون — عجز تسوية {adjustment.AdjustmentNumber}"));
                     }
 
-                    var journalNumber = _journalNumberGen.NextNumber(fiscalYear.Id);
-                    journal.Post(journalNumber, username, now);
-                    await _journalRepo.AddAsync(journal, ct);
+                    if (!journalLines.Any())
+                        throw new InventoryDomainException("لا توجد فروقات جردية للترحيل.");
+
+                    var journal = await _journalFactory.CreateAndPostAsync(
+                        adjustment.AdjustmentDate,
+                        $"تسوية مخزنية رقم {adjustment.AdjustmentNumber} — {adjustment.Reason}",
+                        SourceType.Adjustment,
+                        fiscalYear.Id,
+                        period.Id,
+                        journalLines,
+                        username,
+                        now,
+                        referenceNumber: adjustment.AdjustmentNumber,
+                        ct: ct);
                     await _unitOfWork.SaveChangesAsync(ct);
 
                     adjustment.Post(journal.Id);
-                    _adjustmentRepo.Update(adjustment);
+                    // Entity is already tracked — no need for explicit Update
                     await _unitOfWork.SaveChangesAsync(ct);
 
                     saved = await _adjustmentRepo.GetWithLinesAsync(adjustment.Id, ct);
@@ -349,16 +411,34 @@ namespace MarcoERP.Application.Services.Inventory
             {
                 return ServiceResult<InventoryAdjustmentDto>.Failure(ex.Message);
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "InvalidOperationException while posting inventory adjustment.");
+                return ServiceResult<InventoryAdjustmentDto>.Failure(
+                    ErrorSanitizer.Sanitize(ex, "ترحيل تسوية المخزون"));
+            }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult<InventoryAdjustmentDto>.Failure("تعذر ترحيل التسوية بسبب تعارض تزامن. الرجاء إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult<InventoryAdjustmentDto>.Failure("تعذر ترحيل التسوية بسبب تعارض في البيانات. الرجاء إعادة المحاولة.");
+            }
             catch (Exception ex)
             {
-                return ServiceResult<InventoryAdjustmentDto>.Failure($"خطأ أثناء ترحيل التسوية: {ex.Message}");
+                _logger.LogError(ex, "PostAsync failed for InventoryAdjustment.");
+                return ServiceResult<InventoryAdjustmentDto>.Failure(ErrorSanitizer.SanitizeGeneric(ex, "ترحيل تسوية المخزون"));
             }
         }
 
         public async Task<ServiceResult> CancelAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation(
+                "CancelAsync started for {Entity}Id {EntityId} operation {Operation}.",
+                nameof(InventoryAdjustment),
+                id,
+                "Cancel");
 
             var adjustment = await _adjustmentRepo.GetWithLinesAsync(id, ct);
             if (adjustment == null)
@@ -371,7 +451,15 @@ namespace MarcoERP.Application.Services.Inventory
             {
                 await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
+                    // Reload as TRACKED inside transaction
+                    adjustment = await _adjustmentRepo.GetWithLinesTrackedAsync(id, ct)
+                        ?? throw new InventoryDomainException("التسوية غير موجودة.");
+
+                    if (adjustment.Status != InvoiceStatus.Posted)
+                        throw new InventoryDomainException("لا يمكن إلغاء إلا التسويات المرحّلة.");
+
                     // Reverse stock movements
+                    var allowNegativeStock = await IsNegativeStockAllowedAsync(ct);
                     foreach (var line in adjustment.Lines)
                     {
                         var whProduct = await _whProductRepo.GetOrCreateAsync(
@@ -382,7 +470,12 @@ namespace MarcoERP.Application.Services.Inventory
                         {
                             // Reverse: if original was increase, decrease now
                             if (line.DifferenceInBaseUnit > 0)
-                                whProduct.DecreaseStock(absQty);
+                            {
+                                if (allowNegativeStock)
+                                    whProduct.DecreaseStockAllowNegative(absQty);
+                                else
+                                    whProduct.DecreaseStock(absQty);
+                            }
                             else
                                 whProduct.IncreaseStock(absQty);
 
@@ -407,7 +500,10 @@ namespace MarcoERP.Application.Services.Inventory
                                 sourceId: adjustment.Id,
                                 notes: $"إلغاء تسوية مخزنية — {adjustment.AdjustmentNumber}");
 
-                            movement.SetBalanceAfter(whProduct.Quantity);
+                            if (allowNegativeStock)
+                                movement.SetBalanceAfterAllowNegative(whProduct.Quantity);
+                            else
+                                movement.SetBalanceAfter(whProduct.Quantity);
                             await _movementRepo.AddAsync(movement, ct);
                         }
                     }
@@ -418,7 +514,8 @@ namespace MarcoERP.Application.Services.Inventory
                         var journal = await _journalRepo.GetWithLinesAsync(adjustment.JournalEntryId.Value, ct);
                         if (journal != null)
                         {
-                            var fiscalYear = await _fiscalYearRepo.GetActiveYearAsync(ct);
+                            var fiscalYear = await _fiscalYearRepo.GetActiveYearAsync(ct)
+                                ?? throw new InventoryDomainException("لا توجد سنة مالية مفتوحة.");
                             var yearWithPeriods = await _fiscalYearRepo.GetWithPeriodsAsync(fiscalYear.Id, ct);
                             var period = yearWithPeriods.GetPeriod(_dateTime.UtcNow.Month);
 
@@ -434,7 +531,7 @@ namespace MarcoERP.Application.Services.Inventory
                                 fiscalYear.Id,
                                 period.Id);
 
-                            var number = _journalNumberGen.NextNumber(fiscalYear.Id);
+                            var number = await _journalNumberGen.NextNumberAsync(fiscalYear.Id, ct);
                             reversal.Post(number, _currentUser.Username, _dateTime.UtcNow);
                             await _journalRepo.AddAsync(reversal, ct);
                             await _unitOfWork.SaveChangesAsync(ct);
@@ -445,22 +542,36 @@ namespace MarcoERP.Application.Services.Inventory
                     }
 
                     adjustment.Cancel();
-                    _adjustmentRepo.Update(adjustment);
+                    // Entity is already tracked — no need for explicit Update
                     await _unitOfWork.SaveChangesAsync(ct);
                 }, IsolationLevel.Serializable, ct);
 
                 return ServiceResult.Success();
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "InvalidOperationException while cancelling inventory adjustment.");
+                return ServiceResult.Failure(
+                    ErrorSanitizer.Sanitize(ex, "إلغاء تسوية المخزون"));
+            }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult.Failure("تعذر إلغاء التسوية بسبب تعارض تزامن. الرجاء إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult.Failure("تعذر إلغاء التسوية بسبب تعارض في البيانات. الرجاء إعادة المحاولة.");
+            }
             catch (Exception ex)
             {
-                return ServiceResult.Failure($"فشل إلغاء التسوية: {ex.Message}");
+                _logger.LogError(ex, "CancelAsync failed for InventoryAdjustment.");
+                return ServiceResult.Failure(ErrorSanitizer.SanitizeGeneric(ex, "إلغاء تسوية المخزون"));
             }
         }
 
         public async Task<ServiceResult> DeleteDraftAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteDraftAsync", "InventoryAdjustment", id);
 
             var adjustment = await _adjustmentRepo.GetByIdAsync(id, ct);
             if (adjustment == null) return ServiceResult.Failure("التسوية غير موجودة.");
@@ -501,5 +612,14 @@ namespace MarcoERP.Application.Services.Inventory
                 CostDifference = l.CostDifference
             }).ToList() ?? new()
         };
+
+        private async Task<bool> IsNegativeStockAllowedAsync(CancellationToken ct)
+        {
+            if (_featureService == null)
+                return false;
+
+            var result = await _featureService.IsEnabledAsync(FeatureKeys.AllowNegativeStock, ct);
+            return result.IsSuccess && result.Data;
+        }
     }
 }

@@ -4,7 +4,7 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:local="clr-namespace:MarcoERP.WpfUI.Common"
         Title="MarcoERP — تسجيل الدخول"
-        Height="520" Width="420"
+        Height="560" Width="440"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         WindowStyle="None"
@@ -17,14 +17,13 @@
         <KeyBinding Key="Enter" Command="{Binding LoginCommand}" />
     </Window.InputBindings>
 
-    <Border CornerRadius="12"
+    <Border CornerRadius="16"
             Background="White"
-            BorderBrush="{StaticResource PrimaryBrush}"
-            BorderThickness="2"
+            BorderThickness="0"
             local:WindowDragBehavior.IsEnabled="True">
 
         <Border.Effect>
-            <DropShadowEffect BlurRadius="25" ShadowDepth="0" Opacity="0.35"/>
+            <DropShadowEffect BlurRadius="35" ShadowDepth="0" Opacity="0.30" Color="#1A237E"/>
         </Border.Effect>
 
         <Grid>
@@ -33,39 +32,58 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Header -->
+            <!-- Header with gradient -->
             <Border Grid.Row="0"
-                    Background="{StaticResource PrimaryBrush}"
-                    CornerRadius="10,10,0,0"
-                    Padding="20">
+                    CornerRadius="16,16,0,0"
+                    Padding="24,28">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#283593" Offset="0" />
+                        <GradientStop Color="#3F51B5" Offset="0.5" />
+                        <GradientStop Color="#5C6BC0" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
 
                 <StackPanel HorizontalAlignment="Center">
-                    <materialDesign:PackIcon Kind="Domain"
-                                             Width="48"
-                                             Height="48"
-                                             Foreground="White"/>
+                    <!-- Logo icon in a circle -->
+                    <Border Width="64" Height="64" CornerRadius="32"
+                            Background="#FFFFFF20"
+                            HorizontalAlignment="Center" Margin="0,0,0,12">
+                        <Border Width="52" Height="52" CornerRadius="26"
+                                Background="#FFFFFF30"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <materialDesign:PackIcon Kind="Domain"
+                                                     Width="32"
+                                                     Height="32"
+                                                     Foreground="White"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"/>
+                        </Border>
+                    </Border>
                     <TextBlock Text="MarcoERP"
-                               FontSize="28"
+                               FontSize="30"
                                FontWeight="Bold"
                                Foreground="White"
-                               Margin="0,8,0,0"
-                               HorizontalAlignment="Center"/>
-                    <TextBlock Text="نظام إدارة الموارد"
-                               FontSize="14"
-                               Foreground="#CCFFFFFF"
-                               HorizontalAlignment="Center"/>
+                               HorizontalAlignment="Center"
+                               FlowDirection="LeftToRight"/>
+                    <TextBlock Text="نظام إدارة الموارد المتكامل"
+                               FontSize="13"
+                               Foreground="#B8C4FF"
+                               HorizontalAlignment="Center"
+                               Margin="0,4,0,0"/>
                 </StackPanel>
             </Border>
 
             <!-- Form -->
             <StackPanel Grid.Row="1"
-                        Margin="30"
+                        Margin="32,24,32,28"
                         VerticalAlignment="Center">
 
                 <TextBlock Text="تسجيل الدخول"
                            FontSize="18"
                            FontWeight="SemiBold"
-                           Margin="0,0,0,24"
+                           Foreground="#1A237E"
+                           Margin="0,0,0,20"
                            HorizontalAlignment="Center"/>
 
                 <TextBox x:Name="txtUsername"
@@ -73,6 +91,7 @@
                          materialDesign:HintAssist.IsFloating="True"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
                          Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                         FontSize="14"
                          Margin="0,0,0,16"/>
 
                 <Grid Margin="0,0,0,8">
@@ -81,12 +100,14 @@
                                  materialDesign:HintAssist.IsFloating="True"
                                  Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
                                  local:PasswordBoxAssistant.BoundPassword="{Binding Password, Mode=TwoWay}"
+                                 FontSize="14"
                                  Padding="0,0,36,0"
                                  Visibility="{Binding IsPasswordVisible, Converter={StaticResource InverseBoolToVisConverter}}" />
                     <TextBox materialDesign:HintAssist.Hint="كلمة المرور"
                              materialDesign:HintAssist.IsFloating="True"
                              Style="{StaticResource MaterialDesignOutlinedTextBox}"
                              Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="14"
                              Padding="0,0,36,0"
                              Visibility="{Binding IsPasswordVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     <ToggleButton Style="{StaticResource MaterialDesignIconForegroundButton}"
@@ -98,11 +119,11 @@
                     </ToggleButton>
                 </Grid>
 
-                <!-- تذكرني -->
+                <!-- Remember Me -->
                 <CheckBox Content="تذكرني"
                           IsChecked="{Binding RememberMe}"
                           FontSize="12"
-                          Margin="0,2,0,12"
+                          Margin="0,4,0,16"
                           FlowDirection="RightToLeft"
                           VerticalContentAlignment="Center" />
 
@@ -111,29 +132,60 @@
                              Height="4"
                              IsIndeterminate="True"
                              Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
-                             Margin="0,0,0,16"/>
+                             Margin="0,0,0,12"/>
 
-                <TextBlock x:Name="lblError"
-                           Foreground="{StaticResource ErrorForegroundBrush}"
-                           FontSize="12"
-                           TextWrapping="Wrap"
-                           Text="{Binding ErrorMessage}"
-                           Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}"
-                           Margin="0,0,0,16"/>
+                <!-- Error Message -->
+                <Border CornerRadius="8" Padding="10" Margin="0,0,0,12"
+                        Background="#FFEBEE"
+                        Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="AlertCircle" Width="18" Height="18"
+                                                 Foreground="#C62828" VerticalAlignment="Center"
+                                                 Margin="0,0,8,0" />
+                        <TextBlock x:Name="lblError"
+                                   Foreground="#C62828"
+                                   FontSize="12"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ErrorMessage}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
 
+                <!-- Login Button with gradient -->
                 <Button x:Name="btnLogin"
-                        Content="دخول"
-                        Height="42"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
-                        Background="{StaticResource PrimaryBrush}"
+                        Height="44"
+                        Cursor="Hand"
+                        FontSize="15"
+                        FontWeight="SemiBold"
                         Foreground="White"
-                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                    Command="{Binding LoginCommand}"/>
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                        Command="{Binding LoginCommand}"
+                        ToolTip="تسجيل الدخول">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                            <Setter Property="Background">
+                                <Setter.Value>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#3F51B5" Offset="0" />
+                                        <GradientStop Color="#5C6BC0" Offset="1" />
+                                    </LinearGradientBrush>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="BorderThickness" Value="0" />
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="Login" Width="20" Height="20"
+                                                 VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="دخول" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
 
                 <Button Content="إغلاق"
                         Margin="0,12,0,0"
                         Style="{StaticResource MaterialDesignFlatButton}"
-                        Foreground="Gray"
+                        Foreground="#90A4AE"
+                        FontSize="12"
                         Command="{Binding CloseCommand}"/>
             </StackPanel>
         </Grid>

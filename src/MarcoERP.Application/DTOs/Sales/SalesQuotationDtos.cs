@@ -67,6 +67,7 @@ namespace MarcoERP.Application.DTOs.Sales
     /// <summary>DTO for creating a sales quotation line.</summary>
     public sealed class CreateSalesQuotationLineDto
     {
+        public int Id { get; set; }
         public int ProductId { get; set; }
         public int UnitId { get; set; }
         public decimal Quantity { get; set; }

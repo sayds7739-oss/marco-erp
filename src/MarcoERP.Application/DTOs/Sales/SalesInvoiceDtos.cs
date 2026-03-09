@@ -14,7 +14,7 @@ namespace MarcoERP.Application.DTOs.Sales
         public int Id { get; set; }
         public string InvoiceNumber { get; set; }
         public DateTime InvoiceDate { get; set; }
-        public int CustomerId { get; set; }
+        public int? CustomerId { get; set; }
         public string CustomerNameAr { get; set; }
         public int WarehouseId { get; set; }
         public string WarehouseNameAr { get; set; }
@@ -23,14 +23,25 @@ namespace MarcoERP.Application.DTOs.Sales
         public decimal DiscountTotal { get; set; }
         public decimal VatTotal { get; set; }
         public decimal NetTotal { get; set; }
+        public decimal HeaderDiscountPercent { get; set; }
+        public decimal HeaderDiscountAmount { get; set; }
+        public decimal DeliveryFee { get; set; }
+        public decimal PaidAmount { get; set; }
+        public decimal BalanceDue { get; set; }
+        public string PaymentStatus { get; set; }
+        public InvoiceType InvoiceType { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
+        public DateTime? DueDate { get; set; }
         public string Notes { get; set; }
         public int? JournalEntryId { get; set; }
         public int? CogsJournalEntryId { get; set; }
+        public int? CommissionJournalEntryId { get; set; }
         public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? SupplierId { get; set; }
         public string SupplierNameAr { get; set; }
         public List<SalesInvoiceLineDto> Lines { get; set; } = new();
+        public string WarningMessage { get; set; }
     }
 
     /// <summary>Read-only DTO for a sales invoice line.</summary>
@@ -59,21 +70,28 @@ namespace MarcoERP.Application.DTOs.Sales
     public sealed class CreateSalesInvoiceDto
     {
         public DateTime InvoiceDate { get; set; }
-        public int CustomerId { get; set; }
+        public int? CustomerId { get; set; }
         public int WarehouseId { get; set; }
         public string Notes { get; set; }
         public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? SupplierId { get; set; }
+        public decimal HeaderDiscountPercent { get; set; }
+        public decimal HeaderDiscountAmount { get; set; }
+        public decimal DeliveryFee { get; set; }
+        public InvoiceType InvoiceType { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
+        public DateTime? DueDate { get; set; }
         public List<CreateSalesInvoiceLineDto> Lines { get; set; } = new();
     }
 
     /// <summary>DTO for creating a sales invoice line.</summary>
     public sealed class CreateSalesInvoiceLineDto
     {
+        public int Id { get; set; }
         public int ProductId { get; set; }
         public int UnitId { get; set; }
-        public decimal Quantity { get; set; }
+        public decimal Quantity { get; set; } = 1m;
         public decimal UnitPrice { get; set; }
         public decimal DiscountPercent { get; set; }
     }
@@ -83,12 +101,18 @@ namespace MarcoERP.Application.DTOs.Sales
     {
         public int Id { get; set; }
         public DateTime InvoiceDate { get; set; }
-        public int CustomerId { get; set; }
+        public int? CustomerId { get; set; }
         public int WarehouseId { get; set; }
         public string Notes { get; set; }
         public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? SupplierId { get; set; }
+        public decimal HeaderDiscountPercent { get; set; }
+        public decimal HeaderDiscountAmount { get; set; }
+        public decimal DeliveryFee { get; set; }
+        public InvoiceType InvoiceType { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
+        public DateTime? DueDate { get; set; }
         public List<CreateSalesInvoiceLineDto> Lines { get; set; } = new();
     }
 
@@ -100,6 +124,12 @@ namespace MarcoERP.Application.DTOs.Sales
         public DateTime InvoiceDate { get; set; }
         public string CustomerNameAr { get; set; }
         public string Status { get; set; }
+        public InvoiceType InvoiceType { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
+        public DateTime? DueDate { get; set; }
         public decimal NetTotal { get; set; }
+        public decimal PaidAmount { get; set; }
+        public decimal BalanceDue { get; set; }
+        public string PaymentStatus { get; set; }
     }
 }

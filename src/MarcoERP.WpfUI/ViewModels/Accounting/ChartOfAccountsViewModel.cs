@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.Common;
 using MarcoERP.Application.DTOs.Accounting;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Accounting;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions;
@@ -21,10 +22,12 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
     public sealed class ChartOfAccountsViewModel : BaseViewModel
     {
         private readonly IAccountService _accountService;
+        private readonly IDialogService _dialog;
 
-        public ChartOfAccountsViewModel(IAccountService accountService)
+        public ChartOfAccountsViewModel(IAccountService accountService, IDialogService dialog)
         {
             _accountService = accountService ?? throw new ArgumentNullException(nameof(accountService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AccountTree = new ObservableCollection<AccountTreeNodeDto>();
             AllAccounts = new ObservableCollection<AccountDto>();
@@ -38,6 +41,9 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
             DeactivateCommand = new AsyncRelayCommand(DeactivateAccountAsync, () => CanDeactivate);
             ActivateCommand = new AsyncRelayCommand(ActivateAccountAsync, () => CanActivate);
             CancelCommand = new RelayCommand(CancelEditing);
+            ToggleViewCommand = new RelayCommand(_ => IsTreeView = !IsTreeView);
+            ExpandAllCommand = new RelayCommand(_ => RequestExpandAll?.Invoke(true));
+            CollapseAllCommand = new RelayCommand(_ => RequestExpandAll?.Invoke(false));
         }
 
         // ── Collections ──────────────────────────────────────────
@@ -45,7 +51,56 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         public ObservableCollection<AccountTreeNodeDto> AccountTree { get; }
         public ObservableCollection<AccountDto> AllAccounts { get; }
 
+        // ── View Mode Toggle ────────────────────────────────────
+
+        private bool _isTreeView = true;
+        /// <summary>When true the TreeView is shown; when false the flat DataGrid.</summary>
+        public bool IsTreeView
+        {
+            get => _isTreeView;
+            set => SetProperty(ref _isTreeView, value);
+        }
+
+        // ── Search / Filter ────────────────────────────────────
+
+        private string _searchText;
+        /// <summary>Text used to filter the tree view.</summary>
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                if (SetProperty(ref _searchText, value))
+                    ApplyTreeFilter();
+            }
+        }
+
+        private ObservableCollection<AccountTreeNodeDto> _filteredAccountTree = new ObservableCollection<AccountTreeNodeDto>();
+        /// <summary>Filtered tree shown in the UI (subset of AccountTree when searching).</summary>
+        public ObservableCollection<AccountTreeNodeDto> FilteredAccountTree
+        {
+            get => _filteredAccountTree;
+            set => SetProperty(ref _filteredAccountTree, value);
+        }
+
         // ── Selection ────────────────────────────────────────────
+
+        private AccountTreeNodeDto _selectedTreeNode;
+        /// <summary>Currently selected node in the TreeView.</summary>
+        public AccountTreeNodeDto SelectedTreeNode
+        {
+            get => _selectedTreeNode;
+            set
+            {
+                if (SetProperty(ref _selectedTreeNode, value) && value != null)
+                {
+                    // Sync the flat SelectedAccount from the tree node
+                    var match = AllAccounts.FirstOrDefault(a => a.Id == value.Id);
+                    if (match != null)
+                        SelectedAccount = match;
+                }
+            }
+        }
 
         private AccountDto _selectedAccount;
         public AccountDto SelectedAccount
@@ -174,6 +229,14 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         public ICommand DeactivateCommand { get; }
         public ICommand ActivateCommand { get; }
         public ICommand CancelCommand { get; }
+        public ICommand ToggleViewCommand { get; }
+        public ICommand ExpandAllCommand { get; }
+        public ICommand CollapseAllCommand { get; }
+
+        /// <summary>
+        /// Raised to ask the View to expand (true) or collapse (false) all tree nodes.
+        /// </summary>
+        public event Action<bool> RequestExpandAll;
 
         // ── Can Execute Logic ────────────────────────────────────
 
@@ -204,6 +267,7 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
                     AccountTree.Clear();
                     foreach (var node in treeResult.Data)
                         AccountTree.Add(node);
+                    ApplyTreeFilter();
                 }
 
                 if (allResult.IsSuccess)
@@ -343,12 +407,9 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         {
             if (SelectedAccount == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل أنت متأكد من حذف الحساب «{SelectedAccount.AccountNameAr}»؟\nالحذف سيكون ناعم (Soft Delete).",
-                "تأكيد الحذف",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الحذف")) return;
 
             IsBusy = true;
             ClearError();
@@ -451,6 +512,71 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         }
 
         // ── Helpers ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Filters the AccountTree based on SearchText.
+        /// When the search text is empty, all nodes are shown.
+        /// When searching, only branches that contain matching nodes are shown (with parents kept).
+        /// </summary>
+        private void ApplyTreeFilter()
+        {
+            FilteredAccountTree.Clear();
+
+            if (string.IsNullOrWhiteSpace(SearchText))
+            {
+                foreach (var node in AccountTree)
+                    FilteredAccountTree.Add(node);
+                return;
+            }
+
+            var query = SearchText.Trim();
+            foreach (var node in AccountTree)
+            {
+                var filtered = FilterNode(node, query);
+                if (filtered != null)
+                    FilteredAccountTree.Add(filtered);
+            }
+        }
+
+        /// <summary>
+        /// Recursively filters a tree node. Returns a shallow copy containing only matching descendants,
+        /// or null if neither this node nor any descendant matches.
+        /// </summary>
+        private static AccountTreeNodeDto FilterNode(AccountTreeNodeDto node, string query)
+        {
+            bool selfMatches = (node.AccountCode != null && node.AccountCode.Contains(query, StringComparison.OrdinalIgnoreCase))
+                            || (node.AccountNameAr != null && node.AccountNameAr.Contains(query, StringComparison.OrdinalIgnoreCase))
+                            || (node.AccountNameEn != null && node.AccountNameEn.Contains(query, StringComparison.OrdinalIgnoreCase));
+
+            var matchedChildren = new List<AccountTreeNodeDto>();
+            if (node.Children != null)
+            {
+                foreach (var child in node.Children)
+                {
+                    var filteredChild = FilterNode(child, query);
+                    if (filteredChild != null)
+                        matchedChildren.Add(filteredChild);
+                }
+            }
+
+            if (!selfMatches && matchedChildren.Count == 0)
+                return null;
+
+            return new AccountTreeNodeDto
+            {
+                Id = node.Id,
+                AccountCode = node.AccountCode,
+                AccountNameAr = node.AccountNameAr,
+                AccountNameEn = node.AccountNameEn,
+                AccountTypeName = node.AccountTypeName,
+                Level = node.Level,
+                IsLeaf = node.IsLeaf,
+                AllowPosting = node.AllowPosting,
+                IsActive = node.IsActive,
+                IsSystemAccount = node.IsSystemAccount,
+                Children = matchedChildren
+            };
+        }
 
         private void PopulateFormFromAccount(AccountDto account)
         {

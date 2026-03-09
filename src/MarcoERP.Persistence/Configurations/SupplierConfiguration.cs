@@ -14,9 +14,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(s => s.Id);
             builder.Property(s => s.Id).UseIdentityColumn();
 
-            builder.Property(s => s.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             // ── Business Fields ─────────────────────────────────
             builder.Property(s => s.Code)
@@ -44,6 +42,39 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.Property(s => s.TaxNumber)
                 .HasMaxLength(50);
+
+            builder.Property(s => s.Email)
+                .HasMaxLength(200);
+
+            builder.Property(s => s.CommercialRegister)
+                .HasMaxLength(50);
+
+            builder.Property(s => s.Country)
+                .HasMaxLength(100);
+
+            builder.Property(s => s.PostalCode)
+                .HasMaxLength(20);
+
+            builder.Property(s => s.ContactPerson)
+                .HasMaxLength(200);
+
+            builder.Property(s => s.Website)
+                .HasMaxLength(200);
+
+            builder.Property(s => s.CreditLimit)
+                .HasPrecision(18, 4);
+
+            builder.Property(s => s.BankName)
+                .HasMaxLength(200);
+
+            builder.Property(s => s.BankAccountName)
+                .HasMaxLength(200);
+
+            builder.Property(s => s.BankAccountNumber)
+                .HasMaxLength(50);
+
+            builder.Property(s => s.IBAN)
+                .HasMaxLength(34);
 
             builder.Property(s => s.PreviousBalance)
                 .HasPrecision(18, 4)
@@ -79,7 +110,7 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(s => s.TaxNumber)
                 .HasDatabaseName("IX_Suppliers_TaxNumber")
-                .HasFilter("[TaxNumber] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("TaxNumber"));
 
             builder.HasIndex(s => s.IsActive)
                 .HasDatabaseName("IX_Suppliers_IsActive");

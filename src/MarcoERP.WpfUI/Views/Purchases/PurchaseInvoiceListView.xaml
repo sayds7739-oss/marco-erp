@@ -57,9 +57,9 @@
                       CanUserAddRows="False" CanUserDeleteRows="False"
                       SelectionMode="Single" GridLinesVisibility="Horizontal"
                       HeadersVisibility="Column" FontSize="12"
-                      RowHeight="38" ColumnHeaderHeight="42" BorderThickness="0"
-                      materialDesign:DataGridAssist.CellPadding="12 8"
-                      materialDesign:DataGridAssist.ColumnHeaderPadding="12 10"
+                      RowHeight="32" ColumnHeaderHeight="34" BorderThickness="0"
+                      materialDesign:DataGridAssist.CellPadding="8 4"
+                      materialDesign:DataGridAssist.ColumnHeaderPadding="8 6"
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
                       EnableRowVirtualization="True">
@@ -70,6 +70,13 @@
                     <DataGridTextColumn Header="رقم الفاتورة" Binding="{Binding InvoiceNumber}" Width="130" />
                     <DataGridTextColumn Header="التاريخ" Binding="{Binding InvoiceDate, StringFormat=yyyy-MM-dd}" Width="110" />
                     <DataGridTextColumn Header="المورد" Binding="{Binding SupplierNameAr}" Width="*" MinWidth="150" />
+                    <DataGridTextColumn Header="نوع الفاتورة" Binding="{Binding InvoiceType, Converter={StaticResource InvoiceTypeToArabicConverter}}" Width="90">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                     <DataGridTextColumn Header="الإجمالي" Binding="{Binding NetTotal, StringFormat=N2}" Width="120">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">

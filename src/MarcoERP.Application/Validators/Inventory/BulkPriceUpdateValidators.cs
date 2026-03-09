@@ -24,6 +24,11 @@ namespace MarcoERP.Application.Validators.Inventory
                 .Must(t => t == "SalePrice" || t == "CostPrice")
                 .WithMessage("السعر المستهدف يجب أن يكون SalePrice أو CostPrice.");
 
+            RuleFor(x => x.UnitLevel)
+                .NotEmpty().WithMessage("مستوى الوحدة مطلوب.")
+                .Must(l => l == "MajorUnit" || l == "MinorUnit")
+                .WithMessage("مستوى الوحدة يجب أن يكون MajorUnit أو MinorUnit.");
+
             RuleFor(x => x.PercentageChange)
                 .InclusiveBetween(-100m, 1000m)
                 .WithMessage("نسبة التغيير يجب أن تكون بين -100% و 1000%.")

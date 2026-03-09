@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -21,15 +22,28 @@ namespace MarcoERP.Persistence.Repositories.Treasury
         // ── IRepository<BankAccount> ─────────────────────────────
 
         public async Task<BankAccount> GetByIdAsync(int id, CancellationToken ct = default)
-            => await _context.BankAccounts.FirstOrDefaultAsync(b => b.Id == id, ct);
+            => await _context.BankAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b => b.Id == id, ct);
 
         public async Task<IReadOnlyList<BankAccount>> GetAllAsync(CancellationToken ct = default)
-            => await _context.BankAccounts.OrderBy(b => b.Code).ToListAsync(ct);
+            => await _context.BankAccounts
+                .AsNoTracking()
+                .OrderBy(b => b.Code)
+                .ToListAsync(ct);
 
         public async Task AddAsync(BankAccount entity, CancellationToken ct = default)
             => await _context.BankAccounts.AddAsync(entity, ct);
 
-        public void Update(BankAccount entity) => _context.BankAccounts.Update(entity);
+        public void Update(BankAccount entity)
+        {
+            ArgumentNullException.ThrowIfNull(entity);
+            var local = _context.BankAccounts.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && local != entity)
+                _context.Entry(local).CurrentValues.SetValues(entity);
+            else
+                _context.Entry(entity).State = EntityState.Modified;
+        }
         public void Remove(BankAccount entity) => _context.BankAccounts.Remove(entity);
 
         // ── IBankAccountRepository ───────────────────────────────
@@ -43,10 +57,16 @@ namespace MarcoERP.Persistence.Repositories.Treasury
         }
 
         public async Task<BankAccount> GetDefaultAsync(CancellationToken ct = default)
-            => await _context.BankAccounts.FirstOrDefaultAsync(b => b.IsDefault, ct);
+            => await _context.BankAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(b => b.IsDefault, ct);
 
         public async Task<IReadOnlyList<BankAccount>> GetActiveAsync(CancellationToken ct = default)
-            => await _context.BankAccounts.Where(b => b.IsActive).OrderBy(b => b.Code).ToListAsync(ct);
+            => await _context.BankAccounts
+                .AsNoTracking()
+                .Where(b => b.IsActive)
+                .OrderBy(b => b.Code)
+                .ToListAsync(ct);
 
         /// <summary>
         /// Generates the next bank account code in format BNK-####.
@@ -57,6 +77,8 @@ namespace MarcoERP.Persistence.Repositories.Treasury
             const string prefix = "BNK-";
 
             var lastCode = await _context.BankAccounts
+                .IgnoreQueryFilters()
+                .AsNoTracking()
                 .Where(b => b.Code.StartsWith(prefix))
                 .OrderByDescending(b => b.Code)
                 .Select(b => b.Code)

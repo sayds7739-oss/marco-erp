@@ -141,23 +141,37 @@ namespace MarcoERP.Persistence.Services.Settings
 
                 try
                 {
-                    // Raw SQL check for NULL CompanyId
-                    var sql = $"SELECT COUNT(*) FROM [{schemaName}].[{tableName}] WHERE CompanyId IS NULL";
+                    // Use parameterized SQL identifier quoting (safe because names come from EF Core model, not user input)
+                    var quotedTable = $"[{schemaName.Replace("]", "]]")}].[{tableName.Replace("]", "]]")}]";
+                    var sql = $"SELECT COUNT(*) FROM {quotedTable} WHERE CompanyId IS NULL";
                     using var cmd = _context.Database.GetDbConnection().CreateCommand();
                     cmd.CommandText = sql;
-                    
-                    if (cmd.Connection.State != System.Data.ConnectionState.Open)
-                        await cmd.Connection.OpenAsync(ct);
 
-                    var count = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
-                    if (count > 0)
+                    var connectionWasOpened = false;
+                    if (cmd.Connection.State != System.Data.ConnectionState.Open)
                     {
-                        tablesWithNulls.Add($"{tableName} ({count} سجل)");
+                        await cmd.Connection.OpenAsync(ct);
+                        connectionWasOpened = true;
+                    }
+
+                    try
+                    {
+                        var count = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct));
+                        if (count > 0)
+                        {
+                            tablesWithNulls.Add($"{tableName} ({count} سجل)");
+                        }
+                    }
+                    finally
+                    {
+                        if (connectionWasOpened)
+                            await cmd.Connection.CloseAsync();
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Skip tables that can't be queried (e.g., not yet migrated)
+                    // Log and skip tables that can't be queried (e.g., not yet migrated)
+                    System.Diagnostics.Debug.WriteLine($"[GovernanceIntegrity] فشل فحص جدول {tableName}: {ex.Message}");
                 }
             }
 
@@ -305,8 +319,8 @@ namespace MarcoERP.Persistence.Services.Settings
                 return new IntegrityCheckResult
                 {
                     CheckName = "فحص حدود الوحدات",
-                    Status = "OK",
-                    Message = "لم يتم تسجيل مفتش التبعيات"
+                    Status = "Warning",
+                    Message = "لم يتم تسجيل مفتش التبعيات — تم تخطي الفحص"
                 };
             }
 

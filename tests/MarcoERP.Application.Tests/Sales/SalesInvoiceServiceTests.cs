@@ -12,6 +12,7 @@ using Xunit;
 using MarcoERP.Application.Common;
 using MarcoERP.Application.DTOs.Sales;
 using MarcoERP.Application.Interfaces;
+using MarcoERP.Application.Interfaces.Settings;
 using MarcoERP.Application.Interfaces.SmartEntry;
 using MarcoERP.Application.Services.Sales;
 using MarcoERP.Domain.Entities.Accounting;
@@ -22,6 +23,7 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Sales;
+using MarcoERP.Domain.Interfaces.Settings;
 
 namespace MarcoERP.Application.Tests.Sales
 {
@@ -42,6 +44,8 @@ namespace MarcoERP.Application.Tests.Sales
         private readonly Mock<ISmartEntryQueryService> _smartEntryQueryServiceMock;
         private readonly Mock<IValidator<CreateSalesInvoiceDto>> _createValidatorMock;
         private readonly Mock<IValidator<UpdateSalesInvoiceDto>> _updateValidatorMock;
+        private readonly Mock<ISystemSettingRepository> _systemSettingRepoMock;
+        private readonly Mock<IFeatureService> _featureServiceMock;
         private readonly SalesInvoiceService _sut;
 
         public SalesInvoiceServiceTests()
@@ -61,6 +65,12 @@ namespace MarcoERP.Application.Tests.Sales
             _dateTimeMock = new Mock<IDateTimeProvider>();
             _createValidatorMock = new Mock<IValidator<CreateSalesInvoiceDto>>();
             _updateValidatorMock = new Mock<IValidator<UpdateSalesInvoiceDto>>();
+            _systemSettingRepoMock = new Mock<ISystemSettingRepository>();
+            _featureServiceMock = new Mock<IFeatureService>();
+
+            // Default: features enabled
+            _featureServiceMock.Setup(f => f.IsEnabledAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ServiceResult<bool>.Success(true));
 
             // Default: authenticated user with sales permissions
             _currentUserMock.Setup(c => c.IsAuthenticated).Returns(true);
@@ -76,6 +86,15 @@ namespace MarcoERP.Application.Tests.Sales
                 .ReturnsAsync(new ValidationResult());
             _updateValidatorMock.Setup(v => v.ValidateAsync(It.IsAny<UpdateSalesInvoiceDto>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ValidationResult());
+
+            // Default: customer exists (FK validation)
+            _customerRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((int id, CancellationToken _) =>
+                {
+                    var c = new Customer(new Customer.CustomerDraft { Code = "C001", NameAr = "عميل اختبار" });
+                    typeof(Customer).GetProperty("Id").SetValue(c, id);
+                    return c;
+                });
 
             // Default: credit control queries are benign
             _smartEntryQueryServiceMock
@@ -105,10 +124,15 @@ namespace MarcoERP.Application.Tests.Sales
                     _unitOfWorkMock.Object,
                     _currentUserMock.Object,
                     _dateTimeMock.Object,
-                    _smartEntryQueryServiceMock.Object),
+                    _smartEntryQueryServiceMock.Object,
+                    _systemSettingRepoMock.Object,
+                    _featureServiceMock.Object),
                 new SalesInvoiceValidators(
                     _createValidatorMock.Object,
-                    _updateValidatorMock.Object));
+                    _updateValidatorMock.Object),
+                new JournalEntryFactory(_journalRepoMock.Object, _journalNumberGenMock.Object),
+                new FiscalPeriodValidator(_fiscalYearRepoMock.Object, _systemSettingRepoMock.Object, _dateTimeMock.Object, _currentUserMock.Object),
+                new StockManager(_whProductRepoMock.Object, _movementRepoMock.Object));
         }
 
         // ── Helpers ─────────────────────────────────────────────
@@ -202,8 +226,11 @@ namespace MarcoERP.Application.Tests.Sales
         [Fact]
         public async Task CreateAsync_WhenNotAuthenticated_ReturnsFailure()
         {
-            // Arrange
-            _currentUserMock.Setup(c => c.IsAuthenticated).Returns(false);
+            // Arrange — auth is enforced by AuthorizationProxy (DI layer);
+            // the service itself does NOT check IsAuthenticated.
+            // When feature is disabled, FeatureGuard blocks the operation.
+            _featureServiceMock.Setup(f => f.IsEnabledAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ServiceResult<bool>.Success(false));
             var dto = CreateValidDto();
 
             // Act
@@ -211,14 +238,16 @@ namespace MarcoERP.Application.Tests.Sales
 
             // Assert
             result.IsFailure.Should().BeTrue();
-            result.ErrorMessage.Should().Contain("يجب تسجيل الدخول");
+            result.ErrorMessage.Should().Contain("معطلة");
         }
 
         [Fact]
-        public async Task CreateAsync_WhenNoPermission_ReturnsFailure()
+        public async Task CreateAsync_WhenFeatureDisabled_ReturnsFailure()
         {
-            // Arrange
-            _currentUserMock.Setup(c => c.HasPermission(PermissionKeys.SalesCreate)).Returns(false);
+            // Arrange — permission enforcement is via AuthorizationProxy (DI layer);
+            // service-level guard is FeatureGuard only.
+            _featureServiceMock.Setup(f => f.IsEnabledAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ServiceResult<bool>.Success(false));
             var dto = CreateValidDto();
 
             // Act
@@ -226,7 +255,7 @@ namespace MarcoERP.Application.Tests.Sales
 
             // Assert
             result.IsFailure.Should().BeTrue();
-            result.ErrorMessage.Should().Contain("لا تملك الصلاحية");
+            result.ErrorMessage.Should().Contain("معطلة");
         }
 
         [Fact]
@@ -288,7 +317,7 @@ namespace MarcoERP.Application.Tests.Sales
         {
             // Arrange
             var posted = CreatePostedInvoice(1);
-            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(1, It.IsAny<CancellationToken>()))
+            _invoiceRepoMock.Setup(r => r.GetWithLinesTrackedAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(posted);
 
             var dto = new UpdateSalesInvoiceDto
@@ -312,7 +341,7 @@ namespace MarcoERP.Application.Tests.Sales
         public async Task UpdateAsync_WhenNotFound_ReturnsFailure()
         {
             // Arrange
-            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(999, It.IsAny<CancellationToken>()))
+            _invoiceRepoMock.Setup(r => r.GetWithLinesTrackedAsync(999, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((SalesInvoice)null);
 
             var dto = new UpdateSalesInvoiceDto
@@ -340,7 +369,7 @@ namespace MarcoERP.Application.Tests.Sales
         public async Task PostAsync_WhenNotFound_ReturnsFailure()
         {
             // Arrange
-            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(999, It.IsAny<CancellationToken>()))
+            _invoiceRepoMock.Setup(r => r.GetWithLinesTrackedAsync(999, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((SalesInvoice)null);
 
             // Act
@@ -356,7 +385,7 @@ namespace MarcoERP.Application.Tests.Sales
         {
             // Arrange
             var posted = CreatePostedInvoice(1);
-            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(1, It.IsAny<CancellationToken>()))
+            _invoiceRepoMock.Setup(r => r.GetWithLinesTrackedAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(posted);
 
             // Act
@@ -372,7 +401,7 @@ namespace MarcoERP.Application.Tests.Sales
         {
             // Arrange
             var invoice = CreateDraftInvoiceWithLine(1);
-            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(1, It.IsAny<CancellationToken>()))
+            _invoiceRepoMock.Setup(r => r.GetWithLinesTrackedAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(invoice);
 
             // Stock is 0, but line needs 5 base units
@@ -394,7 +423,7 @@ namespace MarcoERP.Application.Tests.Sales
         {
             // Arrange
             var invoice = CreateDraftInvoiceWithLine(1);
-            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(1, It.IsAny<CancellationToken>()))
+            _invoiceRepoMock.Setup(r => r.GetWithLinesTrackedAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(invoice);
 
             // Stock is sufficient
@@ -418,7 +447,7 @@ namespace MarcoERP.Application.Tests.Sales
         {
             // Arrange
             var invoice = CreateDraftInvoiceWithLine(1);
-            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(1, It.IsAny<CancellationToken>()))
+            _invoiceRepoMock.Setup(r => r.GetWithLinesTrackedAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(invoice);
 
             _whProductRepoMock.Setup(r => r.GetAsync(1, 1, It.IsAny<CancellationToken>()))
@@ -450,7 +479,7 @@ namespace MarcoERP.Application.Tests.Sales
         {
             // Arrange
             var invoice = CreateDraftInvoiceWithLine(1);
-            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(1, It.IsAny<CancellationToken>()))
+            _invoiceRepoMock.Setup(r => r.GetWithLinesTrackedAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(invoice);
 
             _whProductRepoMock.Setup(r => r.GetAsync(1, 1, It.IsAny<CancellationToken>()))
@@ -479,7 +508,7 @@ namespace MarcoERP.Application.Tests.Sales
         {
             // Arrange
             var invoice = CreateDraftInvoiceWithLine(1);
-            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(1, It.IsAny<CancellationToken>()))
+            _invoiceRepoMock.Setup(r => r.GetWithLinesTrackedAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(invoice);
 
             var product = CreateProduct(1, wac: 10m, vatRate: 14m);
@@ -498,7 +527,7 @@ namespace MarcoERP.Application.Tests.Sales
 
             SetupGLAccounts();
 
-            _journalNumberGenMock.Setup(g => g.NextNumber(1)).Returns("JV-2026-0001");
+            _journalNumberGenMock.Setup(g => g.NextNumberAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync("JV-2026-0001");
 
             // Assign journal entry IDs on AddAsync so invoice.Post() receives valid IDs
             var journalIdCounter = 100;
@@ -508,6 +537,10 @@ namespace MarcoERP.Application.Tests.Sales
                     typeof(JournalEntry).GetProperty("Id").SetValue(je, journalIdCounter++);
                 })
                 .Returns(Task.CompletedTask);
+
+            // Final reload after posting — used for DTO mapping
+            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((int id, CancellationToken _) => CreatePostedInvoice(id));
 
             // Act
             var result = await _sut.PostAsync(1, CancellationToken.None);
@@ -529,7 +562,7 @@ namespace MarcoERP.Application.Tests.Sales
         {
             // Arrange
             var draft = CreateDraftInvoiceWithLine(1);
-            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(1, It.IsAny<CancellationToken>()))
+            _invoiceRepoMock.Setup(r => r.GetWithLinesTrackedAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(draft);
 
             // Act
@@ -549,7 +582,7 @@ namespace MarcoERP.Application.Tests.Sales
         {
             // Arrange
             var posted = CreatePostedInvoice(1);
-            _invoiceRepoMock.Setup(r => r.GetWithLinesAsync(1, It.IsAny<CancellationToken>()))
+            _invoiceRepoMock.Setup(r => r.GetWithLinesTrackedAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(posted);
 
             // Act

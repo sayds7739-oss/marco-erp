@@ -15,6 +15,7 @@ namespace MarcoERP.Application.Interfaces.Inventory
         /// Reads an Excel file and parses product rows without saving.
         /// Returns parsed rows with validation results for preview.
         /// </summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<IReadOnlyList<ProductImportRowDto>>> ParseExcelAsync(
             string filePath, CancellationToken ct = default);
 
@@ -22,6 +23,7 @@ namespace MarcoERP.Application.Interfaces.Inventory
         /// Imports validated product rows into the database.
         /// Skips rows that fail validation.
         /// </summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<ProductImportResultDto>> ImportAsync(
             IReadOnlyList<ProductImportRowDto> rows, CancellationToken ct = default);
 

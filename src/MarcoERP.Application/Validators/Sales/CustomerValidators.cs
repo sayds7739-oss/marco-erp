@@ -38,6 +38,27 @@ namespace MarcoERP.Application.Validators.Sales
             RuleFor(x => x.TaxNumber)
                 .MaximumLength(50).WithMessage("الرقم الضريبي لا يتجاوز 50 حرف.");
 
+            RuleFor(x => x.Email)
+                .MaximumLength(200).WithMessage("البريد الإلكتروني لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.CommercialRegister)
+                .MaximumLength(50).WithMessage("السجل التجاري لا يتجاوز 50 حرف.");
+
+            RuleFor(x => x.Country)
+                .MaximumLength(100).WithMessage("الدولة لا تتجاوز 100 حرف.");
+
+            RuleFor(x => x.PostalCode)
+                .MaximumLength(20).WithMessage("الرمز البريدي لا يتجاوز 20 حرف.");
+
+            RuleFor(x => x.ContactPerson)
+                .MaximumLength(200).WithMessage("جهة الاتصال لا تتجاوز 200 حرف.");
+
+            RuleFor(x => x.Website)
+                .MaximumLength(200).WithMessage("الموقع الإلكتروني لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.DefaultDiscountPercent)
+                .InclusiveBetween(0, 100).WithMessage("نسبة الخصم الافتراضية يجب أن تكون بين 0 و 100.");
+
             RuleFor(x => x.CreditLimit)
                 .GreaterThanOrEqualTo(0).WithMessage("حد الائتمان لا يمكن أن يكون بالسالب.");
 
@@ -75,6 +96,27 @@ namespace MarcoERP.Application.Validators.Sales
 
             RuleFor(x => x.TaxNumber)
                 .MaximumLength(50).WithMessage("الرقم الضريبي لا يتجاوز 50 حرف.");
+
+            RuleFor(x => x.Email)
+                .MaximumLength(200).WithMessage("البريد الإلكتروني لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.CommercialRegister)
+                .MaximumLength(50).WithMessage("السجل التجاري لا يتجاوز 50 حرف.");
+
+            RuleFor(x => x.Country)
+                .MaximumLength(100).WithMessage("الدولة لا تتجاوز 100 حرف.");
+
+            RuleFor(x => x.PostalCode)
+                .MaximumLength(20).WithMessage("الرمز البريدي لا يتجاوز 20 حرف.");
+
+            RuleFor(x => x.ContactPerson)
+                .MaximumLength(200).WithMessage("جهة الاتصال لا تتجاوز 200 حرف.");
+
+            RuleFor(x => x.Website)
+                .MaximumLength(200).WithMessage("الموقع الإلكتروني لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.DefaultDiscountPercent)
+                .InclusiveBetween(0, 100).WithMessage("نسبة الخصم الافتراضية يجب أن تكون بين 0 و 100.");
 
             RuleFor(x => x.CreditLimit)
                 .GreaterThanOrEqualTo(0).WithMessage("حد الائتمان لا يمكن أن يكون بالسالب.");

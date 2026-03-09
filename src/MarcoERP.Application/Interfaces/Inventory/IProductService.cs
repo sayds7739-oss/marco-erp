@@ -35,18 +35,23 @@ namespace MarcoERP.Application.Interfaces.Inventory
         // ── Commands ────────────────────────────────────────────
 
         /// <summary>إنشاء صنف جديد — Creates a new product.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<ProductDto>> CreateAsync(CreateProductDto dto, CancellationToken ct = default);
 
         /// <summary>تعديل صنف — Updates an existing product.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<ProductDto>> UpdateAsync(UpdateProductDto dto, CancellationToken ct = default);
 
         /// <summary>تفعيل صنف — Activates a product.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult> ActivateAsync(int id, CancellationToken ct = default);
 
         /// <summary>تعطيل صنف — Deactivates a product.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct = default);
 
         /// <summary>حذف صنف — Soft-deletes a product.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult> DeleteAsync(int id, CancellationToken ct = default);
     }
 }

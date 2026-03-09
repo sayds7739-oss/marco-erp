@@ -38,93 +38,74 @@
         </Border>
 
         <!-- ══════ Controls Panel ══════ -->
-        <Border Grid.Row="2" Style="{StaticResource CardPanel}" Margin="0,2,0,4" Padding="12">
-            <StackPanel>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+        <Border Grid.Row="2" Style="{StaticResource CardPanel}" Margin="0,2,0,2" Padding="10,7">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-                    <!-- Mode selection -->
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="طريقة التحديث" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,0,0,4" />
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton Content="نسبة مئوية" GroupName="Mode"
-                                         IsChecked="{Binding IsPercentageMode}"
-                                         Margin="0,0,12,0" />
-                            <RadioButton Content="سعر مباشر" GroupName="Mode"
-                                         IsChecked="{Binding IsDirectMode}" />
-                        </StackPanel>
-                    </StackPanel>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <RadioButton Content="نسبة مئوية" GroupName="Mode" IsChecked="{Binding IsPercentageMode}" Margin="0,0,10,0" />
+                    <RadioButton Content="سعر مباشر" GroupName="Mode" IsChecked="{Binding IsDirectMode}" />
+                </StackPanel>
 
-                    <!-- Price Target -->
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="السعر المستهدف" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,0,0,4" />
-                        <ComboBox SelectedValue="{Binding SelectedPriceTarget}" Width="150"
-                                  SelectedValuePath="Tag">
-                            <ComboBoxItem Tag="SalePrice" Content="سعر البيع" />
-                            <ComboBoxItem Tag="CostPrice" Content="سعر التكلفة" />
-                        </ComboBox>
-                    </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="السعر المستهدف" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource SubtitleBrush}" />
+                    <ComboBox SelectedValue="{Binding SelectedPriceTarget}" Width="125" SelectedValuePath="Tag">
+                        <ComboBoxItem Tag="SalePrice" Content="سعر البيع" />
+                        <ComboBoxItem Tag="CostPrice" Content="سعر التكلفة" />
+                    </ComboBox>
+                </StackPanel>
 
-                    <!-- Percentage -->
-                    <StackPanel Grid.Column="4"
-                                Visibility="{Binding IsPercentageMode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock Text="النسبة (%)" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,0,0,4" />
-                        <TextBox Text="{Binding PercentageChange, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
-                                 Width="120" FontSize="14" FlowDirection="LeftToRight" Padding="8,6" />
-                    </StackPanel>
+                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="{Binding IsPercentageMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="النسبة (%)" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource SubtitleBrush}" />
+                    <TextBox Text="{Binding PercentageChange, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
+                             Width="110" FontSize="13" FlowDirection="LeftToRight" Padding="6,4" />
+                </StackPanel>
 
-                    <!-- Direct Price -->
-                    <StackPanel Grid.Column="4"
-                                Visibility="{Binding IsDirectMode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock Text="السعر الجديد" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,0,0,4" />
-                        <TextBox Text="{Binding DirectPrice, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
-                                 Width="120" FontSize="14" FlowDirection="LeftToRight" Padding="8,6" />
-                    </StackPanel>
+                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="{Binding IsDirectMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="السعر الجديد" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource SubtitleBrush}" />
+                    <TextBox Text="{Binding DirectPrice, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
+                             Width="110" FontSize="13" FlowDirection="LeftToRight" Padding="6,4" />
+                </StackPanel>
 
-                    <!-- Buttons -->
-                    <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Bottom">
-                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
-                                Command="{Binding SelectAllCommand}" ToolTip="تحديد الكل" Margin="4,0">
-                            <TextBlock Text="تحديد الكل" />
-                        </Button>
-                        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Command="{Binding DeselectAllCommand}" ToolTip="إلغاء التحديد" Margin="4,0">
-                            <TextBlock Text="إلغاء التحديد" />
-                        </Button>
-                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
-                                Background="{StaticResource WarningBrush}" Foreground="White"
-                                Command="{Binding PreviewCommand}" ToolTip="معاينة" Margin="4,0">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Eye" VerticalAlignment="Center" />
-                                <TextBlock Text="معاينة" Margin="6,0,0,0" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
-                                Background="{StaticResource SuccessBrush}" Foreground="White"
-                                Command="{Binding ApplyCommand}" ToolTip="تطبيق" Margin="4,0"
-                                Visibility="{Binding ShowPreview, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Check" VerticalAlignment="Center" />
-                                <TextBlock Text="تطبيق" Margin="6,0,0,0" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                </Grid>
+                <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
+                    <TextBlock Text="مستوى الوحدة" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource SubtitleBrush}" />
+                    <RadioButton Content="الكلية" GroupName="UnitLevel" IsChecked="{Binding IsMajorUnitLevel}" Margin="0,0,8,0" />
+                    <RadioButton Content="الصغرى" GroupName="UnitLevel" IsChecked="{Binding IsMinorUnitLevel}" Margin="0,0,10,0" />
+                    <CheckBox Content="مزامنة التحويل" IsChecked="{Binding SyncByConversion}" Margin="0,0,10,0" VerticalAlignment="Center" />
 
-                <!-- Search -->
-                <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}" Command="{Binding SelectAllCommand}" ToolTip="تحديد الكل" Margin="2,0">
+                        <TextBlock Text="تحديد الكل" />
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}" Command="{Binding DeselectAllCommand}" ToolTip="إلغاء التحديد" Margin="2,0">
+                        <TextBlock Text="إلغاء التحديد" />
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}" Background="{StaticResource WarningBrush}" Foreground="White"
+                            Command="{Binding PreviewCommand}" ToolTip="معاينة" Margin="2,0">
+                        <TextBlock Text="معاينة" />
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignRaisedButton}" Background="{StaticResource SuccessBrush}" Foreground="White"
+                            Command="{Binding ApplyCommand}" ToolTip="تطبيق" Margin="2,0"
+                            Visibility="{Binding ShowPreview, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="تطبيق" />
+                    </Button>
+                </StackPanel>
+
+                <TextBox Grid.Column="7"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                          materialDesign:HintAssist.Hint="بحث عن صنف..."
-                         FontSize="12" Padding="8,6" Margin="0,8,0,0" Width="300" HorizontalAlignment="Right" />
-            </StackPanel>
+                         FontSize="12" Padding="8,5" Width="220" HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
         </Border>
 
         <!-- ══════ Product List (full width, with preview columns that appear after preview) ══════ -->
@@ -140,17 +121,31 @@
                           AutoGenerateColumns="False" CanUserAddRows="False"
                           CanUserDeleteRows="False" SelectionMode="Single"
                           GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                          FontSize="12" RowHeight="30" ColumnHeaderHeight="32" BorderThickness="0"
+                                                      FontSize="12" RowHeight="31" ColumnHeaderHeight="32" BorderThickness="0"
                           materialDesign:DataGridAssist.CellPadding="10 6"
                           materialDesign:DataGridAssist.ColumnHeaderPadding="10 8">
                     <DataGrid.Columns>
                         <DataGridCheckBoxColumn Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
                                                 Header="✓" Width="40" />
                         <DataGridTextColumn Header="الكود" Binding="{Binding Code}" Width="80" IsReadOnly="True" />
-                        <DataGridTextColumn Header="الاسم" Binding="{Binding NameAr}" Width="*" IsReadOnly="True" />
-                        <DataGridTextColumn Header="سعر البيع" Binding="{Binding DefaultSalePrice, StringFormat=N2}" Width="100" IsReadOnly="True" />
-                        <DataGridTextColumn Header="سعر التكلفة" Binding="{Binding CostPrice, StringFormat=N2}" Width="100" IsReadOnly="True" />
-                        <DataGridTextColumn Header="السعر الجديد" Binding="{Binding NewPrice, StringFormat=N2}" Width="100" IsReadOnly="True"
+                                                <DataGridTextColumn Header="اسم الصنف" Binding="{Binding NameAr}" Width="280" IsReadOnly="True" />
+                                                <DataGridTextColumn Header="الوحدة" Binding="{Binding BaseUnitName}" Width="88" IsReadOnly="True"
+                                                                                        Visibility="{Binding DataContext.ShowMajorColumns, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                <DataGridTextColumn Header="سعر بيع" Binding="{Binding DefaultSalePrice, StringFormat=N2}" Width="86" IsReadOnly="True"
+                                                                                        Visibility="{Binding DataContext.ShowMajorColumns, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                <DataGridTextColumn Header="سعر تكلفة" Binding="{Binding CostPrice, StringFormat=N2}" Width="90" IsReadOnly="True"
+                                                                                        Visibility="{Binding DataContext.ShowMajorColumns, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                                                <DataGridTextColumn Header="الوحدة" Binding="{Binding MinorUnitName}" Width="88" IsReadOnly="True"
+                                                                                        Visibility="{Binding DataContext.ShowMinorColumns, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                <DataGridTextColumn Header="معامل" Binding="{Binding MinorUnitFactor, StringFormat=N0}" Width="70" IsReadOnly="True"
+                                                                                        Visibility="{Binding DataContext.ShowMinorColumns, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                <DataGridTextColumn Header="سعر بيع" Binding="{Binding MinorSalePrice, StringFormat=N2}" Width="86" IsReadOnly="True"
+                                                                                        Visibility="{Binding DataContext.ShowMinorColumns, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                <DataGridTextColumn Header="سعر تكلفة" Binding="{Binding MinorCostPrice, StringFormat=N2}" Width="90" IsReadOnly="True"
+                                                                                        Visibility="{Binding DataContext.ShowMinorColumns, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                        <DataGridTextColumn Header="السعر المطلوب" Binding="{Binding NewPrice, StringFormat=N2}" Width="84" IsReadOnly="True"
                                             Visibility="{Binding DataContext.ShowPreview, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}"
                                             FontWeight="Bold">
                             <DataGridTextColumn.ElementStyle>
@@ -159,9 +154,13 @@
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
-                        <DataGridTextColumn Header="الفرق" Binding="{Binding Difference, StringFormat=N2}" Width="80" IsReadOnly="True"
+                        <DataGridTextColumn Header="بعد التحديث" Binding="{Binding PreviewMajorPrice, StringFormat=N2}" Width="92" IsReadOnly="True"
+                                            Visibility="{Binding DataContext.ShowMajorPreviewColumns, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <DataGridTextColumn Header="بعد التحديث" Binding="{Binding PreviewMinorPrice, StringFormat=N2}" Width="92" IsReadOnly="True"
+                                            Visibility="{Binding DataContext.ShowMinorPreviewColumns, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <DataGridTextColumn Header="الفرق" Binding="{Binding Difference, StringFormat=N2}" Width="78" IsReadOnly="True"
                                             Visibility="{Binding DataContext.ShowPreview, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                        <DataGridTextColumn Header="%" Binding="{Binding PercentageChange, StringFormat=N1}" Width="60" IsReadOnly="True"
+                        <DataGridTextColumn Header="%" Binding="{Binding PercentageChange, StringFormat=N1}" Width="56" IsReadOnly="True"
                                             Visibility="{Binding DataContext.ShowPreview, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     </DataGrid.Columns>
                 </DataGrid>

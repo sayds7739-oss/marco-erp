@@ -27,6 +27,7 @@ namespace MarcoERP.Persistence
         /// Commits all pending changes tracked by the DbContext in a single transaction.
         /// Returns the number of state entries written to the database.
         /// Catches DbUpdateConcurrencyException and wraps it as ConcurrencyConflictException.
+        /// Catches DbUpdateException with unique-constraint violations and wraps as DuplicateRecordException.
         /// </summary>
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -40,6 +41,24 @@ namespace MarcoERP.Persistence
                 var entityName = entry?.Entity.GetType().Name ?? "Unknown";
                 throw new ConcurrencyConflictException(entityName, ex);
             }
+            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+            {
+                throw new DuplicateRecordException(
+                    ex.InnerException?.Message ?? ex.Message, ex);
+            }
+        }
+
+        /// <summary>
+        /// Checks whether a DbUpdateException represents a unique-constraint violation
+        /// (SQL Server error codes 2601 / 2627).
+        /// </summary>
+        private static bool IsUniqueConstraintViolation(DbUpdateException exception)
+        {
+            var message = exception.InnerException?.Message ?? exception.Message ?? string.Empty;
+            return message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase)
+                   || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)
+                   || message.Contains("2601", StringComparison.OrdinalIgnoreCase)
+                   || message.Contains("2627", StringComparison.OrdinalIgnoreCase);
         }
 
         public async Task ExecuteInTransactionAsync(

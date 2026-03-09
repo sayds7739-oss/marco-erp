@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using MarcoERP.Domain.Entities.Common;
+using MarcoERP.Domain.Entities.Inventory;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Purchases;
 
@@ -58,6 +59,8 @@ namespace MarcoERP.Domain.Entities.Purchases
         public int SupplierId { get; private set; }
         public Supplier Supplier { get; private set; }
         public int WarehouseId { get; private set; }
+        /// <summary>Navigation property to Warehouse (read-only for queries).</summary>
+        public Warehouse Warehouse { get; private set; }
         public QuotationStatus Status { get; private set; }
         public decimal Subtotal { get; private set; }
         public decimal DiscountTotal { get; private set; }
@@ -170,9 +173,50 @@ namespace MarcoERP.Domain.Entities.Purchases
         public void ReplaceLines(IEnumerable<PurchaseQuotationLine> newLines)
         {
             EnsureDraft("لا يمكن تعديل بنود طلب شراء غير مسودة.");
-            _lines.Clear();
-            if (newLines != null)
-                _lines.AddRange(newLines);
+
+            var incomingLines = (newLines ?? Enumerable.Empty<PurchaseQuotationLine>()).ToList();
+            var existingById = _lines
+                .Where(l => l.Id > 0)
+                .ToDictionary(l => l.Id);
+
+            var incomingIds = new HashSet<int>();
+            var newIncomingLines = new List<PurchaseQuotationLine>();
+
+            foreach (var incoming in incomingLines)
+            {
+                if (incoming.Id > 0)
+                {
+                    if (!incomingIds.Add(incoming.Id))
+                        throw new PurchaseQuotationDomainException("تكرار معرف بند طلب الشراء غير مسموح.");
+
+                    if (!existingById.TryGetValue(incoming.Id, out var existingLine))
+                        throw new PurchaseQuotationDomainException("لا يمكن تحديث بند غير موجود في طلب الشراء.");
+
+                    existingLine.UpdateDetails(
+                        incoming.ProductId,
+                        incoming.UnitId,
+                        incoming.Quantity,
+                        incoming.UnitPrice,
+                        incoming.ConversionFactor,
+                        incoming.DiscountPercent,
+                        incoming.VatRate);
+                }
+                else
+                {
+                    newIncomingLines.Add(incoming);
+                }
+            }
+
+            var linesToRemove = existingById.Values
+                .Where(l => !incomingIds.Contains(l.Id))
+                .ToList();
+
+            foreach (var line in linesToRemove)
+                _lines.Remove(line);
+
+            _lines.RemoveAll(l => l.Id == 0);
+            _lines.AddRange(newIncomingLines);
+
             RecalculateTotals();
         }
 

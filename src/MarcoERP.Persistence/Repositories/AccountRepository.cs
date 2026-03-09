@@ -27,12 +27,14 @@ namespace MarcoERP.Persistence.Repositories
         public async Task<Account> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.Accounts
+                .AsNoTracking()
                 .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
         }
 
         public async Task<IReadOnlyList<Account>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _context.Accounts
+                .AsNoTracking()
                 .OrderBy(a => a.AccountCode)
                 .ToListAsync(cancellationToken);
         }
@@ -44,7 +46,22 @@ namespace MarcoERP.Persistence.Repositories
 
         public void Update(Account entity)
         {
-            _context.Accounts.Update(entity);
+            if (entity == null) return;
+
+            var local = _context.Accounts.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && !ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+                return;
+            }
+            if (local != null)
+            {
+                if (_context.Entry(local).State == EntityState.Unchanged)
+                    _context.Entry(local).State = EntityState.Modified;
+                return;
+            }
+
+            _context.Entry(entity).State = EntityState.Modified;
         }
 
         public void Remove(Account entity)
@@ -57,12 +74,14 @@ namespace MarcoERP.Persistence.Repositories
         public async Task<Account> GetByCodeAsync(string accountCode, CancellationToken cancellationToken = default)
         {
             return await _context.Accounts
+                .AsNoTracking()
                 .FirstOrDefaultAsync(a => a.AccountCode == accountCode, cancellationToken);
         }
 
         public async Task<IReadOnlyList<Account>> GetChildrenAsync(int parentAccountId, CancellationToken cancellationToken = default)
         {
             return await _context.Accounts
+                .AsNoTracking()
                 .Where(a => a.ParentAccountId == parentAccountId)
                 .OrderBy(a => a.AccountCode)
                 .ToListAsync(cancellationToken);
@@ -71,6 +90,7 @@ namespace MarcoERP.Persistence.Repositories
         public async Task<IReadOnlyList<Account>> GetPostableAccountsAsync(CancellationToken cancellationToken = default)
         {
             return await _context.Accounts
+                .AsNoTracking()
                 .Where(a => a.IsLeaf && a.AllowPosting && a.IsActive)
                 .OrderBy(a => a.AccountCode)
                 .ToListAsync(cancellationToken);
@@ -79,6 +99,7 @@ namespace MarcoERP.Persistence.Repositories
         public async Task<IReadOnlyList<Account>> GetByTypeAsync(AccountType accountType, CancellationToken cancellationToken = default)
         {
             return await _context.Accounts
+                .AsNoTracking()
                 .Where(a => a.AccountType == accountType)
                 .OrderBy(a => a.AccountCode)
                 .ToListAsync(cancellationToken);

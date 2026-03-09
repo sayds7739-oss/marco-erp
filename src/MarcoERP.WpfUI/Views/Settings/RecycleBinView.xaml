@@ -1,0 +1,113 @@
+<UserControl x:Class="MarcoERP.WpfUI.Views.Settings.RecycleBinView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="900"
+             FlowDirection="RightToLeft"
+             Background="{StaticResource BackgroundBrush}">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="سلة المحذوفات" Style="{StaticResource PageTitle}" />
+            <TextBlock Text="استعرض السجلات المحذوفة وقم باستعادتها عند الحاجة"
+                       Foreground="{StaticResource SubtitleBrush}" />
+        </StackPanel>
+
+        <!-- Toolbar -->
+        <Border Grid.Row="1" Style="{StaticResource CardPanel}" Margin="0,0,0,12" Padding="12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="النوع:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox Grid.Column="1"
+                          ItemsSource="{Binding EntityTypes}"
+                          SelectedItem="{Binding SelectedEntityType}"
+                          DisplayMemberPath="ArabicName"
+                          VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                    <Button Content="تحديث"
+                            Command="{Binding RefreshCommand}"
+                            Width="80" Margin="0,0,8,0"/>
+                    <Button Content="استعادة"
+                            Command="{Binding RestoreCommand}"
+                            Background="{StaticResource SuccessBrush}"
+                            Foreground="White"
+                            Width="100"
+                            IsEnabled="{Binding CanRestore}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Data Grid -->
+        <Border Grid.Row="2" Style="{StaticResource CardPanel}" Padding="0">
+            <Grid>
+                <!-- Loading Indicator -->
+                <ProgressBar IsIndeterminate="True"
+                             Height="4"
+                             VerticalAlignment="Top"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <DataGrid ItemsSource="{Binding DeletedRecords}"
+                          SelectedItem="{Binding SelectedRecord}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          CanUserReorderColumns="True"
+                          CanUserSortColumns="True"
+                          RowHeight="{StaticResource CompactRowHeight}"
+                          Margin="0,4,0,0">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="النوع" Binding="{Binding EntityTypeArabic}" Width="100"/>
+                        <DataGridTextColumn Header="الكود" Binding="{Binding Code}" Width="100"/>
+                        <DataGridTextColumn Header="الاسم" Binding="{Binding DisplayName}" Width="*"/>
+                        <DataGridTextColumn Header="حُذف بواسطة" Binding="{Binding DeletedBy}" Width="120"/>
+                        <DataGridTextColumn Header="تاريخ الحذف" Binding="{Binding DeletedAt, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="150"/>
+                        <DataGridCheckBoxColumn Header="قابل للاستعادة" Binding="{Binding CanRestore}" Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Empty State -->
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Visibility="{Binding DeletedRecords.Count, Converter={StaticResource ZeroToVisibilityConverter}}">
+                    <TextBlock Text="لا توجد سجلات محذوفة"
+                               FontSize="16" Foreground="{StaticResource MutedTextBrush}"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="السجلات المحذوفة ستظهر هنا"
+                               FontSize="12" Foreground="{StaticResource MutedTextBrush}"
+                               HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="3" Background="{StaticResource CardBrush}" Padding="12,8" Margin="0,12,0,0" CornerRadius="4">
+            <Grid>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource StatusTextBrush}"/>
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource ErrorForegroundBrush}"
+                           Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}"
+                           HorizontalAlignment="Left"/>
+                <TextBlock Text="{Binding DeletedRecords.Count, StringFormat='إجمالي: {0} سجل'}"
+                           HorizontalAlignment="Left" Margin="200,0,0,0"
+                           Foreground="{StaticResource MutedTextBrush}"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

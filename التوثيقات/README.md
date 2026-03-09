@@ -1,122 +1,225 @@
-# MarcoERP
+# MarcoERP - نظام تخطيط موارد المؤسسات
 
-**Medium ERP – Full Double Entry Accounting System**
+<div dir="rtl">
+
+## 🎯 نظرة عامة
+
+**MarcoERP** هو نظام ERP شامل مبني بتقنية .NET 8.0 و WPF، مصمم خصيصاً للشركات الصغيرة والمتوسطة في المنطقة العربية. يتميز بواجهة مستخدم حديثة بتصميم Material Design ومعمارية نظيفة (Clean Architecture).
+
+## ✨ المميزات الرئيسية
+
+### 📊 المحاسبة
+- شجرة حسابات متقدمة
+- قيود يومية تلقائية
+- تقارير مالية شاملة (قائمة الدخل، الميزانية، كشف الحساب)
+- إدارة السنوات المالية وإقفال الحسابات
+- ضريبة القيمة المضافة (شاملة/منفصلة)
+
+### 📦 المخزون
+- إدارة المنتجات مع دعم الوحدات المتعددة
+- تتبع حركة المخزون في الوقت الفعلي
+- نقل بين المستودعات
+- تسويات جرد
+- تقارير الحركات والبطاقات الصنفية
+
+### 💰 المبيعات والمشتريات
+- فواتير المبيعات والمشتريات
+- عروض الأسعار
+- مرتجعات كاملة
+- حساب الربحية على مستوى السطر
+- تحويل عروض الأسعار لفواتير
+
+### 💳 الخزينة
+- سندات القبض والصرف
+- إدارة الصناديق والبنوك
+- التحويلات بين الصناديق
+- تسويات بنكية
+- تقارير حركة الصناديق
+
+### 🛒 نقاط البيع (POS)
+- جلسات نقاط البيع
+- طرق دفع متعددة
+- إدارة الدرج النقدي
+- تكامل مع المخزون والحسابات
+
+### 👥 الأمان والصلاحيات
+- إدارة المستخدمين والأدوار
+- صلاحيات دقيقة على مستوى الوحدات
+- تدقيق كامل (Audit Trail)
+- قفل تلقائي بعد 5 محاولات فاشلة
+- تسجيل خروج تلقائي عند الخمول
+
+### 🔒 حوكمة النظام (Governance)
+- نظام تفعيل/تعطيل المزايا
+- تتبع الإصدارات
+- فحص سلامة البيانات
+- مراجعة الحوكمة
+- نظام احتواء الخطأ
+
+## 🏗️ المعمارية التقنية
+
+### Clean Architecture
+```
+┌─────────────────────────────────────┐
+│         WPF UI (Presentation)       │
+├─────────────────────────────────────┤
+│      Application (Services/DTOs)    │
+├─────────────────────────────────────┤
+│    Domain (Entities/Business Logic) │
+└─────────────────────────────────────┘
+          ⬇️
+┌─────────────────────────────────────┐
+│   Persistence (EF Core/SQL Server)  │
+└─────────────────────────────────────┘
+```
+
+### التقنيات المستخدمة
+- **.NET 8.0** - الإطار الأساسي
+- **WPF** - واجهة المستخدم الرسومية
+- **Material Design in XAML** - التصميم الحديث
+- **Entity Framework Core 8** - الوصول للبيانات
+- **SQL Server 2022** - قاعدة البيانات
+- **FluentValidation** - التحقق من البيانات
+- **BCrypt.Net** - تشفير كلمات المرور
+- **QuestPDF** - تصدير PDF
+- **ClosedXML** - تصدير Excel
+- **xUnit + FluentAssertions** - الاختبارات
+
+## 📁 هيكل المشروع
+
+```
+MarcoERP/
+├── src/
+│   ├── MarcoERP.Domain/          # كيانات النطاق والقواعد
+│   ├── MarcoERP.Application/     # خدمات التطبيق والـ DTOs
+│   ├── MarcoERP.Persistence/     # EF Core والمستودعات
+│   ├── MarcoERP.Infrastructure/  # الخدمات الخارجية
+│   └── MarcoERP.WpfUI/           # واجهة المستخدم WPF
+├── tests/
+│   ├── MarcoERP.Domain.Tests/
+│   ├── MarcoERP.Application.Tests/
+│   ├── MarcoERP.Persistence.Tests/
+│   └── MarcoERP.Integration.Tests/
+├── governance/                    # ملفات الحوكمة والسياسات
+└── التوثيقات/                    # الوثائق الفنية
+```
+
+## 🚀 التشغيل السريع
+
+### المتطلبات
+- Windows 10/11
+- .NET 8.0 SDK
+- SQL Server 2022 (أو LocalDB)
+- Visual Studio 2022 (اختياري)
+
+### خطوات التشغيل
+
+1. **استنساخ المشروع**
+```bash
+git clone https://github.com/peterpeto56u-code/MarcoERP.git
+cd MarcoERP
+```
+
+2. **تحديث سلسلة الاتصال**
+   
+   افتح `src/MarcoERP.WpfUI/appsettings.json` وحدّث سلسلة الاتصال:
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=.\\SQL2022;Database=MarcoERP;Trusted_Connection=True;TrustServerCertificate=True"
+  }
+}
+```
+
+3. **تطبيق الـ Migrations**
+```bash
+dotnet ef database update --project src/MarcoERP.Persistence --startup-project src/MarcoERP.WpfUI
+```
+
+4. **تشغيل البرنامج**
+```bash
+dotnet run --project src/MarcoERP.WpfUI/MarcoERP.WpfUI.csproj
+```
+
+### بيانات الدخول الافتراضية
+- **اسم المستخدم:** `admin`
+- **كلمة المرور:** `Admin@123456`
+
+## 🧪 الاختبارات
+
+```bash
+# تشغيل جميع الاختبارات
+dotnet test
+
+# تشغيل اختبارات محددة
+dotnet test --filter "FullyQualifiedName~Domain"
+
+# مع تقرير التغطية
+dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+```
+
+### نتائج الاختبارات الحالية
+- ✅ **MarcoERP.Domain.Tests**: 236/236 ناجح
+- ✅ **MarcoERP.Persistence.Tests**: 1/1 ناجح
+- ⚠️ **MarcoERP.Application.Tests**: 200/201 ناجح (1 فشل موجود مسبقاً)
+- ⚠️ **MarcoERP.Integration.Tests**: 3/4 ناجح (1 فشل بيئي)
+
+## 📋 ملفات الحوكمة
+
+يتبع المشروع معايير حوكمة صارمة موثقة في:
+
+- **ARCHITECTURE.md** - المعمارية والطبقات
+- **DATABASE_POLICY.md** - سياسة قاعدة البيانات
+- **SECURITY_POLICY.md** - الأمان والصلاحيات
+- **FINANCIAL_ENGINE_RULES.md** - قواعد المحرك المالي
+- **UI_GUIDELINES.md** - معايير واجهة المستخدم
+- **AGENT_POLICY.md** - سياسة التطوير بمساعدة AI
+
+## 🔄 آخر التحديثات
+
+### Phase 1 Hardening (13 فبراير 2026)
+- ✅ **فحص شامل للحوكمة**: تم فحص جميع الملفات مقابل 16 ملف حوكمة
+- ✅ **إصلاح 55 مخالفة**: عبر جميع الطبقات (Domain, Application, Persistence, WpfUI)
+- ✅ **إزالة DateTime.UtcNow من Domain**: كل الأوقات الآن تُمرر كـ parameters
+- ✅ **إضافة DomainConstants**: لتجميع الثوابت السحرية
+- ✅ **إصلاح DeleteBehavior**: من SetNull إلى Restrict
+- ✅ **تنظيف التبعيات**: إزالة EF Core Design من WpfUI
+- ✅ **0 Errors, 0 Warnings** في البناء
+
+## 🤝 المساهمة
+
+المشروع حالياً في مرحلة التطوير النشط. المساهمات مرحب بها!
+
+### مبادئ المساهمة
+1. الالتزام بملفات الحوكمة
+2. كتابة اختبارات للكود الجديد
+3. توثيق أي تغييرات معمارية
+4. استخدام رسائل commit واضحة
+
+## 📄 الترخيص
+
+هذا المشروع مرخص تحت [رخصة تحدد لاحقاً].
+
+## 📞 التواصل
+
+- **المطور الرئيسي**: [Twitter/LinkedIn]
+- **البريد الإلكتروني**: [email]
+- **Issues**: [GitHub Issues](https://github.com/peterpeto56u-code/MarcoERP/issues)
+
+## 🙏 شكر وتقدير
+
+- **Material Design in XAML** - للتصميم الرائع
+- **Entity Framework Core** - لإطار العمل القوي
+- **QuestPDF** - لمكتبة PDF الممتازة
 
 ---
 
-## Overview
+<div align="center">
 
-MarcoERP is a production-grade, medium-scale Enterprise Resource Planning system built for long-term stability. It provides full double-entry accounting, inventory management, multi-warehouse support, and financial governance — all within a structured, auditable architecture.
+**صُنع بـ ❤️ في مصر**
 
-This is **not** a prototype. Every architectural decision is made for durability, correctness, and maintainability over years of production use.
+⭐ إذا أعجبك المشروع، لا تنسَ إعطائه نجمة!
 
----
+</div>
 
-## System Identity
-
-| Property              | Value                                  |
-|-----------------------|----------------------------------------|
-| System Name           | MarcoERP                               |
-| System Type           | Medium ERP – Full Double Entry         |
-| Platform              | Windows Desktop (WinForms)             |
-| Database              | SQL Server Express                     |
-| ORM                   | Entity Framework Core                  |
-| Target Lifecycle      | Long-term production (5+ years)        |
-| Current Phase         | Phase 1 – Foundation & Governance      |
-
----
-
-## Core Business Characteristics
-
-- **Single Company** – One company per installation
-- **One Active Fiscal Year** – Only one fiscal year open at a time
-- **Monthly Period Lock** – Periods are locked individually per month
-- **VAT Enabled** – VAT is active by default on all relevant transactions
-- **Multi-Warehouse** – Each warehouse has its own inventory ledger
-- **Multi-Cashbox** – Multiple cashboxes supported
-- **Cost Centers** – Optional tagging for cost center reporting
-- **Draft Invoices** – All invoices begin as drafts before posting
-- **Auto-Generated Codes** – For invoices, products, customers, journals
-- **No Edit After Posting** – Posted transactions are immutable
-- **Mandatory Audit Log** – Every data mutation is logged
-- **Re-numbering Before Posting Only** – Draft codes may be adjusted
-- **Future Extensibility** – Designed for API and Mobile integration
-
----
-
-## Phase Roadmap
-
-| Phase | Name                        | Status      |
-|-------|-----------------------------|-------------|
-| 1     | Foundation & Governance     | **Active**  |
-| 2     | Core Accounting Engine      | Planned     |
-| 3     | Inventory & Warehousing     | Planned     |
-| 4     | Sales & Purchasing          | Planned     |
-| 5     | Reporting & Dashboards      | Planned     |
-| 6     | API & Mobile Extension      | Planned     |
-
----
-
-## Phase 1 Status: LOCKED ✅
-
-**Phase 1 (Foundation & Governance) is COMPLETE and LOCKED.**
-
-- **Version:** 0.1.1-P1-LOCKED
-- **Lock Date:** February 8, 2026
-- **Status:** Production-ready governance framework
-- **Compliance:** 11/11 locked business decisions implemented (100%)
-- **Internal Consistency:** Zero contradictions or ambiguities
-
-### Key Documents
-
-- [PHASE1_COMPLETION.md](PHASE1_COMPLETION.md) — Deliverables summary and assumptions
-- [PHASE1_AUDIT_REPORT.md](PHASE1_AUDIT_REPORT.md) — Comprehensive governance audit
-- [PHASE1_CORRECTION_CHECKLIST.md](PHASE1_CORRECTION_CHECKLIST.md) — Applied corrections
-- [PHASE1_LOCK_CONFIRMATION.md](PHASE1_LOCK_CONFIRMATION.md) — Final consistency validation ✅
-
-**Phase 2 (Core Accounting Engine) may now proceed.**
-
----
-
-## Governance Documents
-
-All governance documents are located in the `/governance/` directory:
-
-| Document                        | Purpose                                         |
-|---------------------------------|-------------------------------------------------|
-| PROJECT_RULES.md                | Master rules governing all development           |
-| ARCHITECTURE.md                 | Layer responsibilities and contracts             |
-| DATABASE_POLICY.md              | Database design and access rules                 |
-| UI_GUIDELINES.md                | WinForms UI standards and patterns               |
-| AGENT_POLICY.md                 | AI agent behavior control and boundaries         |
-| VERSIONING.md                   | Version numbering and release policy             |
-| SECURITY_POLICY.md              | Authentication, authorization, and data safety   |
-| ACCOUNTING_PRINCIPLES.md        | Financial engine rules and double-entry logic    |
-| FINANCIAL_ENGINE_RULES.md       | Posting, journals, fiscal year, period lock      |
-| RECORD_PROTECTION_POLICY.md     | Immutability, reversals, adjustments             |
-| RISK_PREVENTION_FRAMEWORK.md    | Structural failure prevention                    |
-| AGENT_CONTROL_SYSTEM.md         | AI agent permissions and validation checklists   |
-
----
-
-## Solution Structure
-
-See [SOLUTION_STRUCTURE.md](governance/SOLUTION_STRUCTURE.md) for the full .NET solution layout, dependency rules, and forbidden cross-layer access.
-
----
-
-## Phase 1 Status
-
-✅ **Phase 1 (Foundation & Governance) is COMPLETE.**
-
-See [PHASE1_COMPLETION.md](PHASE1_COMPLETION.md) for:
-- Full deliverables summary
-- Business assumptions made
-- Clarification questions before Phase 2
-- Recommendations for next steps
-
----
-
-## License
-
-Proprietary. All rights reserved.
+</div>

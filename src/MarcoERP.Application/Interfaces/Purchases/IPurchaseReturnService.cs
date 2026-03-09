@@ -21,18 +21,23 @@ namespace MarcoERP.Application.Interfaces.Purchases
         Task<ServiceResult<string>> GetNextNumberAsync(CancellationToken ct = default);
 
         /// <summary>Creates a new draft purchase return.</summary>
+        [RequiresPermission(PermissionKeys.PurchasesCreate)]
         Task<ServiceResult<PurchaseReturnDto>> CreateAsync(CreatePurchaseReturnDto dto, CancellationToken ct = default);
 
         /// <summary>Updates a draft purchase return.</summary>
+        [RequiresPermission(PermissionKeys.PurchasesCreate)]
         Task<ServiceResult<PurchaseReturnDto>> UpdateAsync(UpdatePurchaseReturnDto dto, CancellationToken ct = default);
 
         /// <summary>Posts a return: reversal journal, stock deduction.</summary>
+        [RequiresPermission(PermissionKeys.PurchasesPost)]
         Task<ServiceResult<PurchaseReturnDto>> PostAsync(int id, CancellationToken ct = default);
 
         /// <summary>Cancels a posted return.</summary>
+        [RequiresPermission(PermissionKeys.PurchasesPost)]
         Task<ServiceResult> CancelAsync(int id, CancellationToken ct = default);
 
         /// <summary>Deletes a draft return.</summary>
+        [RequiresPermission(PermissionKeys.PurchasesCreate)]
         Task<ServiceResult> DeleteDraftAsync(int id, CancellationToken ct = default);
     }
 }

@@ -21,15 +21,19 @@ namespace MarcoERP.Application.Interfaces.Inventory
         Task<ServiceResult<UnitDto>> GetByIdAsync(int id, CancellationToken ct = default);
 
         /// <summary>إنشاء وحدة قياس جديدة — Creates a new unit of measure.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<UnitDto>> CreateAsync(CreateUnitDto dto, CancellationToken ct = default);
 
         /// <summary>تعديل وحدة قياس — Updates an existing unit.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<UnitDto>> UpdateAsync(UpdateUnitDto dto, CancellationToken ct = default);
 
         /// <summary>تفعيل وحدة — Activates a unit.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult> ActivateAsync(int id, CancellationToken ct = default);
 
         /// <summary>تعطيل وحدة — Deactivates a unit.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct = default);
     }
 }

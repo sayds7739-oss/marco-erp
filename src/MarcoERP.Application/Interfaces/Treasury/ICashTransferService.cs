@@ -22,18 +22,23 @@ namespace MarcoERP.Application.Interfaces.Treasury
         Task<ServiceResult<string>> GetNextNumberAsync(CancellationToken ct = default);
 
         /// <summary>إنشاء تحويل جديد — Creates a new draft cash transfer.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult<CashTransferDto>> CreateAsync(CreateCashTransferDto dto, CancellationToken ct = default);
 
         /// <summary>تعديل تحويل — Updates a draft cash transfer.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult<CashTransferDto>> UpdateAsync(UpdateCashTransferDto dto, CancellationToken ct = default);
 
         /// <summary>ترحيل تحويل — Posts a cash transfer (generates auto-journal).</summary>
+        [RequiresPermission(PermissionKeys.TreasuryPost)]
         Task<ServiceResult<CashTransferDto>> PostAsync(int id, CancellationToken ct = default);
 
         /// <summary>إلغاء تحويل مرحّل — Cancels a posted cash transfer.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryPost)]
         Task<ServiceResult> CancelAsync(int id, CancellationToken ct = default);
 
         /// <summary>حذف مسودة تحويل — Deletes a draft cash transfer.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult> DeleteDraftAsync(int id, CancellationToken ct = default);
     }
 }

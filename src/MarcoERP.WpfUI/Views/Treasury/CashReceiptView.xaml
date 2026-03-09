@@ -50,6 +50,15 @@
                             Foreground="{StaticResource PrimaryBrush}">
                         <materialDesign:PackIcon Kind="ArrowRightBold" Width="18" Height="18" />
                     </Button>
+                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,4" />
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding PrintCommand}" Height="28" Padding="8,0"
+                            ToolTip="طباعة السند">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Printer" Width="14" Height="14" VerticalAlignment="Center" />
+                            <TextBlock Text="طباعة" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -90,12 +99,77 @@
                             <MouseBinding Gesture="LeftDoubleClick" Command="{Binding EditSelectedCommand}" />
                         </DataGrid.InputBindings>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="رقم السند" Binding="{Binding ReceiptNumber}" Width="100" />
-                            <DataGridTextColumn Header="التاريخ" Binding="{Binding ReceiptDate, StringFormat=d}" Width="90" />
+                            <DataGridTextColumn Header="رقم السند" Binding="{Binding ReceiptNumber}" Width="100">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                        <Setter Property="FlowDirection" Value="LeftToRight" />
+                                        <Setter Property="Foreground" Value="#546E7A" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="التاريخ" Binding="{Binding ReceiptDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="90">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FlowDirection" Value="LeftToRight" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                             <DataGridTextColumn Header="الخزنة" Binding="{Binding CashboxName}" Width="90" />
+                            <DataGridTextColumn Header="الحساب" Binding="{Binding AccountName}" Width="90" />
                             <DataGridTextColumn Header="العميل" Binding="{Binding CustomerName}" Width="*" MinWidth="80" />
-                            <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, StringFormat=N2}" Width="90" />
-                            <DataGridTextColumn Header="الحالة" Binding="{Binding Status, Converter={StaticResource StatusToArabicConverter}}" Width="70" />
+                            <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, StringFormat=N2}" Width="100">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                        <Setter Property="FlowDirection" Value="LeftToRight" />
+                                        <Setter Property="TextAlignment" Value="Right" />
+                                        <Setter Property="Foreground" Value="#1B5E20" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}">
+                                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                            </DataGridTextColumn>
+                            <DataGridTemplateColumn Header="الحالة" Width="75">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" Padding="8,2" HorizontalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#FFF3E0" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Posted">
+                                                            <Setter Property="Background" Value="#E8F5E9" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                            <Setter Property="Background" Value="#FFEBEE" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Status, Converter={StaticResource StatusToArabicConverter}}" FontSize="11" HorizontalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#E65100" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Posted">
+                                                                <Setter Property="Foreground" Value="#2E7D32" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                                <Setter Property="Foreground" Value="#C62828" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>
@@ -148,13 +222,15 @@
                                      materialDesign:HintAssist.Hint="رقم السند"
                                      materialDesign:HintAssist.IsFloating="True"
                                      Text="{Binding FormNumber}" IsReadOnly="True"
+                                                 TabIndex="0"
                                      Style="{StaticResource MaterialDesignOutlinedTextBox}" />
                             <DatePicker Grid.Column="2"
                                         materialDesign:HintAssist.Hint="التاريخ"
                                         materialDesign:HintAssist.IsFloating="True"
                                         SelectedDate="{Binding FormDate}"
                                         IsEnabled="{Binding IsEditing}"
-                                        Style="{StaticResource MaterialDesignOutlinedDatePicker}" />
+                                                     TabIndex="1"
+                                        Style="{StaticResource MaterialDesignDatePicker}" />
                         </Grid>
 
                         <!-- Cashbox + Account -->
@@ -172,6 +248,7 @@
                                       SelectedValuePath="Id"
                                       DisplayMemberPath="NameAr"
                                       IsEnabled="{Binding IsEditing}" IsEditable="True"
+                                      TabIndex="2"
                                       common:F1SearchBehavior.IsEnabled="True"
                                       common:F1SearchBehavior.Title="بحث الصناديق"
                                       Style="{StaticResource MaterialDesignOutlinedComboBox}" />
@@ -185,6 +262,7 @@
                                       IsEnabled="{Binding IsEditing}"
                                       Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                       IsEditable="True"
+                                      TabIndex="3"
                                       common:F1SearchBehavior.IsEnabled="True"
                                       common:F1SearchBehavior.Title="بحث الحسابات" />
                         </Grid>
@@ -206,16 +284,18 @@
                                       IsEnabled="{Binding IsEditing}"
                                       Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                       IsEditable="True"
+                                      TabIndex="4"
                                       common:F1SearchBehavior.IsEnabled="True"
                                       common:F1SearchBehavior.Title="بحث العملاء" />
                             <TextBox Grid.Column="2"
                                      materialDesign:HintAssist.Hint="المبلغ"
                                      materialDesign:HintAssist.IsFloating="True"
-                                     Text="{Binding FormAmount, UpdateSourceTrigger=PropertyChanged, StringFormat=N2}"
+                                     Text="{Binding FormAmount, StringFormat=N2}"
                                      IsEnabled="{Binding IsEditing}"
                                      Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     TabIndex="5"
                                      FontSize="18" FontWeight="Bold"
-                                     Foreground="{StaticResource PrimaryBrush}" />
+                                     Foreground="#1B5E20" FlowDirection="LeftToRight" />
                         </Grid>
 
                         <!-- Description -->
@@ -223,6 +303,7 @@
                                  materialDesign:HintAssist.IsFloating="True"
                                  Text="{Binding FormDescription, UpdateSourceTrigger=PropertyChanged}"
                                  IsEnabled="{Binding IsEditing}"
+                                 TabIndex="6"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                  Margin="0,4,0,0" />
 
@@ -232,6 +313,7 @@
                                  Text="{Binding FormNotes, UpdateSourceTrigger=PropertyChanged}"
                                  IsEnabled="{Binding IsEditing}"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 TabIndex="7"
                                  Margin="0,8,0,0" AcceptsReturn="True" TextWrapping="Wrap"
                                  MinHeight="50" MaxHeight="80" />
 

@@ -14,6 +14,8 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Inventory;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Inventory
 {
@@ -26,6 +28,8 @@ namespace MarcoERP.Application.Services.Inventory
         private readonly ICurrentUserService _currentUser;
         private readonly IValidator<CreateWarehouseDto> _createValidator;
         private readonly IValidator<UpdateWarehouseDto> _updateValidator;
+        private readonly ILogger<WarehouseService> _logger;
+        private readonly IFeatureService _featureService;
 
         public WarehouseService(
             IWarehouseRepository warehouseRepo,
@@ -33,7 +37,9 @@ namespace MarcoERP.Application.Services.Inventory
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
             IValidator<CreateWarehouseDto> createValidator,
-            IValidator<UpdateWarehouseDto> updateValidator)
+            IValidator<UpdateWarehouseDto> updateValidator,
+            ILogger<WarehouseService> logger = null,
+            IFeatureService featureService = null)
         {
             _warehouseRepo = warehouseRepo ?? throw new ArgumentNullException(nameof(warehouseRepo));
             _warehouseProductRepo = warehouseProductRepo ?? throw new ArgumentNullException(nameof(warehouseProductRepo));
@@ -41,6 +47,8 @@ namespace MarcoERP.Application.Services.Inventory
             _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<WarehouseService>.Instance;
+            _featureService = featureService;
         }
 
         // ── Warehouse CRUD ──────────────────────────────────────
@@ -69,8 +77,13 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult<WarehouseDto>> CreateAsync(CreateWarehouseDto dto, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check<WarehouseDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "Warehouse", 0);
+            // Feature Guard — block operation if Inventory module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<WarehouseDto>(_featureService, FeatureKeys.Inventory, ct);
+                if (guard != null) return guard;
+            }
 
             var vr = await _createValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
@@ -101,9 +114,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult<WarehouseDto>> UpdateAsync(UpdateWarehouseDto dto, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check<WarehouseDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "Warehouse", dto.Id);
             var vr = await _updateValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<WarehouseDto>.Failure(
@@ -128,9 +139,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult> SetDefaultAsync(int id, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "SetDefaultAsync", "Warehouse", id);
             var entity = await _warehouseRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("المخزن غير موجود.");
 
@@ -150,9 +159,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "Warehouse", id);
             var entity = await _warehouseRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("المخزن غير موجود.");
 
@@ -164,9 +171,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "Warehouse", id);
             var entity = await _warehouseRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("المخزن غير موجود.");
 

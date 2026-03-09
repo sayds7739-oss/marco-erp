@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Accounting;
 using MarcoERP.Application.DTOs.Treasury;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Accounting;
 using MarcoERP.Application.Interfaces.Treasury;
 
@@ -17,17 +18,19 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
     {
         private readonly ICashboxService _cashboxService;
         private readonly IAccountService _accountService;
+        private readonly IDialogService _dialog;
 
-        public CashboxViewModel(ICashboxService cashboxService, IAccountService accountService)
+        public CashboxViewModel(ICashboxService cashboxService, IAccountService accountService, IDialogService dialog)
         {
             _cashboxService = cashboxService ?? throw new ArgumentNullException(nameof(cashboxService));
             _accountService = accountService ?? throw new ArgumentNullException(nameof(accountService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllCashboxes = new ObservableCollection<CashboxDto>();
             Accounts = new ObservableCollection<AccountDto>();
 
             LoadCommand = new AsyncRelayCommand(LoadCashboxesAsync);
-            NewCommand = new RelayCommand(PrepareNew);
+            NewCommand = new AsyncRelayCommand(PrepareNewAsync);
             SaveCommand = new AsyncRelayCommand(SaveAsync, () => CanSave);
             SetDefaultCommand = new AsyncRelayCommand(SetDefaultAsync, () => SelectedItem != null);
             DeleteCommand = new AsyncRelayCommand(DeactivateAsync, () => CanDeactivate);
@@ -162,13 +165,16 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
 
         // ── New ──────────────────────────────────────────────────
 
-        private void PrepareNew(object parameter)
+        private async Task PrepareNewAsync()
         {
             IsEditing = true;
             IsNew = true;
             ClearError();
 
-            FormCode = "(تلقائي)";
+            var nextCodeResult = await _cashboxService.GetNextCodePreviewAsync();
+            FormCode = nextCodeResult.IsSuccess && !string.IsNullOrWhiteSpace(nextCodeResult.Data)
+                ? nextCodeResult.Data
+                : "CBX-0001";
             FormNameAr = "";
             FormNameEn = "";
             FormAccountId = null;
@@ -273,11 +279,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         {
             if (SelectedItem == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل أنت متأكد من تعطيل الخزنة «{SelectedItem.NameAr}»؟",
-                "تأكيد التعطيل",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد التعطيل")) return;
 
             IsBusy = true;
             ClearError();

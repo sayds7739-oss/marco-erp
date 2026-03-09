@@ -1,0 +1,24 @@
+﻿<Project>
+  <PropertyGroup>
+    <Product>FastReport.Data.RavenDB</Product>
+    <AssemblyName>FastReport.Data.RavenDB</AssemblyName>
+
+  </PropertyGroup>
+
+  <Import Project="..\Connections.props" />
+  
+  <ItemGroup>
+    <PackageReference Include="RavenDB.Client" Version="4.0.6" />
+	<PackageReference Include="System.Text.RegularExpressions" Version="[4.3.1,)" />
+	<PackageReference Include="Newtonsoft.Json" Version="[13.0.3,)" />
+    <PackageReference Include="System.Net.Http" Version="[4.3.4,)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileFullPath)">
+      <Visible>true</Visible>
+      <Pack>false</Pack>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

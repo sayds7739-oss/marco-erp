@@ -1,0 +1,3392 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<Language Name="en">
+  <Fonts>
+    <FontMustNotBeModifiedEmbeddedOrExchanged Text="{0} font must not be modified, embedded, or exchanged in any manner without first obtaining permission of the legal owner."/>
+    <FontMayNotBeSubsettedPriorToEmbedding Text="{0} font may not be subsetted prior to embedding."/>
+  </Fonts>
+  <Buttons>
+    <Ok Text="OK"/>
+    <Cancel Text="Cancel"/>
+    <Close Text="Close"/>
+    <MoreOptions Text="More options"/>
+    <LessOptions Text="Less options"/>
+    <Actions Text="Actions"/>
+    <Previous Text="&#60; Previous"/>
+    <Next Text="Next &#62;"/>
+    <Finish Text="Finish"/>
+    <Advanced Text="Advanced..."/>
+  </Buttons>
+  <Messages>
+    <AccessingData Text="Accessing data..."/>
+    <Attention Text="Attention"/>
+    <BarcodeFewError Text="The number of digits is less than the permissible minimum."/>
+    <BarcodeManyError Text="The number of digits is greater than the allowable maximum."/>
+    <BarcodeLengthMismatch Text="Number of characters mismatch."/>
+    <CantFindObject Text="Can't find object"/>
+    <CantLoadReport Text="Can't load the report {0}"/>
+    <CantSaveReport Text="Can't save the report. The file may be write-protected."/>
+    <ChangePicture Text="Would you like to replace current image?"/>
+    <ClassError Text="Could not find the main report class, ReportScript"/>
+    <Confirmation Text="Confirmation"/>
+    <DataNotInitialized Text="Datasource is not initialized yet."/>
+    <DecompressError Text="Cannot decompress the file"/>
+    <DecryptError Text="Decrypt error: wrong password"/>
+    <DelegateError Text="{0} delegate must have two arguments: 'sender' and 'e'"/>
+    <CompilerError Text="Report script is invalid"/>
+    <DeleteAncestor Text="Could not delete {0}, it was introduced in the ancestor report"/>
+    <DuplicateName Text="Object with name {0} already exists"/>
+    <GroupHeaderHasNoGroupCondition Text="{0} has no group condition"/>
+    <DuplicateStyle Text="Style witch such name already exists"/>
+    <EmptyDataEntryField Text="Fill in all data entry fields"/>
+    <Error Text="Error"/>
+    <EventError Text="Could not create event handler due to errors in source code"/>
+    <ExportingPage Text="Exporting page {0} of {1}"/>
+    <GeneratingPage Text="Generating page {0}"/>
+    <GeneratingPageFirstPass Text="First pass: generating page {0}"/>
+    <Information Text="Information"/>
+    <MatrixError Text="{0}: Matrix object must have at least one column or row and one cell dimensions."/>
+    <MatrixValueError Text="Number of values differs from MatrixData.Cells.Count (must be {0})"/>
+    <MatrixLayoutError Text="Unable to layout matrcies that has been placed on the same band with the same Layout.Left value."/>
+    <ParentError Text="Object of type {0} cannot contain objects of type {1}"/>
+    <ParentError1 Text="Object of type {0} cannot contain objects"/>
+    <Performance Text="Prepared in {0} ms"/>
+    <PreparingData Text="Preparing data..."/>
+    <LoadingReport Text="Loading report..."/>
+    <PrintingPage Text="Printing page {0}"/>
+    <RenameAncestor Text="Could not rename {0}, it was introduced in the ancestor report"/>
+    <SaveChanges Text="Save changes to {0}?"/>
+    <SaveChangesToPreviewPage Text="Save changes to the preview page?"/>
+    <SQLError Text="SQL Error"/>
+    <TableIsNull Text="Table is not connected to the data. Register the data using Report.RegisterData method."/>
+    <TableManualBuildError Text="You can use TableObject.PrintRow, PrintColumn methods inside its ManualBuild event only."/>
+    <Warning Text="Warning"/>
+    <WarningSaveRDL Text="RDL format has some restrictions! This filter will save template's view only! Data sources and objects Barcode, Rich Text, CheckBox and Zip Code will not be saved! Some of properties of objects will not be saved! So you can loose some elements and properties of your template. Save however?"/>
+    <WarningMatrixOnRepeatedBand Text="It's not recommended to put {0} on {1}. The {0} in this case will be created every time when the band will be printed, which will lead to stack overflow."/>
+    <WrongFileFormat Text="Cannot load the file. Unknown file format"/>
+    <WrongListAndLabelFile Text="Cannot load the file. File is invalid or not a List and Label report."/>
+    <WrongCrystalReportsFile Text="Cannot load the file. File is invalid or not a Crystal Reports report."/>
+    <InvalidBarcode1 Text="Barcode must start with '&amp;A;', '&amp;B;' or '&amp;C;' sequences"/>
+    <InvalidBarcode2 Text="Invalid character in input code"/>
+    <ErrorInExpression Text="Error in expression"/>
+    <ErrorInHighlightCondition Text="Error in highlight condition"/>
+    <FileNameEmpty Text="Please specify the correct file name."/>
+    <SaveToAnotherFile Text="Would you like to save to another file?"/>
+    <RemoveFromRecentFiles Text="Remove the file from recent files list?"/>
+    <ImageLoadException Text="The image is corrupted or a plugin that supports this format is not installed"/>
+    <FRXPageError Text="Error on the FRX page. The changes have been canceled."/>
+    <Validator>
+      <DuplicateName Text="Name already is used."/>
+      <IntersectedObjects Text="Object is intersected with other object."/>
+      <IncorrectSize Text="Object must have sizes more than zero."/>
+      <UnnamedObject Text="Object hasn't name."/>
+      <OutOfBounds Text="Object out beyond boundaries of parent."/>
+      <UnsupportedObjectError Text="The object is not supported in the Community edition"/>
+    </Validator>
+    <Swiss>
+      <SwissNullIban Text="Iban must not be null"/>
+      <SwissNullCreditor Text="Creditor must not be null"/>
+      <SwissNullReference Text="Reference must not be null"/>
+      <SwissNullCurrency Text="Currency must not be null"/>
+      <SwissAmountLength Text="Amount (including decimals) must be shorter than 13 places"/>
+      <SwissQRIban Text="If QR-IBAN is used, you have to choose QRR as reference type!"/>
+      <SwissNonQRIban Text="If non QR-IBAN is used, you have to choose either SCOR or NON as reference type!"/>
+      <SwissAltProcedureLength Text="Alternative procedure information block 1 must be shorter than 101 chars"/>
+      <SwissUnstructBillLength Text="Unstructured message and bill information must be shorter than 141 chars in total/combined."/>
+      <SwissRefTypeNon Text="Reference is only allowed when Type not equals NON"/>
+      <SwissRefTypeNotNon Text="Reference cannot be empty if the Type is QRR or SCOR"/>
+      <SwissRefTextTypeNon Text="You have to set an ReferenceTextType when using the reference text"/>
+      <SwissRefQRLength Text="QR-references have to be shorter than 28 chars"/>
+      <SwissRefQRNotOnlyDigits Text="QR-reference must exist out of digits only"/>
+      <SwissRefQRCheckSum Text="QR-references is invalid. Checksum error"/>
+      <SwissRefISOLength Text="Creditor references (ISO 11649) have to be shorter than 26 chars"/>
+      <SwissEmptyProperty Text="{0} must not be empty"/>
+      <SwissLengthMore Text="{0} must be shorter than {1} chars"/>
+      <SwissPatternError Text="{0} must match the following pattern:"/>
+      <SwissAddressLine2Error Text="Address line 2 must be provided for combined addresses (address line-based addresses)."/>
+      <SwissCountryTwoLetters Text="Country must be a valid two letter country code as defined by ISO 3166-1, but it isn't."/>
+      <SwissIbanNotValid Text="The IBAN entered isn't valid."/>
+      <SwissQRIbanNotValid Text="The QR-IBAN entered isn't valid."/>
+      <SwissQRStartNotValid Text="The IBAN must start with CH or LI"/>
+      <SwissPropName Text="Name"/>
+      <SwissPropStreet Text="Street"/>
+      <SwissPropHouseNumber Text="House Nr"/>
+      <SwissPropZipCode Text="Zip Code"/>
+      <SwissPropCity Text="City"/>
+      <SwissPropUnstructuredMessage Text="Message"/>
+      <SwissPropBillInformation Text="Bill information"/>
+    </Swiss>
+  </Messages>
+  <Misc>
+    <Bytes Text="bytes"/>
+    <KB Text="KB"/>
+    <MB Text="MB"/>
+    <GB Text="GB"/>
+    <TB Text="TB"/>
+    <ShortUnitsMm Text="mm"/>
+    <ShortUnitsCm Text="cm"/>
+    <ShortUnitsIn Text="in"/>
+    <ShortUnitsHi Text="hi"/>
+    <Sample Text="Sample"/>
+    <None Text="None"/>
+    <PageN Text="Page {0}"/>
+    <PageNofM Text="Page {0} of {1}"/>
+    <ofM Text="of {0}"/>
+  </Misc>
+  <Objects>
+    <Report Text="Report"/>
+    <ReportPage Text="Page"/>
+    <DialogPage Text="Form"/>
+    <XmlDataConnection Text="XML database"/>
+    <CsvDataConnection Text="CSV database"/>
+    <OleDbDataConnection Text="OLE DB connection"/>
+    <MsAccessDataConnection Text="MS Access connection"/>
+    <MsSqlDataConnection Text="MS SQL connection"/>
+    <OdbcDataConnection Text="ODBC connection"/>
+    <FirebirdDataConnection Text="Firebird connection"/>
+    <ExcelDataConnection Text="Excel connection"/>
+    <CassandraDataConnection Text="Cassandra connection"/>
+    <LinterDataConnection Text="LINTER connection"/>
+    <VistaDBDataConnection Text="VistaDB connection"/>
+    <PostgresDataConnection Text="Postgres connection"/>
+    <MySqlDataConnection Text="MySQL connection"/>
+    <OracleDataConnection Text="Oracle connection"/>
+    <SQLiteDataConnection Text="SQLite connection"/>
+    <SqlCeDataConnection Text="SQL CE connection"/>
+    <SharePointDataConnection Text="SharePoint connection"/>
+    <GoogleBigQueryDataConnection Text="Google Big Query connection"/>
+    <JsonDataConnection Text="JSON database"/>
+    <JsonDataSourceConnection Text="JSON (JavaScript Object Notation)"/>
+    <ESDataSourceConnection Text="ElasticSearch connection"/>
+    <CouchbaseDataConnection Text="Couchbase server"/>
+    <MongoDBDataConnection Text="MongoDB connection"/>
+    <NosDbDataConnection Text="NosDb connection"/>
+    <RavenDBDataConnection Text="RavenDB connection"/>
+    <SqlAnywhereDataConnection Text="SqlAnywhere connection"/>
+    <ClickHouseDataConnection Text="ClickHouse connection"/>
+    <IgniteDataConnection Text="Apache Ignite connection"/>
+    <GoogleSheetsDataConnection Text="Google Sheets connection"/>
+    <Bands Text="Bands">
+      <ReportTitle Text="Report Title"/>
+      <ReportSummary Text="Report Summary"/>
+      <PageHeader Text="Page Header"/>
+      <PageFooter Text="Page Footer"/>
+      <ColumnHeader Text="Column Header"/>
+      <ColumnFooter Text="Column Footer"/>
+      <DataHeader Text="Header"/>
+      <DataFooter Text="Footer"/>
+      <Data Text="Data"/>
+      <GroupHeader Text="Group Header"/>
+      <GroupFooter Text="Group Footer"/>
+      <Child Text="Child"/>
+      <Overlay Text="Overlay"/>
+    </Bands>
+    <TextObject Text="Text"/>
+    <HtmlObject Text="HTML"/>
+    <Shapes Text="Shapes">
+      <Line Text="Line"/>
+      <DiagonalLine Text="Diagonal Line"/>
+      <Rectangle Text="Rectangle"/>
+      <RoundRectangle Text="Round Rectangle"/>
+      <Ellipse Text="Ellipse"/>
+      <Triangle Text="Triangle"/>
+      <Diamond Text="Diamond"/>
+      <Bezier Text="Bézier Сurve"/>
+      <Polyline Text="Polyline"/>
+      <Polygon Text="Polygon"/>
+      <Pentagon Text="Pentagon"/>
+      <Hexagon Text="Hexagon"/>
+      <Heptagon Text="Heptagon"/>
+      <Octagon Text="Octagon"/>
+    </Shapes>
+    <PictureObject Text="Picture"/>
+    <SVGObject Text="SVG Document"/>
+    <RFIDLabel Text="RFID Label"/>
+    <TableObject Text="Table"/>
+    <Matrix Text="Matrix"/>
+    <MatrixObject Text="Matrix"/>
+    <AdvMatrixObject Text="Advanced Matrix"/>
+    <SubreportObject Text="Subreport">
+      <FromAnotherReport Text="Load a page from another report..."/>
+    </SubreportObject>
+    <ContainerObject Text="Container"/>
+    <BarcodeObject Text="Barcode">
+      <TwoD Text="Two-dimensional"/>
+      <EANUPC Text="EAN/UPC"/>
+      <Post Text="Post"/>
+      <GS1 Text="GS1"/>
+      <Others Text="Others"/>
+    </BarcodeObject>
+    <RichObject Text="Rich Text"/>
+    <MSChartObject Text="MS Chart"/>
+    <TeeChartObject Text="Steema TeeChart"/>
+    <ZipCodeObject Text="Zip Code"/>
+    <CellularTextObject Text="Cellular Text"/>
+    <CheckBoxObject Text="CheckBox"/>
+    <OtherDialogControls Text="Other controls (not for Web)"/>
+    <ButtonControl Text="Button"/>
+    <CheckBoxControl Text="CheckBox"/>
+    <CheckedListBoxControl Text="CheckedListBox"/>
+    <ComboBoxControl Text="ComboBox"/>
+    <GridControl Text="Grid"/>
+    <DataSelectorControl Text="DataSelector"/>
+    <DateTimePickerControl Text="DateTimePicker"/>
+    <GroupBoxControl Text="GroupBox"/>
+    <LabelControl Text="Label"/>
+    <ListBoxControl Text="ListBox"/>
+    <ListViewControl Text="ListView"/>
+    <MaskedTextBoxControl Text="MaskedTextBox"/>
+    <MonthCalendarControl Text="MonthCalendar"/>
+    <NumericUpDownControl Text="NumericUpDown"/>
+    <PanelControl Text="Panel"/>
+    <PictureBoxControl Text="PictureBox"/>
+    <RadioButtonControl Text="RadioButton"/>
+    <RichTextBoxControl Text="RichTextBox"/>
+    <TextBoxControl Text="TextBox"/>
+    <TreeViewControl Text="TreeView"/>
+    <MapObject Text="Map"/>
+    <SparklineObject Text="Sparkline"/>
+    <Gauge Text="Gauge">
+      <Linear Text="Linear Gauge"/>
+      <Simple Text="Simple Gauge"/>
+      <Radial Text="Radial Gauge"/>
+      <SimpleProgress Text="Simple Progress Gauge"/>
+	  <GaugeForms Text="Edit Gauge">
+		<LinearGauge Text="Linear Gauge Editor" />
+		<SimpleGauge Text="Simple Gauge Editor" />
+		<SimpleProgressGauge Text="Simple Progress Gauge Editor" />
+		<RadialGauge Text="Radial Gauge Editor" />
+		<PageGeneral Text="General">
+			<Expression Text="Expression..." />
+			<Border Text="Border..." />
+			<Fill Text="Fill..." />
+			<LinearInverdted Text="Inverted:" />
+			<Type Text="Type:" />
+			<Position Text="Position:" />
+		</PageGeneral>
+	    <PageScale Text="Scale">
+			<TabTicks Text="Ticks">
+				<MajorTicks Text="Major Ticks">
+					<Width Text="Width:" />
+					<Color Text="Color:" />
+				</MajorTicks>
+				<MinorTicks Text="Minor Ticks">
+					<Width Text="Width:" />
+					<Color Text="Color:" />
+				</MinorTicks>
+			</TabTicks>
+			<TabText Text="Text">
+				<Font Text="Font:" />
+				<TextFill Text="Text Fill" />
+			</TabText>
+			<Subscales Text="Subscales">
+				<FirstSubscale Text="First subscale">
+					<Enabled Text="Enabled:" />
+					<ShowCaption Text="Show caption:" />
+				</FirstSubscale>
+				<SecondSubscale Text="Second subscale">
+					<Enabled Text="Enabled:" />
+					<ShowCaption Text="Show caption:" />
+				</SecondSubscale>
+			</Subscales>
+		</PageScale>
+		<PagePointer Text="Pointer">
+			<BorderColor Text="Border Color:" />
+			<PointerFill Text="Pointer Fill" />
+			<LabelPointerType Text="Type:" />
+		</PagePointer>
+		<PageLabel Text="Label">
+			<LabelColor Text="Label Color:" />
+			<Font Text="Font:" />
+			<Text Text="Text:" />
+			<Decimals Text="Decimals:" />
+		</PageLabel>	
+	  </GaugeForms>
+    </Gauge>
+    <CrossViewObject Text="CrossView"/>
+    <DigitalSignatureObject Text="Digital signature"/>
+    <FastBI Text="FastReport Business Graphics">
+      <Bubble Text="Bubble chart"/>
+      <TreeMap Text="TreeMap chart"/>
+      <Sunburst Text="Sunburst chart"/>
+      <Icicle Text="Icicle chart"/>
+      <Gantt Text="Gantt chart"/>
+      <Data Text="Data">
+        <ValueColumn Text="Value column"/>
+        <RootText Text="Root text"/>
+        <DataSource Text="Data source"/>
+        <MaxDepth Text="Max depth"/>
+        <TextColumns Text="Text columns"/>
+        <Add Text="Add"/>
+        <Delete Text="Delete"/>
+        <Edit Text="Edit"/>
+      </Data>
+      <Appearance Text="Appearance">
+        <Palette Text="Palette"/>
+        <StartAngle Text="Start angle"/>
+        <TextDirection Text="Text direction"/>
+        <LayoutMode Text="Layout mode"/>
+        <IcicleDirection Text="Direction"/>
+        <SunburstForm Text="Sunburst editor form"/>
+        <IcicleForm Text="Icicle editor form"/>
+        <BubbleForm Text="Bubble editor form"/>
+        <TreeMapForm Text="TreeMap editor form"/>
+      </Appearance>
+    </FastBI>    
+  </Objects>
+  <Functions>
+    <Math Text="Mathematical"/>
+    <Text Text="Text"/>
+    <DateTime Text="Date &amp; Time"/>
+    <Formatting Text="Formatting"/>
+    <Conversion Text="Conversion"/>
+    <ProgramFlow Text="Program Flow"/>
+  </Functions>
+  <FileFilters>
+    <Report Text="Report file (*.frx)|*.frx"/>
+    <PreparedReport Text="Prepared report (*.fpx)|*.fpx"/>
+    <Style Text="Report styles (*.frs)|*.frs"/>
+    <Dictionary Text="Dictionary (*.frd)|*.frd"/>
+    <Localization Text="Localization file (*.frl)|*.frl"/>
+    <XsdFile Text="XML schema definition file (*.xsd)|*.xsd"/>
+    <XmlFile Text="XML file (*.xml)|*.xml"/>
+    <MdbFile Text="MS Access database (*.mdb)|*.mdb"/>
+    <AccdbFile Text="MS Access 2007 database (*.accdb)|*.accdb"/>
+    <MdfFile Text="Microsoft SQL Server databases (*.mdf)|*.mdf"/>
+    <RtfFile Text="Rich Text file (*.rtf)|*.rtf"/>
+    <Images Text="Image files|*.bmp;*.png;*.jpg;*.jpeg;*.gif;*.tiff;*.tif;*.ico;*.emf;*.wmf;*.webp"/>
+    <AllImages Text="Image files|*.bmp;*.png;*.jpg;*.jpeg;*.gif;*.tiff;*.tif;*.ico;*.emf;*.wmf;*.svg"/>
+    <Assembly Text="Assembly (*.dll,*.exe)|*.dll;*.exe"/>
+    <PrnFile Text="Printer file (*.prn)|*.prn"/>
+    <BmpFile Text="Bitmap image (*.bmp)|*.bmp"/>
+    <PngFile Text="PNG image (*.png)|*.png"/>
+    <JpegFile Text="JPG image (*.jpg)|*.jpg"/>
+    <GifFile Text="GIF image (*.gif)|*.gif"/>
+    <TiffFile Text="TIFF image (*.tiff)|*.tiff"/>
+    <MetafileFile Text="Windows metafile (*.emf)|*.emf"/>
+    <HtmlFile Text="HTML file (*.html)|*.html"/>
+    <MhtFile Text="Web-archive file (*.mht)|*.mht"/>
+    <OdtFile Text="Open Office Writer file (*.odt)|*.odt"/>
+    <XodtFile Text="My Office Text file (*.xodt)|*.xodt"/>
+    <OdsFile Text="Open Office Calc file (*.ods)|*.ods"/>
+    <XodsFile Text="My Office Table file (*.xods)|*.xods"/>
+    <PdfFile Text="Adobe Acrobat file (*.pdf)|*.pdf"/>
+    <TxtFile Text="Text file (*.txt)|*.txt"/>
+    <CsvFile Text="Comma Separated Values (*.csv)|*.csv"/>
+    <DbfFile Text="dBase table file (*.dbf)|*.dbf"/>
+    <XlsFile Text="MS Excel file (*.xls)|*.xls"/>
+    <CsFile Text="C# file (*.cs)|*.cs"/>
+    <VbFile Text="VB.Net file (*.vb)|*.vb"/>
+    <FdbFile Text="Firebird database (*.fdb)|*.fdb"/>
+    <Vdb3File Text="VistaDB database (*.vdb*)|*.vdb*"/>
+    <XlsxFile Text="MS Excel book (*.xlsx)|*.xlsx"/>
+    <PptxFile Text="MS PowerPoint presentation (*.pptx)|*.pptx"/>
+    <XamlFile Text="XAML document (*.xaml)|*.xaml"/>
+    <SvgFile Text="SVG document (*.svg)|*.svg"/>
+    <PpmlFile Text="PPML document (*.ppml)|*.ppml"/>
+    <PSFile Text="PostScript document (*.ps)|*.ps"/>
+    <DocxFile Text="MS Word document (*.docx)|*.docx"/>
+    <SdfFile Text="SQL CE database (*.sdf)|*.sdf"/>
+    <XpsFile Text="XPS file (*.xps)|*.xps"/>
+    <RdlFiles Text="RDL files (*.rdl;*.rdlc)|*.rdl;*.rdlc"/>
+    <RdlFile Text="RDL file (*.rdl)|*.rdl"/>
+    <StimulSoftFile Text="StimulSoft file (*.mrt)|*.mrt"/>
+    <JasperReportsFile Text="JasperReports file (*.jrxml)|*.jrxml"/>
+    <RdlcFile Text="RDLC file (*.rdlc)|*.rdlc"/>
+    <RptFile Text="Crystal Reports file (*.rpt)|*.rpt"/>
+    <ShpFile Text="ESRI shapefile (*.shp)|*.shp"/>
+    <OsmFile Text="OpenStreetMap file(*.osm)|*.osm"/>
+    <Fr3File Text="FastReport VCL report (*.fr3)|*.fr3"/>
+    <RtfFile Text="RTF files (*.rtf)|*.rtf"/>
+    <ListAndLabelFiles Text="List and Label files|*.rpt;*.crd;*.srt;*.inv;*.lab;*.let"/>
+    <DevExpressFiles Text="DevExpress files (*.repx)|*.repx"/>
+    <JsonFile Text="JSON file (*.json,*.txt)|*.json;*.txt"/>
+    <LaTeXFile Text="TeX file (*.tex)|*.tex"/>
+    <ZplFile Text="ZPL file (*.zpl)|*.zpl"/>
+    <DxfFile Text="DXF file (*.dxf)|*.dxf"/>
+    <HpglFile Text="Hpgl (plt) file (*.plt)|*.plt"/>
+    <AllFiles Text="All files (*.*)|*.*"/>
+  </FileFilters>
+  <Formats>
+    <Date1 Text="d"/>
+    <Date2 Text="D"/>
+    <Date3 Text="f"/>
+    <Date4 Text="F"/>
+    <Date5 Text="MM/dd/yy"/>
+    <Date6 Text="MMMM dd, yyyy"/>
+    <Date7 Text="MMMM yyyy"/>
+    <Time1 Text="t"/>
+    <Time2 Text="T"/>
+    <Time3 Text="hh:mm tt"/>
+    <Time4 Text="HH:mm"/>
+    <Time5 Text="mm:ss"/>
+    <BooleanF1 Text="False"/>
+    <BooleanF2 Text="No"/>
+    <BooleanF3 Text="Off"/>
+    <BooleanF4 Text=" "/>
+    <BooleanT1 Text="True"/>
+    <BooleanT2 Text="Yes"/>
+    <BooleanT3 Text="On"/>
+    <BooleanT4 Text="X"/>
+    <Custom1 Text="Phone;(000) 000-0000"/>
+    <Custom2 Text="Long phone;+0(000) 000-0000"/>
+    <Custom3 Text="Social security;000-00-0000"/>
+    <Custom4 Text="Short Zip code;00000"/>
+    <Custom5 Text="Long Zip code;00000-0000"/>
+  </Formats>
+  <Designer>
+    <Ribbon>
+      <File Text="File"/>
+        <Recent Text="Recent Documents"/>
+      <Home Text="Home"/>
+        <Clipboard Text="Clipboard"/>
+        <Text Text="Text"/>
+        <BorderAndFill Text="Border and Fill"/>
+        <Format Text="Format"/>
+        <Styles Text="Styles"/>
+        <Editing Text="Editing"/>
+      <Report Text="Report"/>
+        <Data Text="Data"/>
+        <Pages Text="Pages"/>
+        <Bands Text="Bands"/>
+      <Layout Text="Layout"/>
+        <Alignment Text="Alignment"/>
+        <Size Text="Size"/>
+        <Spacing Text="Spacing"/>
+      <View Text="View"/>
+        <Panels Text="Panels"/>
+    </Ribbon>
+    <Menu>
+      <File Text="File">
+        <New Text="New..."/>
+        <Open Text="Open..."/>
+        <OpenPage Text="Open page..."/>
+        <OpenViaCloud Text="Open from Cloud..."/>
+        <RecentFiles Text="Recent Files"/>
+        <Close Text="Close"/>
+        <Save Text="Save"/>
+        <SaveAs Text="Save as..."/>
+        <SaveWithRandomData Text="Save With Random Data..."/>
+        <SaveAll Text="Save All"/>
+        <SaveToCloud Text="Save to Cloud..."/>
+        <PageSetup Text="Page Setup..."/>
+        <PrinterSetup Text="Printer Setup..."/>
+        <Preview Text="Preview..."/>
+        <PreviewCloud Text="Web Preview..."/>
+        <Preview1 Text="Preview"/>
+        <SelectLanguage Text="Select Language..."/>
+        <Exit Text="Exit"/>
+      </File>
+      <Edit Text="Edit">
+        <Undo Text="Undo"/>
+        <Redo Text="Redo"/>
+        <Cut Text="Cut"/>
+        <Copy Text="Copy"/>
+        <Paste Text="Paste"/>
+        <Delete Text="Delete"/>
+        <NewPage Text="New Page"/>
+        <CopyPage Text="Copy Page"/>
+        <DeletePage Text="Delete Page"/>
+        <SelectAll Text="Select All"/>
+        <Group Text="Group"/>
+        <Ungroup Text="Ungroup"/>
+        <Find Text="Find..."/>
+        <Replace Text="Replace..."/>
+      </Edit>
+      <View Text="View">
+        <StartPage Text="Start Page"/>
+        <Toolbars Text="Toolbars"/>
+        <Options Text="Options..."/>
+        <Grid Text="Grid"/>
+        <Guides Text="Guides"/>
+        <AutoGuides Text="Automatic Guides"/>
+        <DeleteHGuides Text="Delete Horizontal Guides"/>
+        <DeleteVGuides Text="Delete Vertical Guides"/>
+        <Units Text="Units"/>
+      </View>
+      <Insert Text="Insert"/>
+      <Report Text="Report">
+        <Bands Text="Configure Bands..."/>
+        <Styles Text="Styles..."/>
+        <GroupExpert Text="Group Expert..."/>
+        <Validate Text="Validate Report"/>
+        <Options Text="Options..."/>
+      </Report>
+      <Data Text="Data">
+        <ShowData Text="Show Data Window"/>
+        <Add Text="Add Data Source..."/>
+        <Choose Text="Choose Report Data..."/>
+        <Upload Text="Upload Data Source to Cloud..."/>
+      </Data>
+      <Window Text="Window">
+        <CloseAll Text="Close All"/>
+      </Window>
+      <Help Text="Help">
+        <Contents Text="Help Contents..."/>
+        <Account Text="Account..."/>
+        <About Text="About..."/>
+      </Help>
+    </Menu>
+    <ToolWindow>
+      <AutoHide Text="Auto-hide"/>
+      <Close Text="Close"/>
+      <DockToTop Text="Dock {0} to top"/>
+      <DockToBottom Text="Dock {0} to bottom"/>
+      <DockToOtherSide Text="Dock {0} to other side"/>
+      <Properties Text="Properties">
+        <Categorized Text="Categorized"/>
+        <Alphabetical Text="Alphabetical"/>
+        <PropertiesTab Text="Properties"/>
+        <EventsTab Text="Events"/>
+        <Filter Text="Object specific properties"/>
+        <NObjectsSelected Text="{0} objects selected"/>
+      </Properties>
+      <ReportTree Text="Report Tree">
+        <Sync Text="Sync with selected object"/>
+      </ReportTree>
+      <CollapseAll Text="Collapse all"/>
+      <ExpandAll Text="Expand all"/>
+      <Dictionary Text="Data">
+        <DataSources Text="Data Sources"/>
+        <Parameters Text="Parameters"/>
+        <SystemVariables Text="System Variables"/>
+        <Totals Text="Totals"/>
+        <Functions Text="Functions"/>
+        <DialogControls Text="Dialogue controls"/>
+        <New Text="New Dictionary"/>
+        <Open Text="Open Dictionary..."/>
+        <Save Text="Save Dictionary..."/>
+        <Merge Text="Merge Dictionary..."/>
+        <NewDataSource Text="New Data Source..."/>
+        <SortDataSources Text="Sort Data Sources"/>
+        <UploadDataSource Text="Upload Data Source to Cloud..."/>
+        <UploadChangesDataSource Text="Update connection on Cloud"/>
+        <SortDataFields Text="Sort Data Fields"/>
+        <CopyDataSource Text="Copy Data Source"/>
+        <NewRelation Text="New Relation..."/>
+        <NewParameter Text="New Parameter"/>
+        <NewTotal Text="New Total..."/>
+        <NewCalculatedColumn Text="New Calculated Column..."/>
+        <Rename Text="Rename"/>
+        <Edit Text="Edit..."/>
+        <Copy Text="Copy"/>
+        <Delete Text="Delete"/>
+        <DeleteAlias Text="Delete Alias"/>
+        <View Text="View Data..."/>
+        <ViewJson Text="View Json..."/>
+        <DuplicateName Text="Item with such name already exists"/>
+        <NRows Text="{0} row(s)"/>
+        <RowMofNRows Text="Row {0} of {1}"/>
+        <RowsKtoLofNRows Text="Rows {0} - {1} of {2}"/>
+        <CubeSources Text="Cube Sources"/>
+      </Dictionary>
+      <Messages Text="Messages">
+        <Errors Text="Errors: {0}"/>
+        <Warnings Text="Warnings: {0}"/>
+        <Refresh Text="Refresh"/>
+        <Close Text="Close"/>
+        <Description Text="Description"/>
+        <Line Text="Line"/>
+        <Column Text="Column"/>
+      </Messages>
+    </ToolWindow>
+    <Toolbar>
+      <AddOrRemove Text="Add or Remove Buttons"/>
+      <Reset Text="Reset Toolbar"/>
+      <MoreButtons Text="More buttons..."/>
+      <Standard Text="Standard">
+        <New Text="Add New Item"/>
+        <Open Text="Open Report (Ctrl+O)"/>
+        <Save Text="Save Report (Ctrl+S)"/>
+        <SaveAll Text="Save All (Ctrl+Shift+S)"/>
+        <Preview Text="Preview (Ctrl+P)"/>
+        <PreviewCloud Text="Web preview"/>
+        <NewPage Text="New Report Page"/>
+        <CopyPage Text="Copy Report Page"/>
+        <NewDialog Text="New Dialog"/>
+        <DeletePage Text="Delete Page"/>
+        <PageSetup Text="Page Setup"/>
+        <Cut Text="Cut (Ctrl+X)"/>
+        <Copy Text="Copy (Ctrl+C)"/>
+        <Paste Text="Paste (Ctrl+V)"/>
+        <FormatPainter Text="Format Painter"/>
+        <Undo Text="Undo (Ctrl+Z)"/>
+        <Redo Text="Redo"/>
+        <Group Text="Group"/>
+        <Ungroup Text="Ungroup"/>
+      </Standard>
+      <Text Text="Text">
+        <Name Text="Font Name"/>
+        <Size Text="Font Size"/>
+        <Bold Text="Bold"/>
+        <Italic Text="Italic"/>
+        <Underline Text="Underline"/>
+        <Left Text="Align Left"/>
+        <Center Text="Align Center"/>
+        <Right Text="Align Right"/>
+        <Justify Text="Justify"/>
+        <Top Text="Align Top"/>
+        <Middle Text="Align Middle"/>
+        <Bottom Text="Align Bottom"/>
+        <Color Text="Text Color"/>
+        <Highlight Text="Highlight"/>
+        <Angle Text="Text Angle"/>
+      </Text>
+      <Border Text="Border and Fill">
+        <Top Text="Top Line"/>
+        <Bottom Text="Bottom Line"/>
+        <Left Text="Left Line"/>
+        <Right Text="Right Line"/>
+        <All Text="All Border Lines"/>
+        <None Text="No Border"/>
+        <FillColor Text="Fill Color"/>
+        <FillStyle Text="Fill Style..."/>
+        <LineColor Text="Border Color"/>
+        <Width Text="Border Width"/>
+        <Style Text="Border Style"/>
+        <Props Text="Border Properties..."/>
+      </Border>
+      <Style Text="Style">
+        <Styles Text="Styles"/>
+        <SelectStyle Text="Select style"/>
+        <NoStyle Text="No style"/>
+      </Style>
+      <Layout Text="Layout">
+        <AlignToGrid Text="Align to Grid"/>
+        <Left Text="Align Lefts"/>
+        <Center Text="Align Centers"/>
+        <Right Text="Align Rights"/>
+        <Top Text="Align Tops"/>
+        <Middle Text="Align Middles"/>
+        <Bottom Text="Align Bottoms"/>
+        <SameWidth Text="Same Width"/>
+        <SameHeight Text="Same Height"/>
+        <SameSize Text="Same Size"/>
+        <SizeToGrid Text="Size to Grid"/>
+        <SpaceHorizontally Text="Space Horizontally"/>
+        <IncreaseHorizontalSpacing Text="Increase Horizontal Spacing"/>
+        <DecreaseHorizontalSpacing Text="Decrease Horizontal Spacing"/>
+        <RemoveHorizontalSpacing Text="Remove Horizontal Spacing"/>
+        <SpaceVertically Text="Space Vertically"/>
+        <IncreaseVerticalSpacing Text="Increase Vertical Spacing"/>
+        <DecreaseVerticalSpacing Text="Decrease Vertical Spacing"/>
+        <RemoveVerticalSpacing Text="Remove Vertical Spacing"/>
+        <CenterHorizontally Text="Center Horizontally"/>
+        <CenterVertically Text="Center Vertically"/>
+        <BringToFront Text="Bring to Front"/>
+        <SendToBack Text="Send to Back"/>
+      </Layout>
+      <Objects Text="Objects">
+        <Select Text="Select"/>
+      </Objects>
+      <Zoom Text="Zoom">
+        <ZoomOut Text="Zoom Out"/>
+        <ZoomIn Text="Zoom In"/>
+        <Zoom Text="Zoom"/>
+        <PageWidth Text="Page width"/>
+        <WholePage Text="Whole page"/>
+      </Zoom>
+      <Polygon Text="Polygon">
+        <MoveScale Text="Move and scale"/>
+        <Pointer Text="Select point"/>        
+        <AddPoint Text="Add point"/>
+        <Bezier Text="Add bezier"/>
+        <RemovePoint Text="Remove point"/>
+      </Polygon>
+    </Toolbar>
+    <Workspace>
+      <Code Text="Code"/>
+      <Report>
+        <ConfigureBands Text="Configure bands..."/>
+      </Report>
+    </Workspace>
+    <Options Text="Options"/>
+    <UndoRedo>
+      <Delete Text="Delete {0}"/>
+      <Move Text="Move {0}"/>
+      <Size Text="Change size of {0}"/>
+      <Change Text="Change {0}"/>
+      <AddGuide Text="Add guide"/>
+      <MoveGuide Text="Move guide"/>
+      <DeleteHGuides Text="Delete horizontal guides"/>
+      <DeleteVGuides Text="Delete vertical guides"/>
+      <ResizeBand Text="Resize band"/>
+      <ChangeParent Text="Change parent of {0}"/>
+      <Load Text="Load report"/>
+      <Paste Text="Paste {0}"/>
+      <Insert Text="Insert {0}"/>
+      <AddPage Text="Add page {0}"/>
+      <DeletePage Text="Delete page"/>
+      <Script Text="Script changed"/>
+      <NObjects Text="{0} objects"/>
+      <UndoN Text="Undo {0} action(s)"/>
+      <RedoN Text="Redo {0} action(s)"/>
+      <ChangeReport Text="Change report"/>
+      <ChangePagesOrder Text="Change pages order"/>
+      <DeletePage Text="Delete page"/>
+      <EditPage Text="Edit page"/>
+      <EditPrinter Text="Edit printer settings"/>
+      <EditReport Text="Edit report settings"/>
+      <SelectData Text="Select data"/>
+      <EditData Text="Edit data"/>
+      <FRXChange Text="FRX changed"/>
+    </UndoRedo>
+    <StartPage Text="Start Page"/>
+    <Untitled Text="Untitled.frx"/>
+    <ColorSelector>
+      <CustomColors Text="Custom"/>
+      <WebColors Text="Web"/>
+      <SystemColors Text="System"/>
+      <Other Text="Other colors..."/>
+      <Transparency Text="Transparency:"/>
+    </ColorSelector>
+    <Welcome>
+      <Button Text="Open Welcome Window..."/>
+      <Title Text="Welcome to FastReport"/>
+      <Show Text="Show on startup"/>
+      <Open Text="Open a Recent Item"/>
+      <New Text="Create New"/>
+      <Account Text="Account"/>
+    </Welcome>
+  </Designer>
+  <Preview Text="Preview">
+    <DesignText Text="Design"/>
+    <Design Text="Design Report"/>
+    <PrintText Text="Print"/>
+    <Print Text="Print (Ctrl+P)"/>
+    <OpenText Text="Open"/>
+    <Open Text="Open File"/>
+    <OpenLocal Text="Open..."/>
+    <OpenViaCloud Text="Open from Cloud..."/>
+    <Save Text="Save File"/>
+    <SaveText Text="Save"/>
+    <SaveNative Text="Prepared report"/>
+    <SaveLocal Text="Save..."/>
+    <SaveToCloud Text="Save to Cloud..."/>
+    <Search Text="Search"/>
+    <Email Text="Send by E-mail"/>
+    <Find Text="Find Text"/>
+    <Outline Text="Outline"/>
+    <PageSetup Text="Page Setup"/>
+    <Edit Text="Edit Page"/>
+    <CopyPage Text="Copy Page"/>
+    <DeletePage Text="Delete Page"/>
+    <Watermark Text="Watermark"/>
+    <First Text="First Page"/>
+    <Prior Text="Prior Page"/>
+    <Next Text="Next Page"/>
+    <Last Text="Last Page"/>
+    <FtpText Text="Save to FTP"/>
+    <DropboxText Text="Save to Dropbox"/>
+    <GoogleDriveText Text="Save to Google Drive"/>
+    <SkyDriveText Text="Save to OneDrive"/>
+    <Uploading Text="Uploading"/>
+    <UploadDone Text="Upload done"/>
+  </Preview>
+  <Forms>
+    <About Text="About">
+      <Version Text="Version"/>
+      <Visit Text="Visit our web page for more info:"/>
+    </About>
+    <AddLayer Text="Add Layer">
+      <Source Text="Select source:"/>
+      <Shapefile Text="Map file (*.shp, *.osm)"/>
+      <Embed Text="Embed the file in the report"/>
+      <Empty Text="Empty layer with geodata provided by an application"/>
+    </AddLayer>
+    <AddNewItem Text="Add New Item">
+      <Add Text="Add"/>
+      <Reports Text="Report templates:"/>
+      <ReportItems Text="Report items:"/>
+      <Games Text="Games:"/>
+    </AddNewItem>
+    <OpenPage Text="Choose page">
+      <MergeDataSource Text="Merge data sources"/>
+      <AddAsLink Text="Add as link"/>
+    </OpenPage>
+    <AdvancedConnectionProperties Text="Advanced Properties"/>
+    <AskPassword Text="Password">
+      <Password Text="This report is password protected.&#13;&#10;&#13;&#10;Please enter the password:"/>
+    </AskPassword>
+    <AskLoginPassword Text="Database Login">
+      <Login Text="Login:"/>
+      <Password Text="Password:"/>
+    </AskLoginPassword>
+    <BaseReportWizard>
+      <SelectDataSourcePage Text="Select datasource"/>
+      <SelectDataSource Text="Select one of the available datasources or create new one:"/>
+      <OpenDataDictionary Text="Open data dictionary file..."/>
+      <CreateNewDatasource Text="Create new datasource..."/>
+      <SelectColumnsPage Text="Select data columns"/>
+      <SelectColumns Text="Select data columns that you want to show in a report."/>
+      <AvailableColumns Text="Available columns:"/>
+      <SelectedColumns Text="Selected columns:"/>
+    </BaseReportWizard>
+    <Border Text="Border Editor">
+      <Border Text="Border"/>
+      <Line Text="Line"/>
+      <Shadow Text="Shadow"/>
+      <Style Text="Style:"/>
+      <Width Text="Width:"/>
+      <Color Text="Color:"/>
+      <Hint Text="Choose the line style and choose the line to apply the style."/>
+    </Border>
+    <CISWizardForm Text="Wizard for visualization of control (identification) signs">
+      <CIS Text="Сontrol (identification) sign"/>
+      <ProductGroup Text="Product group:"/>
+      <Data Text="Encoded data:"/>
+      <TypeBarcodes Text="Type of barcodes:"/>
+      <LeftMargin Text="Left margin"/>
+      <MethodСirculation Text="Method of release of products into circulation:"/>
+      <Country Text="Country:"/>
+      <ID Text="ID:"/>
+      <Size Text="Size:"/>
+      <PageProps Text="Page properties"/>
+      <Landscape Text="Landscape"/>
+      <MarginTop Text="Top:"/>
+      <MarginLeft Text="Left:"/>
+      <Margins Text="Margins:"/>
+      <Paper Text="Paper type:"/>
+      <PageWidth Text="Page width:"/>
+      <PageHeight Text="Page height:"/>
+      <CountColumns Text="Count columns:"/>
+      <CountRows Text="Count rows:"/>
+      <HorizontalPadding Text="Horizontal margin:"/>
+      <VerticalPadding Text="Vertical margin:"/>
+      <Border Text="Borders of sign"/>
+      <TransportPack Text="Tobacco, Transport packaging"/>
+      <Pack Text="Tobacco, Pack"/>
+      <Block Text="Tobacco, Block"/>
+      <Legprom Text="Light industry"/>
+      <Perfumes Text="Perfumes and eau de toilette"/>
+      <Footwear Text="Footwear"/>
+      <Fur Text="Fur coats"/>
+      <Photo Text="Photo"/>
+      <Tires Text="Tires"/>
+      <Medicines Text="Medicines"/>
+      <Dairy Text="Dairy products"/>
+      <Water Text="Packaged water"/>
+      <ImportProd Text="Import of products into the customs territory"/>
+      <ManufactureProd Text="Manufacture of products on the territory"/>
+      <Sample Text="Sample"/>
+      <Warning Text="Sings do not fit on the page!"/>
+    </CISWizardForm>
+    <ChartEditor Text="Chart Editor">
+      <Chart Text="Chart"/>
+      <Add Text="Add..."/>
+      <Delete Text="Delete"/>
+      <Hint Text="Click an item to set up its properties:"/>
+      <Common>
+        <Color Text="Color:"/>
+        <BackColor Text="Back color:"/>
+        <SecondaryColor Text="Secondary color:"/>
+        <Gradient Text="Gradient:"/>
+        <HatchStyle Text="Hatch style:"/>
+        <BorderColor Text="Border color:"/>
+        <BorderStyle Text="Border style:"/>
+        <BorderWidth Text="Border width:"/>
+        <ShadowColor Text="Shadow color:"/>
+        <ShadowOffset Text="Shadow offset:"/>
+        <LineColor Text="Line color:"/>
+        <LineStyle Text="Line style:"/>
+        <LineWidth Text="Line width:"/>
+        <Text Text="Text:"/>
+        <Font Text="Font:"/>
+        <ForeColor Text="Fore color:"/>
+        <Dock Text="Dock:"/>
+        <InsideChartArea Text="Inside chart area"/>
+        <Format Text="Format:"/>
+      </Common>
+      <ChartEditorControl>
+        <Data Text="Data">
+          <DataSource Text="Data source:"/>
+          <Filter Text="Filter:"/>
+          <AutoSeries Text="Auto-created series"/>
+          <DataColumn Text="Data column:"/>
+          <ColorColumn Text="Color column:"/>
+          <SeriesSort Text="Series sort:"/>
+          <AlignXValues Text="Align X values"/>
+          <ForceAutoSeries Text="Force"/>
+        </Data>
+        <Appearance Text="Appearance">
+          <Template Text="Template:"/>
+          <Load Text="Load..."/>
+          <Save Text="Save..."/>
+          <SeriesPalette Text="Series palette:"/>
+          <BorderSkin Text="Border skin:"/>
+          <Templates>
+            <Custom Text="Custom"/>
+            <Blue Text="Blue"/>
+            <Gray Text="Gray"/>
+            <Green Text="Green"/>
+            <Pink Text="Pink"/>
+            <Sand Text="Sand"/>
+            <Steel Text="Steel"/>
+            <Light Text="Light"/>
+          </Templates>
+        </Appearance>
+        <ChartArea Text="Chart area">
+          <Area Text="Area:"/>
+        </ChartArea>
+        <ThreeD Text="3D">
+          <Enable Text="Enable 3D"/>
+          <XRotation Text="X rotation:"/>
+          <YRotation Text="Y rotation:"/>
+          <Perspective Text="Perspective:"/>
+          <WallWidth Text="Wall width:"/>
+          <AxisDepth Text="Axis depth:"/>
+          <LightStyle Text="Light style:"/>
+          <ClusteredSeries Text="Clustered series"/>
+        </ThreeD>
+        <Axes Text="Axes">
+          <Axis Text="Axis:"/>
+          <CopyFromX Text="Copy appearance from X axis"/>
+          <CopyFromPrimary Text="Copy appearance from primary axis"/>
+          <Minor Text="Minor"/>
+          <Major Text="Major"/>
+          <General Text="General">
+            <Enabled Text="Enabled"/>
+            <MarginVisible Text="Margin visible"/>
+            <Logarithmic Text="Logarithmic"/>
+            <Reversed Text="Reversed"/>
+            <Interval Text="Interval"/>
+            <Interlaced Text="Interlaced"/>
+            <InterlacedColor Text="Interlaced color:"/>
+          </General>
+          <Labels Text="Labels">
+            <Enabled Text="Enabled"/>
+            <Angle Text="Angle:"/>
+          </Labels>
+          <Title Text="Title"/>
+          <CustomLabels Text="Custom labels">
+            <Label Text="Label"/>
+            <Start Text="Start:"/>
+            <End Text="End:"/>
+            <Row Text="Row:"/>
+            <MarkColor Text="Mark color:"/>
+            <MarkStyle Text="Mark style:"/>
+          </CustomLabels>
+          <Grid Text="Grid">
+            <GridLine Text="Grid line:"/>
+            <Enabled Text="Enabled"/>
+          </Grid>
+          <Ticks Text="Ticks">
+            <Ticks Text="Ticks:"/>
+            <Enabled Text="Enabled"/>
+            <TickStyle Text="Tick style:"/>
+            <TickSize Text="Tick size:"/>
+          </Ticks>
+          <Strips Text="Strips">
+            <Strip Text="Strip"/>
+            <Interval Text="Interval">
+              <Start Text="Start:"/>
+              <Width Text="Width:"/>
+              <Interval Text="Interval:"/>
+            </Interval>
+            <Appearance Text="Appearance"/>
+            <Text Text="Text">
+              <HorizontalAlign Text="Horizontal align:"/>
+              <VerticalAlign Text="Vertical align:"/>
+              <TextOrientation Text="Text orientation:"/>
+            </Text>
+          </Strips>
+        </Axes>
+        <Legend Text="Legend">
+          <Enabled Text="Enabled"/>
+          <StyleColumn Text="Column"/>
+          <StyleRow Text="Row"/>
+          <StyleTable Text="Table"/>
+          <General Text="General">
+            <LegendStyle Text="Legend style:"/>
+          </General>
+          <Appearance Text="Appearance"/>
+        </Legend>
+        <Title Text="Title">
+          <Visible Text="Visible"/>
+          <General Text="General">
+            <TextOrientation Text="Text orientation:"/>
+            <TextStyle Text="Text style:"/>
+          </General>
+          <Appearance Text="Appearance"/>
+        </Title>
+      </ChartEditorControl>
+      <SeriesEditorControl>
+        <Data Text="Data">
+          <Name Text="Name:"/>
+          <XValue Text="X value:"/>
+          <Color Text="Color:"/>
+          <Filter Text="Filter:"/>
+          <XValueType Text="X value type:"/>
+          <YValueType Text="Y value type:"/>
+          <XAxisType Text="X axis:"/>
+          <YAxisType Text="Y axis:"/>
+          <PrimaryAxis Text="Primary"/>
+          <SecondaryAxis Text="Secondary"/>
+          <SeriesValues>
+            <YValue Text="Y value:"/>
+            <High Text="High:"/>
+            <Low Text="Low:"/>
+            <Open Text="Open:"/>
+            <Close Text="Close:"/>
+            <RangeBegin Text="Range begin:"/>
+            <RangeEnd Text="Range end:"/>
+            <Size Text="Size:"/>
+            <YValue1 Text="Y value 1:"/>
+            <YValue2 Text="Y value 2:"/>
+          </SeriesValues>
+        </Data>
+        <Values Text="Values"/>
+        <DataProcessing Text="Data processing">
+          <SortBy Text="Sort by:"/>
+          <SortByX Text="X value"/>
+          <SortByY Text="Y value"/>
+          <SortOrder Text="Sort order:"/>
+          <GroupBy Text="Group by:">
+            <None Text="None"/>
+            <XValue Text="X value"/>
+            <Number Text="Number"/>
+            <Years Text="Years"/>
+            <Months Text="Months"/>
+            <Weeks Text="Weeks"/>
+            <Days Text="Days"/>
+            <Hours Text="Hours"/>
+            <Minutes Text="Minutes"/>
+            <Seconds Text="Seconds"/>
+            <Milliseconds Text="Milliseconds"/>
+          </GroupBy>
+          <GroupInterval Text="Group interval:"/>
+          <GroupFunction Text="Group function:"/>
+          <CollectData Text="Collect data:">
+            <None Text="None"/>
+            <TopN Text="TopN"/>
+            <BottomN Text="BottomN"/>
+            <LessThan Text="Less than value"/>
+            <LessThanPercent Text="Less than percent"/>
+            <GreaterThan Text="Greater than value"/>
+            <GreaterThanPercent Text="Greater than percent"/>
+          </CollectData>
+          <Value Text="Value:"/>
+          <CollectedText Text="Collected text:"/>
+          <CollectedColor Text="Collected color:"/>
+          <Explode Text="Explode:">
+            <None Text="None"/>
+            <Biggest Text="Biggest value"/>
+            <Lowest Text="Lowest value"/>
+            <Specific Text="Specific value"/>
+          </Explode>
+        </DataProcessing>
+        <Appearance Text="Appearance">
+          <Default Text="Default"/>
+          <DrawingStyle Text="Drawing style:"/>
+          <PointWidth Text="Point width:"/>
+          <LabelsStyle Text="Labels style:"/>
+          <DrawSideBySide Text="Draw side-by-side"/>
+          <ShowMarkerLines Text="Show marker lines"/>
+          <DoughnutRadius Text="Doughnut radius (%):"/>
+          <AreaDrawingStyle Text="Area drawing style:"/>
+          <Markers Text="Markers:"/>
+          <PriceUpColor Text="Price up color:"/>
+          <ReversalAmount Text="Reversal amount:"/>
+          <BoxSize Text="Box size:"/>
+          <NumberOfLinesInBreak Text="Lines in break:"/>
+          <LabelsPlacement Text="Labels placement:"/>
+          <PointsGap Text="Points gap:"/>
+          <MinPointHeight Text="Min. point height:"/>
+          <ValueType Text="Value type:"/>
+          <ThreeDDrawingStyle Text="3D drawing style:"/>
+          <ThreeDRotation Text="3D rotation:"/>
+          <FunnelStyle Text="Funnel style:"/>
+          <LineTension Text="Line tension:"/>
+          <NoSettings Text="No specific settings for this series type."/>
+        </Appearance>
+        <FillBorder Text="Fill &amp;&amp; border">
+          <Palette Text="Palette:"/>
+        </FillBorder>
+        <Labels Text="Labels">
+          <LabelView Text="Label view:"/>
+          <Pattern Text="Pattern:"/>
+        </Labels>
+        <Markers Text="Markers">
+          <Style Text="Style:"/>
+          <Size Text="Size:"/>
+          <Step Text="Step:"/>
+          <Color Text="Color:"/>
+        </Markers>
+      </SeriesEditorControl>
+    </ChartEditor>
+    <ChartGallery Text="Gallery">
+      <NewArea Text="Add new chart area for this series"/>
+      <Categories>
+        <BarColumn Text="Bar &amp; Column"/>
+        <Area Text="Area"/>
+        <Line Text="Line"/>
+        <PointBubble Text="Point &amp; Bubble"/>
+        <Pie Text="Pie"/>
+        <Circular Text="Circular"/>
+        <Financial Text="Financial"/>
+        <PyramidFunnel Text="Pyramid &amp; Funnel"/>
+        <Range Text="Range"/>
+      </Categories>
+      <Series>
+        <Bar Text="Bar"/>
+        <StackedBar Text="Stacked Bar"/>
+        <StackedBar100 Text="100% Stacked Bar"/>
+        <Column Text="Column"/>
+        <StackedColumn Text="Stacked Column"/>
+        <StackedColumn100 Text="100% Stacked Column"/>
+        <Area Text="Area"/>
+        <SplineArea Text="Spline Area"/>
+        <StackedArea Text="Stacked Area"/>
+        <StackedArea100 Text="100% Stacked Area"/>
+        <Line Text="Line"/>
+        <FastLine Text="Fast Line"/>
+        <StepLine Text="Step Line"/>
+        <Spline Text="Spline"/>
+        <Bubble Text="Bubble"/>
+        <Point Text="Point"/>
+        <FastPoint Text="Fast Point"/>
+        <Pie Text="Pie"/>
+        <Doughnut Text="Doughnut"/>
+        <Polar Text="Polar"/>
+        <Radar Text="Radar"/>
+        <Stock Text="Stock"/>
+        <Candlestick Text="Candlestick"/>
+        <Kagi Text="Kagi"/>
+        <Renko Text="Renko"/>
+        <PointAndFigure Text="Point &amp; Figure"/>
+        <ThreeLineBreak Text="Three Line Break"/>
+        <Pyramid Text="Pyramid"/>
+        <Funnel Text="Funnel"/>
+        <Range Text="Range"/>
+        <SplineRange Text="Spline Range"/>
+        <RangeColumn Text="Range Column"/>
+        <RangeBar Text="Range Bar"/>
+      </Series>
+    </ChartGallery>
+    <CloudDataSourceForm>
+        <TypeConnection Text="Type"/>
+        <NameConnection Text="Name"/>
+        <StatusConnection Text="Status"/>
+        <StatusConnected Text="Connected"/>
+        <StatusError Text="Error"/>
+        <StatusUpdating Text="Updating"/>
+        <Caption Text="Select connection"/>
+        <SelectSources Text="Select data source for your report from Cloud"/>
+        <SelectUpload Text="Select available connection to upload it to Cloud"/>
+        <NotFoundSources Text="No available data connections"/>
+        <PluginNotAdded Text="Impossible to unload data source. Probably the plugin, corresponding to the connection, is not added"/>
+    </CloudDataSourceForm>
+    <CodePageOptions Text="Code page">
+      <EnableCodeCompletion Text="Enable code completion"/>
+      <EnableVirtualSpace Text="Enable virtual space"/>
+      <UseSpaces Text="Use spaces to fill tabs"/>
+      <AllowOutlining Text="Allow outlining"/>
+      <LineNumbers Text="Line numbers"/>
+      <TabSize Text="Tab size:"/>
+      <DefaultScriptLanguage Text="Default script language:"/>
+      <CSharp Text="C#"/>
+      <VBNet Text="Visual Basic .NET"/>
+    </CodePageOptions>
+    <FRXPageOptions Text="FRX page">
+      <Enable Text="Enable"/>
+    </FRXPageOptions>
+    <ConfigureBands Text="Configure Bands">
+      <Add Text="Add"/>
+      <Delete Text="Delete"/>
+    </ConfigureBands>
+    <Connection Text="Connection">
+      <Select Text="Select the connection type"/>
+      <AlwaysUse Text="Always use this connection"/>
+      <LoginPrompt Text="Login prompt"/>
+      <Test Text="Test connection"/>
+      <TestSuccesful Text="Test connection succeeded."/>
+      <ConnectionFailed Text="Connection to DB Failed."/>
+    </Connection>
+    <CustomLabel Text="Custom Label">
+      <Name Text="Name:"/>
+      <Paper Text="Paper"/>
+      <Landscape Text="Landscape"/>
+      <PaperWidth Text="Paper width:"/>
+      <PaperHeight Text="Paper height:"/>
+      <LeftMargin Text="Left margin:"/>
+      <TopMargin Text="Top margin:"/>
+      <Label Text="Label parameters"/>
+      <LabelWidth Text="Label width:"/>
+      <LabelHeight Text="Label height:"/>
+      <RowGap Text="Row gap:"/>
+      <ColumnGap Text="Column gap:"/>
+      <Warning Text="Labels do not fit on the page!"/>
+    </CustomLabel>
+    <DataBandEditor Text="Edit DataBand">
+      <DataSource Text="Data source"/>
+      <NoData Text="No datasources available.&#13;&#10;&#13;&#10;Go &quot;Data|Choose Report Data...&quot; menu to choose from available datasources, or create new datasource using &quot;Data|Add Data Source...&quot; menu."/>
+      <Sort Text="Sort"/>
+      <SortBy Text="Sort by"/>
+      <ThenBy Text="Then by"/>
+      <Ascending Text="Ascending"/>
+      <Descending Text="Descending"/>
+      <Filter Text="Filter"/>
+      <Expression Text="Filter expression:"/>
+    </DataBandEditor>
+    <DataBandColumnEditor Text="Data Band Column Editor">
+      <Columns Text="Columns"/>
+      <Count Text="Count"/>
+      <Layout Text="Layout"/>
+      <MinRowCount Text="Min Row Count"/>
+      <Width Text="Width"/>
+    </DataBandColumnEditor>
+    <DataWizard Text="Data Wizard">
+      <Page1 Text="Choose database"/>
+      <WhichData Text="Which data connection should your report use to connect to the database?"/>
+      <Hint Text="Select from list of last used connections, or press &quot;New connection...&quot; button to create new connection."/>
+      <NewConnection Text="New connection..."/>
+      <EditConnection Text="Edit connection..."/>
+      <ConnectionName Text="Enter the connection name:"/>
+      <ConnectionString Text="Connection string"/>
+      <Page2 Text="Choose tables"/>
+      <WhichTables Text="Which tables you want in your report?"/>
+      <Wait Text="Retrieving database information"/>
+      <AddQuery Text="Add SQL query..."/>
+      <CloudDataSources Text="Select connection from Cloud"/>
+      <Tables Text="Tables"/>
+      <Procedures Text="Procedures"/>
+      <Queries Text="Queries"/>
+      <MessageBox>
+        <SuccessText Text="The data source has been successfully uploaded to the server!"/>
+        <SuccessCaption Text="Upload successful"/>
+        <SuccessUpdateText Text="The data source has been successfully updated!"/>
+        <SuccessUpdateCaption Text="Update successful"/>
+        <ErrorText Text="Error when uploading the data source"/>
+        <ErrorCaption Text="Error"/>
+        <ErrorInvalidID Text="Id of the Cloud data source is invalid. Probably the data source doesn`t exist on server. Check the data and try again."/>
+        <Error404 Text="Selected data source is not presented in your subscription. Check the data and try again."/>
+      </MessageBox>
+      <ChangeParameters Text="Changing procedure parameters "/>
+    </DataWizard>
+    <DialogPageOptions Text="Dialog form"/>
+    <Exception Text="Exception">
+      <Hint Text="Your report has thrown the following exception:"/>
+      <Stack Text="Stack trace:"/>
+      <Copy Text="Copy to clipboard"/>
+    </Exception>
+    <ExpressionEditor Text="Edit Expression"/>
+    <ExpressionsEditor Text="Edit Expressions">
+      <Expressions Text="Expressions"/>
+      <Add Text="Add"/>
+      <Delete Text="Delete"/>
+      <Edit Text="Edit"/>
+    </ExpressionsEditor>
+    <Fill Text="Fill Editor">
+      <Solid Text="Solid"/>
+      <LinearGradient Text="Linear gradient"/>
+      <PathGradient Text="Path gradient"/>
+      <Hatch Text="Hatch"/>
+      <Glass Text="Glass"/>
+      <Texture Text="Texture"/>
+      <ChooseImage Text="Choose image" />
+      <PreserveAspectRatio Text="PreserveAspectRatio" />
+      <ImageSize Text="Image size" />
+      <ImageWidth Text="Width" />
+      <ImageHeight Text="Height" />
+      <WrapMode Text="Wrap Mode" />
+      <ImageOffset Text="Image offset" />
+      <Colors Text="Colors"/>
+      <Color Text="Color"/>
+      <StartColor Text="Start"/>
+      <EndColor Text="End"/>
+      <Options Text="Options"/>
+      <Focus Text="Focus"/>
+      <Contrast Text="Contrast"/>
+      <Angle Text="Angle"/>
+      <CenterColor Text="Center"/>
+      <EdgeColor Text="Edge"/>
+      <Shape Text="Shape"/>
+      <Ellipse Text="Ellipse"/>
+      <Rectangle Text="Rectangle"/>
+      <ForeColor Text="Fore"/>
+      <BackColor Text="Back"/>
+      <Style Text="Style"/>
+      <Blend Text="Blend"/>
+      <GlassHatch Text="Show hatch"/>
+    </Fill>
+    <FormatEditor Text="Select Format">
+      <Expression Text="Expression:"/>
+      <General Text="General"/>
+      <Number Text="Number"/>
+      <Currency Text="Currency"/>
+      <Date Text="Date"/>
+      <Time Text="Time"/>
+      <Percent Text="Percent"/>
+      <Boolean Text="Boolean"/>
+      <Custom Text="Custom"/>
+      <UseLocale Text="Use locale settings"/>
+      <DecimalDigits Text="Decimal digits:"/>
+      <DecimalSeparator Text="Decimal separator:"/>
+      <GroupSeparator Text="Group separator:"/>
+      <PositivePattern Text="Positive pattern:"/>
+      <NegativePattern Text="Negative pattern:"/>
+      <CurrencySymbol Text="Currency symbol:"/>
+      <PercentSymbol Text="Percent symbol:"/>
+      <FalseText Text="False value text:"/>
+      <TrueText Text="True value text:"/>
+    </FormatEditor>
+    <FontsPageOptions Text="Fonts setup">
+      <FormName Text="Fonts setup"/>
+      <Fonts Text="Fonts"/>
+      <Font Text="Font"/>
+      <SettingsFor Text="Show settings for"/>
+      <FormElement Text="Display items"/>
+      <DefaultButton Text="Use defaults"/>
+      <Size Text="Size"/>
+      <Italic Text="Italic"/>
+      <Bold Text="Bold"/>
+      <Sample Text="Sample"/>
+      <CancelButton Text="Cancel"/>
+    </FontsPageOptions>
+    <GridControlColumnsEditor Text="Edit Columns">
+      <Columns Text="Columns"/>
+      <Properties Text="Properties"/>
+      <Add Text="Add"/>
+      <Remove Text="Remove"/>
+      <AddAll Text="Add all"/>
+    </GridControlColumnsEditor>
+    <GroupBandEditor Text="Edit Group">
+      <Condition Text="Group condition"/>
+      <Hint Text="Select data column or type an expression:"/>
+      <Settings Text="Settings"/>
+      <Sort Text="Sort:"/>
+      <NoSort Text="Do not sort"/>
+      <Ascending Text="Ascending"/>
+      <Descending Text="Descending"/>
+    </GroupBandEditor>
+    <GroupExpert Text="Group Expert">
+      <Condition Text="Group condition"/>
+      <Hint Text="Select a data column or type an expression, then press &quot;Add&quot; button to add a new group."/>
+      <Add Text="Add"/>
+      <Groups Text="Groups"/>
+      <Edit Text="Edit..."/>
+      <Delete Text="Delete"/>
+    </GroupExpert>
+    <HighlightEditor Text="Highlight Conditions">
+      <Conditions Text="Conditions"/>
+      <Add Text="Add"/>
+      <Delete Text="Delete"/>
+      <Edit Text="Edit"/>
+      <Style Text="Style"/>
+      <Fill Text="Fill"/>
+      <TextColor Text="Text color"/>
+      <Font Text="Font"/>
+      <Visible Text="Visible"/>
+    </HighlightEditor>
+    <HyperlinkEditor Text="Edit Hyperlink">
+      <Url Text="URL"/>
+      <PageNumber Text="Page number"/>
+      <Bookmark Text="Bookmark"/>
+      <Report Text="Report"/>
+      <ReportPage Text="Report page"/>
+      <Custom Text="Custom"/>
+      <UrlValue Text="Specify an URL (example: http://www.url.com):"/>
+      <UrlExpression Text="or enter the expression that returns an URL:"/>
+      <PageNumberValue Text="Specify page number:"/>
+      <PageNumberExpression Text="or enter the expression that returns a page number:"/>
+      <BookmarkValue Text="Specify a bookmark name:"/>
+      <BookmarkExpression Text="or enter the expression that returns a bookmark name:"/>
+      <ReportName Text="Report name:"/>
+      <ParameterName Text="Report parameter:"/>
+      <ParameterValue Text="Specify a parameter value:"/>
+      <ParameterExpression Text="or enter the expression that returns a parameter value:"/>
+      <PageName Text="Report page:"/>
+      <CustomValue Text="Specify a hyperlink value:"/>
+      <CustomExpression Text="or enter the expression that returns a value:"/>
+      <Hint Text="What will happen if you click this object in the preview window:"/>
+      <HintUrl Text="Specified URL will be opened."/>
+      <HintPageNumber Text="You will go to the specified page."/>
+      <HintBookmark Text="You will go to the object that contains specified bookmark."/>
+      <HintReport Text="Specified report will be opened in separate preview tab."/>
+      <HintReportPage Text="Specified page will be generated and opened in separate preview tab."/>
+      <HintCustom Text="You should create &quot;Click&quot; event handler to define custom action."/>
+      <ModifyAppearance Text="Modify the object's appearance so it will look like a clickable link"/>
+      <OpenLinkInNewTab Text="Open link in new tab" />
+    </HyperlinkEditor>
+    <LabelWizard Text="Label Wizard">
+      <Hint Text="Select one of the predefined labels, or press &quot;Custom label...&quot; button to define own label size."/>
+      <Label Text="Label"/>
+      <Manufacturer Text="Manufacturer:"/>
+      <Product Text="Product:"/>
+      <Parameters Text="Parameters"/>
+      <Size Text="Size:"/>
+      <PaperSize Text="Paper size:"/>
+      <Rows Text="Rows:"/>
+      <Columns Text="Columns:"/>
+      <CustomLabel Text="Custom label..."/>
+      <Custom Text="Custom"/>
+      <Delete Text="Delete"/>
+      <Manufacturers Optional="true">
+        <Manufacturer0 Text="AE"/>
+        <Manufacturer1 Text="Agipa"/>
+        <Manufacturer2 Text="AOne"/>
+        <Manufacturer3 Text="APLI"/>
+        <Manufacturer4 Text="Avery (A4, A5)"/>
+        <Manufacturer5 Text="Avery (standard)"/>
+        <Manufacturer6 Text="Boeder"/>
+        <Manufacturer7 Text="Devauzet"/>
+        <Manufacturer8 Text="Durable"/>
+        <Manufacturer9 Text="ERO"/>
+        <Manufacturer10 Text="Formtec"/>
+        <Manufacturer11 Text="Guilbert"/>
+        <Manufacturer12 Text="Herlitz"/>
+        <Manufacturer13 Text="Herma"/>
+        <Manufacturer14 Text="Hisago"/>
+        <Manufacturer15 Text="HP"/>
+        <Manufacturer16 Text="Inmac"/>
+        <Manufacturer17 Text="Kokuyo"/>
+        <Manufacturer18 Text="Leitz"/>
+        <Manufacturer19 Text="MACO/Wilson Jones"/>
+        <Manufacturer20 Text="MACtac"/>
+        <Manufacturer21 Text="May+Spies"/>
+        <Manufacturer22 Text="Pimaco"/>
+        <Manufacturer23 Text="RAJA ES"/>
+        <Manufacturer24 Text="Rank Xerox"/>
+        <Manufacturer25 Text="Sigel"/>
+        <Manufacturer26 Text="Stralfors"/>
+        <Manufacturer27 Text="UNISTAT"/>
+        <Manufacturer28 Text="Zweckform"/>
+      </Manufacturers>
+      <Labels Optional="true">
+        <Label0 Text="Address"/>
+        <Label1 Text="Multi-usage"/>
+        <Label2 Text="Copilaser"/>
+        <Label3 Text="Laser"/>
+        <Label4 Text="Special Laser"/>
+        <Label5 Text="Inkjet+Laser"/>
+        <Label6 Text="Burotic"/>
+        <Label7 Text="Club Card"/>
+        <Label8 Text="Business Card"/>
+        <Label9 Text="Media"/>
+        <Label10 Text="Diskette"/>
+        <Label11 Text="Video Spine"/>
+        <Label12 Text="Video Face"/>
+        <Label13 Text="File Folder"/>
+        <Label14 Text="Postcard"/>
+        <Label15 Text="Name Badge"/>
+        <Label16 Text="Sticker"/>
+        <Label17 Text="Card"/>
+        <Label18 Text="Shipping"/>
+        <Label19 Text="Parcel"/>
+        <Label20 Text="Index Card"/>
+        <Label21 Text="CD ROM"/>
+        <Label22 Text="35mm Slide"/>
+        <Label23 Text="Audio Tape"/>
+        <Label24 Text="Data Cartridge"/>
+        <Label25 Text="Price Marking"/>
+        <Label26 Text="Label"/>
+        <Label27 Text="3.5&quot; Diskette (Face Only)"/>
+        <Label28 Text="Mini Label - Full bleed"/>
+        <Label29 Text="Rectangle Sticker"/>
+        <Label30 Text="Square Sticker"/>
+        <Label31 Text="Small Round Sticker"/>
+        <Label32 Text="Big Round Sticker"/>
+        <Label33 Text="Full Page Sticker"/>
+        <Label34 Text="Mini Label"/>
+        <Label35 Text="Photo Quality Label (4 per page)"/>
+        <Label36 Text="Photo Quality Gloss Postcards"/>
+        <Label37 Text="Photo Quality Gloss Business Cards"/>
+        <Label38 Text="Photo Quality Card Sheet"/>
+        <Label39 Text="Full Face CD/DVD PQ Label"/>
+        <Label40 Text="3.5&quot; Diskette - Face Only"/>
+        <Label41 Text="Lever Arch"/>
+        <Label42 Text="Labels for colour printing - Shipping"/>
+        <Label43 Text="Clean Edge (TM) Business Card"/>
+        <Label44 Text="Name Card"/>
+        <Label45 Text="CD Case Insert - Cover"/>
+        <Label46 Text="CD Envelope"/>
+        <Label47 Text="Mini Labels"/>
+        <Label48 Text="Elasticated Folder / File Labels"/>
+        <Label49 Text="Ring Binder"/>
+        <Label50 Text="Fluorescent Yellow Promotional Labels"/>
+        <Label51 Text="IndexMaker Labels"/>
+        <Label52 Text="IndexMaker Contents"/>
+        <Label53 Text="ReadyIndex"/>
+        <Label54 Text="Mini"/>
+        <Label55 Text="Full Sheet Labels"/>
+        <Label56 Text="A5 Labels"/>
+        <Label57 Text="Circular"/>
+        <Label58 Text="5.25&quot; Diskette"/>
+        <Label59 Text="3.5&quot; Diskette (Wraparound)"/>
+        <Label60 Text="Mini Data Cartridge Labels"/>
+        <Label61 Text="Standard Data Cartridge"/>
+        <Label62 Text="Labels for Zip(TM) Disk"/>
+        <Label63 Text="Labels for SuperDisk (TM)"/>
+        <Label64 Text="Circular Fluorescent Yellow Promotional Labels"/>
+        <Label65 Text="4mm Data Cartridge"/>
+        <Label66 Text="Gold Mini Labels"/>
+        <Label67 Text="Compliment Slip"/>
+        <Label68 Text="Addressing"/>
+        <Label69 Text="Address/Shipping"/>
+        <Label70 Text="Filing"/>
+        <Label71 Text="3.5&quot; Diskette"/>
+        <Label72 Text="Embossed Note Cards"/>
+        <Label73 Text="Embossed Half-Fold Cards"/>
+        <Label74 Text="Postcards"/>
+        <Label75 Text="Half-Fold Greeting Cards"/>
+        <Label76 Text="Mailing Labels"/>
+        <Label77 Text="Return Address"/>
+        <Label78 Text="Filing Labels"/>
+        <Label79 Text="High Visibility Round Labels"/>
+        <Label80 Text="Medium Embossed Tent Cards"/>
+        <Label81 Text="Large Embossed Tent Cards"/>
+        <Label82 Text="Note Cards"/>
+        <Label83 Text="Laminated ID Cards"/>
+        <Label84 Text="Laminated Name Badges"/>
+        <Label85 Text="Business Cards"/>
+        <Label86 Text="Name Tag Kit"/>
+        <Label87 Text="Small Rotary Cards"/>
+        <Label88 Text="Large Rotary Cards"/>
+        <Label89 Text="Index Cards"/>
+        <Label90 Text="Name Badges Insert Refills "/>
+        <Label91 Text="Self Adhesive Name Badges"/>
+        <Label92 Text="White Address"/>
+        <Label93 Text="Clear Address"/>
+        <Label94 Text="Removable ID Labels"/>
+        <Label95 Text="Removable Filing Labels"/>
+        <Label96 Text="Return Address Labels"/>
+        <Label97 Text="Removable 3 1/2&quot; Diskette Labels"/>
+        <Label98 Text="Color Printing Labels"/>
+        <Label99 Text="Glossy Business Cards"/>
+        <Label100 Text="Glossy Postcards"/>
+        <Label101 Text="Full Sheet"/>
+        <Label102 Text="Bar Code"/>
+        <Label103 Text="Laser Tag"/>
+        <Label104 Text="InkJet"/>
+        <Label105 Text="8mm Video Tape"/>
+        <Label106 Text="Rotary Card"/>
+        <Label107 Text="Large Size"/>
+        <Label108 Text="Full Size"/>
+        <Label109 Text="Medium Size"/>
+        <Label110 Text="1 x 1 1/2 in"/>
+        <Label111 Text="1 x 4 in"/>
+        <Label112 Text="1 7/16 x 4 in"/>
+        <Label113 Text="2 x 4 in"/>
+        <Label114 Text="2 1/2 x 4 in"/>
+        <Label115 Text="3 1/3 x 4 in"/>
+        <Label116 Text="5 x 4 in"/>
+        <Label117 Text="5 1/2 x 8 1/2 in"/>
+        <Label118 Text="CD Label"/>
+        <Label119 Text="1 x 2 5/6 in"/>
+        <Label120 Text="3/4 x 3 1/2 in"/>
+        <Label121 Text="1 1/16 x 4 1/4 in"/>
+        <Label122 Text="1 9/16 x 4 1/4 in"/>
+        <Label123 Text="2 3/4 x 4 1/4 in"/>
+        <Label124 Text="3 2/3 x 4 1/4 in"/>
+        <Label125 Text="5 1/2 x 4 1/4 in"/>
+        <Label126 Text="3 1/2 x 8 1/2 in"/>
+        <Label127 Text="11 x 8 1/2 in"/>
+        <Label128 Text="3x11 Address"/>
+        <Label129 Text="3x12 Address"/>
+        <Label130 Text="InkJet+Laser, arrows"/>
+        <Label131 Text="InkJet+Laser, circles"/>
+        <Label132 Text="InkJet+Laser"/>
+        <Label133 Text="InkJet+Laser, red"/>
+        <Label134 Text="InkJet+Laser, blue"/>
+        <Label135 Text="InkJet+Laser, green"/>
+        <Label136 Text="InkJet+Laser, yellow"/>
+        <Label137 Text="File labels, wide"/>
+        <Label138 Text="File labels, narrow"/>
+        <Label139 Text="InkJet+Laser, Slide labels"/>
+        <Label140 Text="InkJet+Laser, Tab labels"/>
+        <Label141 Text="Laser, round labels, yellow"/>
+        <Label142 Text="InkJet+Laser, Disk labels"/>
+        <Label143 Text="InkJet+Laser, Video labels"/>
+        <Label144 Text="InkJet+Laser, Cassette labels"/>
+        <Label145 Text="Laser, transparent (film)"/>
+        <Label146 Text="Laser, weatherproof (film)"/>
+        <Label147 Text="landscape - Address"/>
+        <Label148 Text="landscape - File Folder"/>
+        <Label149 Text="landscape - Laser Tag"/>
+      </Labels>
+    </LabelWizard>
+    <ListViewForm>
+        <CaptionSaveMode Text="Save to Cloud"/>
+        <CaptionOpenMode Text="Open from Cloud"/>
+        <Select Text="Select"/>
+        <Save Text="Save"/>
+        <Cancel Text="Cancel"/>
+        <Search Text="Search..."/>
+        <FileNameHeader Text="Name"/>
+        <DateModHeader Text="Date modifed"/>
+        <FileSizeHeader Text="Size"/>
+        <FileTypeHeader Text="Type"/>
+        <CreateFolder Text="Create folder"/>
+        <CopyPath Text="Copy path"/>
+        <Rename Text="Rename"/>
+        <Delete Text="Delete"/>
+        <Open Text="Open"/>
+        <AuthError Text="Error while authorization"/>
+        <AuthErrorCaption Text="Not authorized"/>
+        <OnLoadName Text="Enter new name"/>
+        <NonExistingSelectedReport Text="Report with this name is not found!"/>
+        <ReportWasModified Text="Report`s been already modified. Are you sure you want to overwrite this file?"/>
+        <ReportWasModifiedCaption Text="Report was modifed"/>
+        <ReportWasNotFound Text="Report was deleted. Do you want to save file?"/>
+        <ReportWasNotFoundCaption Text="Report was deleted"/>
+        <ConfirmDelete Text="Delete {0} ?"/>
+        <RootFolderTemplates Text="Templates"/>
+        <RootFolderReports Text="Reports"/>
+        <EnterFolderName>
+            <OnLoadRename Text="Enter new name"/>
+            <OnLoadFolderName Text="Enter folder name"/>
+            <CreateDirectory Text="Create directory"/>
+            <Rename Text="Rename"/>
+            <Confirm Text="OK"/>
+            <Cancel Text="Cancel"/>
+            <EmptyName Text="Name cannot be empty!"/>
+            <ForbiddenName Text="A file name cannot contain any of the following characters:"/>
+        </EnterFolderName>
+        <ErrorMessageBox>
+            <ErrorInApiOrServer Text="Error while connecting to the selected server. You may have specified an invalid server or API key"/>
+            <ErrorInSubscriptions Text="No valid subscriptions found on Your account."/>
+            <ErrorInSubscriptions402 Text="The selected subscription has expired. Please update your workspace"/>
+            <CaptionSubscriptions Text="Subscriptions error"/>
+            <CaptionSubscriptions402 Text="Subscription is expired"/>
+            <Caption Text="Server connection error"/>
+            <InvalidPath Text="Unable to find the path '{0}'. Check the spelling and try again"/>
+            <CaptionNoPath Text="Invalid path"/>
+            <Error404 Text="The selected file does not exist on the server. Check that the data is correct and try again"/>
+            <Error404Caption Text="File is not found"/>
+        </ErrorMessageBox>
+    </ListViewForm>
+    <MapEditor Text="Edit Map">
+      <Map Text="Map"/>
+      <Layer Text="Layer"/>
+      <Add Text="Add..."/>
+      <Delete Text="Delete"/>
+      <Hint Text="Click an item to set up its properties:"/>
+      <Common>
+        <FillColor Text="Fill color:"/>
+        <TextColor Text="Text color:"/>
+        <BorderColor Text="Border color:"/>
+        <BorderStyle Text="Border style:"/>
+        <BorderWidth Text="Border width:"/>
+        <Text Text="Text:"/>
+        <Font Text="Font:"/>
+        <Dock Text="Dock:"/>
+        <Format Text="Format:"/>
+        <Visible Text="Visible"/>
+        <NumberOfRanges Text="Number of ranges:"/>
+        <Start Text="Start:"/>
+        <End Text="End:"/>
+        <Auto Text="Auto"/>
+      </Common>
+      <MapEditorControl>
+        <General Text="General">
+          <Mercator Text="Mercator projection"/>
+        </General>
+        <ColorScale Text="Color scale">
+          <HideIfNoData Text="Hide if no data"/>
+          <Border Text="Border..."/>
+          <Fill Text="Fill..."/>
+          <General Text="General"/>
+          <Title Text="Title"/>
+          <Values Text="Values"/>
+          <NoDataText Text="No data text:"/>
+          <NoData Text="No data"/>
+        </ColorScale>
+      </MapEditorControl>
+      <LayerEditorControl>
+        <Data Text="Data">
+          <DataSource Text="Data source:"/>
+          <Filter Text="Filter:"/>
+          <SpatialData Text="Spatial data:"/>
+          <Column Text="Column:"/>
+          <Value Text="Value:"/>
+          <Latitude Text="Latitude:"/>
+          <Longitude Text="Longitude:"/>
+          <Label Text="Label:"/>
+          <AnalyticalData Text="Analytical data:"/>
+          <Function Text="Function:"/>
+          <ZoomPolygon Text="Zoom the polygon:"/>
+        </Data>
+        <Appearance Text="Appearance">
+          <Palette Text="Palette:"/>
+        </Appearance>
+        <ColorScale Text="Color scale">
+          <StartColor Text="Start color:"/>
+          <MiddleColor Text="Middle color:"/>
+          <EndColor Text="End color:"/>
+          <Color Text="Color:"/>
+        </ColorScale>
+        <SizeRanges Text="Size ranges">
+          <StartSize Text="Start size:"/>
+          <EndSize Text="End size:"/>
+          <Size Text="Size:"/>
+        </SizeRanges>
+        <Labels Text="Labels">
+          <LabelKind Text="Label kind:"/>
+          <None Text="None"/>
+          <Name Text="Name"/>
+          <Value Text="Value"/>
+          <NameAndValue Text="Name and value"/>
+          <LabelColumn Text="Label column:"/>
+          <VisibleAtZoom Text="Visible at zoom:"/>
+        </Labels>
+      </LayerEditorControl>
+    </MapEditor>
+    <OutlineEditor Text="Outline Editor">
+      <Enabled Text="Enabled"/>
+      <Style Text="Style:"/>
+      <Width Text="Width:"/>
+      <Color Text="Color:"/>
+      <DrawBehind Text="Draw behind"/>
+    </OutlineEditor>
+    <PageSetup Text="Page Setup">
+      <Paper Text="Paper"/>
+      <Custom Text="Custom"/>
+      <Width Text="Width:"/>
+      <Height Text="Height:"/>
+      <Orientation Text="Orientation:"/>
+      <Portrait Text="Portrait"/>
+      <Landscape Text="Landscape"/>
+      <Margins Text="Margins"/>
+      <Left Text="Left:"/>
+      <Top Text="Top:"/>
+      <Right Text="Right:"/>
+      <Bottom Text="Bottom:"/>
+      <MirrorMargins Text="Mirror margins on even pages"/>
+      <Source Text="Source"/>
+      <FirstPage Text="First page:"/>
+      <OtherPages Text="Other pages:"/>
+      <LastPage Text="Last page:"/>
+      <Columns Text="Columns"/>
+      <Count Text="Count:"/>
+      <ColumnWidth Text="Width:"/>
+      <Positions Text="Positions:"/>
+      <Other Text="Other"/>
+      <Auto Text="Auto"/>
+      <Duplex Text="Duplex:"/>
+      <DupDefault Text="Default"/>
+      <DupSimplex Text="Simplex"/>
+      <DupVertical Text="Vertical"/>
+      <DupHorizontal Text="Horizontal"/>
+      <EditWatermark Text="Edit watermark..."/>
+      <ExtraWidth Text="Extra design width"/>
+      <UnlimitedHeight Text="Unlimited height"/>
+      <UnlimitedWidth Text="Unlimited width"/>
+    </PageSetup>
+    <PictureEditor Text="Edit Picture">
+      <Picture Text="Picture"/>
+      <Load Text="Load"/>
+      <Paste Text="Paste"/>
+      <Clear Text="Clear"/>
+      <Edit Text="Edit"/>
+      <DataColumn Text="Data column"/>
+      <FileName Text="File name"/>
+      <Url Text="Hyperlink"/>
+      <FileHint1 Text="File name:"/>
+      <FileHint2 Text="Note: you have to deploy this file together with your report."/>
+      <UrlHint Text="Hyperlink:"/>
+    </PictureEditor>
+    <PictureEditorAdvanced Text="Picture editor">
+      <Reset Text="Reset"/>
+      <Resize Text="Resize"/>
+      <Crop Text="Crop"/>
+      <Color Text="Color"/>
+      <Change Text="Change:"/>
+      <Percentage Text="percentage"/>
+      <Pixels Text="pixels"/>
+      <Horizontal Text="Horizontal:"/>
+      <Vertical Text="Vertical:"/>
+      <AspectRatio Text="Maintain aspect ratio"/>
+      <Grayscale Text="Grayscale"/>
+      <Monochrome Text="Monochrome"/>
+      <MinX Text="Min. X:" />
+      <MinY Text="Min. Y:" />
+    </PictureEditorAdvanced>
+    <PluginsOptions Text="Plugins">
+      <Hint Text="List of installed FastReport plugins:"/>
+      <Add Text="Add"/>
+      <Remove Text="Remove"/>
+      <Note Text="Note: changes made will take effect on FastReport restart."/>
+      <Fonts Text="Fonts"/>
+      <ExportsEditor Text="Exports Menu"/>
+      <Version Text="Version:"/>
+      <Path Text="Path:"/>
+      <Date Text="Date created:"/>
+      <CompanyName Text="Company name:"/>
+      <Description Text="Description:"/>
+      <Size Text="Size:"/>
+    </PluginsOptions>
+    <PreviewPageSetup>
+      <Apply Text="Apply to all pages and rebuild report"/>
+    </PreviewPageSetup>
+    <PreviewSearch Text="Find"/>
+    <PrinterSetup Text="Print">
+      <PrinterSetup Text="Printer Setup"/>
+      <Printer Text="Printer"/>
+      <SavePrinter Text="Save this printer in the report file"/>
+      <Settings Text="Settings..."/>
+      <PrintToFile Text="Print to file"/>
+      <PageRange Text="Page range"/>
+      <All Text="All"/>
+      <Current Text="Current page"/>
+      <Numbers Text="Pages:"/>
+      <Hint Text="Enter page numbers and/or page ranges, separated by commas. For example, 1,3,5-12"/>
+      <Copies Text="Copies"/>
+      <Count Text="Count:"/>
+      <Collate Text="Collate"/>
+      <Other Text="Other"/>
+      <OddEven Text="Print:"/>
+      <AllPages Text="All pages"/>
+      <OddPages Text="Odd pages"/>
+      <EvenPages Text="Even pages"/>
+      <Order Text="Order:"/>
+      <OrderDirect Text="Direct (1-9)"/>
+      <OrderReverse Text="Reverse (9-1)"/>
+      <Duplex Text="Duplex:"/>
+      <Source Text="Source:"/>
+      <PrintMode Text="Print mode"/>
+      <PrintModeDefault Text="Default"/>
+      <PrintModeSplit Text="Split big pages"/>
+      <PrintModeScale Text="Scale"/>
+      <PrintOnSheet Text="Print on sheet:"/>
+      <PagesOnSheet Text="Pages on sheet:"/>
+      <PagesOnSheet1 Text="1 page"/>
+      <PagesOnSheet2 Text="2 pages"/>
+      <PagesOnSheet4 Text="4 pages"/>
+      <PagesOnSheet8 Text="8 pages"/>
+      <Scale Text="Scale (%):"/>
+      <AutoPaperSize Text="Auto paper size"/>
+      <Print Text="Print"/>
+      <Error Text="Invalid page range."/>
+      <CmdCommand Text="Command" />
+      <CmdDescription Text="Replace 'report1.fpx report2.fpx ... reportN.fpx' with your own reports and copy the following command:" />
+    </PrinterSetup>
+    <QueryBuilder Text="Query Builder">
+      <Designer Text="Designer"/>
+      <Result Text="Result"/>
+      <Run Text="Run SQL"/>
+      <Name Text="Name"/>
+      <Alias Text="Alias"/>
+      <Filter Text="Filter"/>
+      <Group Text="Group"/>
+      <Order Text="Order"/>
+      <Func Text="Func"/>
+      <Joins Text="Join"/>
+      <Condition Text="Condition"/>
+      <Delete Text="Delete"/>
+      <InputAlias Text="Set an alias for the table:"/>
+      <Where>
+        <Equal Text="Equal"/>
+        <NotEqual Text="Not equal"/>
+        <GtOrEqual Text="Greater than or equal"/>
+        <Gt Text="Greater than"/>
+        <LtOrEqual Text="Less than or equal"/>
+        <Lt Text="Less than"/>
+        <Like Text="Like"/>
+        <NotLike Text="Not like"/>
+      </Where>
+      <Hint Text="Drag tables here"/>
+      <QueryIsCorrupted Text="SQL query cannot be edited using Query Builder. With further processing SQL query may be partially or completely lost.&#13;&#10;Do you want to continue?"/>
+      <QueryIsCorruptedTitle Text="Warning!"/>
+    </QueryBuilder>
+    <QueryWizard Text="Query Wizard">
+      <Page1 Text="Set the name"/>
+      <SetName Text="Set the name of the query object."/>
+      <NameHint Text="This name will be displayed in the &quot;Data&quot; window."/>
+      <Page2 Text="Enter a SQL statement"/>
+      <WhatData Text="What data should return the query?"/>
+      <TypeSql Text="Type your SQL statement or use the Query Builder to construct it."/>
+      <QueryBuilder Text="Query Builder..."/>
+      <Page3 Text="Define parameters"/>
+      <Page4 Text="Define columns"/>
+      <Refresh Text="Refresh Columns"/>
+      <AddColumn Text="Add Calculated Column"/>
+      <AddParameter Text="Add Parameter"/>
+      <Delete Text="Delete"/>
+      <DuplicateName Text="Item with such name already exists."/>
+      <DuplicateParamName Text="The query contains multiple occurrences of one or more parameters ({0}). Please ensure that each use of the parameter matches your expectations and does not cause a conflict during query execution."/>
+    </QueryWizard>
+    <RelationEditor Text="Edit Relation">
+      <ParentTable Text="Parent table:"/>
+      <ChildTable Text="Child table:"/>
+      <Parent Text="Parent"/>
+      <Child Text="Child"/>
+      <Columns Text="Columns:"/>
+      <Error Text="Inconsistent number of parent and child columns"/>
+    </RelationEditor>
+    <ReportData Text="Choose Report Data">
+      <Hint Text="Select data sources and fields that you want to use in the report:"/>
+      <Aliases Text="Show aliases"/>
+    </ReportData>
+    <ReportOptions Text="Report Options">
+      <General Text="General"/>
+      <Description Text="Description"/>
+      <Script Text="Script"/>
+      <Security Text="Security"/>
+      <Inheritance Text="Inheritance"/>
+      <Email Text="Email"/>
+      <Name Text="Name:"/>
+      <Author Text="Author:"/>
+      <Version Text="Version:"/>
+      <Description1 Text="Description:"/>
+      <Picture Text="Picture:"/>
+      <SavePreviewPicture Text="Save preview picture"/>
+      <Load Text="Load..."/>
+      <Clear Text="Clear"/>
+      <Created Text="Created:"/>
+      <Modified Text="Modified:"/>
+      <Language Text="Script language:"/>
+      <Note Text="Note: if you change the language, entire script will be cleared!"/>
+      <RefAssemblies Text="Referenced assemblies:"/>
+      <Add Text="Add..."/>
+      <Remove Text="Remove"/>
+      <Password Text="Password:"/>
+      <RetypePassword Text="Retype password:"/>
+      <Inherited Text="This report is inherited from base report:"/>
+      <NotInherited Text="This report is not inherited."/>
+      <Choose Text="Choose the option:"/>
+      <DontChange Text="Do not change"/>
+      <Detach Text="Detach the base report"/>
+      <Inherit Text="Inherit the report from:"/>
+      <Browse Text="Browse..."/>
+      <DoublePass Text="Double pass"/>
+      <Compress Text="Compress report file"/>
+      <UseFileCache Text="Use file cache"/>
+      <ConvertNulls Text="Convert null values"/>
+      <TextQuality Text="Text quality:"/>
+      <SmoothGraphics Text="Smooth graphics"/>
+      <QualityDefault Text="Default"/>
+      <QualityRegular Text="Regular"/>
+      <QualityClearType Text="ClearType"/>
+      <QualityAntiAlias Text="AntiAlias"/>
+      <QualitySingleBPP Text="SingleBPP"/>
+      <QualitySingleBPPGridFit Text="SingleBPPGridFit"/>
+      <PasswordError Text="Password does not match. Please retype again."/>
+      <Recipients Text="Recipient(s) (for example, john@url.com):"/>
+      <Subject Text="Subject:"/>
+      <Message Text="Message:"/>
+    </ReportOptions>
+    <ReportPageOptions Text="Report page">
+      <Units Text="Page units"/>
+      <Millimeters Text="Millimeters"/>
+      <Centimeters Text="Centimeters"/>
+      <Inches Text="Inches"/>
+      <HundrethsOfInch Text="Hundreths of inch"/>
+      <Grid Text="Grid"/>
+      <ShowGrid Text="Show grid"/>
+      <SnapToGrid Text="Snap to grid"/>
+      <DottedGrid Text="Dotted grid"/>
+      <Size Text="Snap size:"/>
+      <AltSize Text="Snap size (Alt):"/>
+      <Markers Text="Object markers:"/>
+      <Rectangle Text="Rectangle"/>
+      <Corners Text="Corners"/>
+      <BandView Text="Band view:"/>
+      <Structure Text="Structure"/>
+      <Classic Text="Classic"/>
+      <EditAfterInsert Text="Edit after insert"/>
+      <EventBandIndicator Text="Show indicator on bands with events"/>
+      <EventObjectIndicator Text="Show indicator on objects with events"/>
+      <EnableBacklightIntersectingObjects Text="Backlight intersecting objects"/>
+      <ObjectsAppearance Text="Objects appearance"/>
+      <EnableBacklight Text="Backlight active band"/>
+      <SimplifyDBFields Text="Simplified display of DB fields"/>
+      <ApplyLastFormat Text="Apply last format to new objects"/>
+      <ExtendedLocationTooltip Text="Extended location tooltip"/>
+    </ReportPageOptions>
+    <RFIDLabelEditor Text="RFID Label editor">
+      <ReservedBank Text="Reserved bank"/>
+      <AccessPassword Text="Access password"/>
+      <AccessPassWriteMode Text="Access password access mode"/>
+      <KillPassword Text="Kill password"/>
+      <KillPassWriteMode Text="Kill password access mode"/>
+      <DataFormat Text="Data format"/>
+      <TIDBank Text="Tag ID bank"/>
+      <TID Text="Tag ID"/>
+      <EPCBank Text="EPC bank"/>
+      <EPCBankFullName Text="Electronic product code (EPC) bank"/>
+      <EPCFormat Text="EPC format"/>
+      <EPC Text="EPC data"/>
+      <EPCBankMode Text="EPC bank access mode"/>
+      <UseAdjust Text="Use adjust bits"/>
+      <RewriteEPC Text="Rewrite EPC bank"/>
+      <UserBank Text="User bank"/>
+      <UserData Text="User data"/>
+      <UserBankMode Text="User bank access mode"/>
+      <StartPermalock Text="Start section of permalock"/>
+      <CountPermalock Text="Count of permalock sections"/>
+      <Other Text="Other"/>
+      <AdaptiveAntenna Text="Adaptive antenna"/>
+      <ReadPower Text="Read power"/>
+      <WritePower Text="Write power"/>
+      <ErrorHandleMode Text="Error handle mode"/>
+      <DataColumn Text="Data column"/>
+      <CountByte Text="Count byte"/>
+    </RFIDLabelEditor>
+    <RichTextEditor Text="RichText Editor">
+      <Open Text="Open"/>
+      <Save Text="Save"/>
+      <Subscript Text="Subscript"/>
+      <Superscript Text="Superscript"/>
+      <Bullets Text="Bullets"/>
+      <ConfirmChanges Text="Text has been modified. Save changes?"/>
+      <Invoke Text="Double click to select an RTF file"/>
+    </RichTextEditor>
+    <SearchReplace Text="Find and Replace">
+      <Find Text="Find what:"/>
+      <Replace Text="Replace with:"/>
+      <Options Text="Find options"/>
+      <MatchCase Text="Match case"/>
+      <MatchWholeWord Text="Match whole word"/>
+      <FindNext Text="Find Next"/>
+      <ReplaceBtn Text="Replace"/>
+      <ReplaceAll Text="Replace All"/>
+      <NotFound Text="Search text not found."/>
+      <NoMoreFound Text="No more occurrences found."/>
+    </SearchReplace>
+    <SelectDataSource Text="Select Data Source">
+      <Hint Text="Select one or several data sources to use in the report."/>
+      <AvailableDs Text="Available data sources:"/>
+      <SelectedDs Text="Selected data sources:"/>
+      <ProjectDs Text="Project datasets"/>
+      <OtherDs Text="Other data sources"/>
+    </SelectDataSource>
+    <SelectLanguage Text="Select Language">
+      <SelectLanguage Text="Select language from the list below:"/>
+      <Auto Text="Auto"/>
+      <Folder Text="Folder with language files:"/>
+      <SelectFolder Text="Select the folder which contains the language files (*.frl)."/>
+    </SelectLanguage>
+    <StandardReportWizard Text="Standard Report Wizard">
+      <GroupsPage Text="Create groups"/>
+      <CreateGroups Text="Create groups (optional)."/>
+      <Groups Text="Groups:"/>
+      <LayoutPage Text="Define layout"/>
+      <DefineLayout Text="Define the paper orientation and data layout."/>
+      <Orientation Text="Paper orientation"/>
+      <Portrait Text="Portrait"/>
+      <Landscape Text="Landscape"/>
+      <Layout Text="Layout"/>
+      <Tabular Text="Tabular"/>
+      <Columnar Text="Columnar"/>
+      <StylePage Text="Select style"/>
+      <Styles Text="Select the report style.">
+        <Standard Text="Standard"/>
+        <Gray Text="Gray"/>
+        <Green Text="Green"/>
+        <Sand Text="Sand"/>
+        <Blue Text="Blue"/>
+        <Title Text="Title"/>
+        <Header Text="Header"/>
+        <Group Text="Group"/>
+        <Data Text="Data"/>
+        <Footer Text="Footer"/>
+        <EvenRows Text="EvenRows"/>
+      </Styles>
+    </StandardReportWizard>
+    <StringCollectionEditor Text="Edit String Collection"/>
+    <Style Text="Style Editor">
+      <Styles Text="Styles"/>
+      <Add Text="Add"/>
+      <Delete Text="Delete"/>
+      <Edit Text="Edit"/>
+      <Load Text="Load..."/>
+      <Save Text="Save..."/>
+      <Settings Text="Style settings"/>
+      <Border Text="Border"/>
+      <Fill Text="Fill"/>
+      <Font Text="Font"/>
+      <TextColor Text="Text color"/>
+      <StyleName Text="Style"/>
+    </Style>
+    <TextEditor Text="Edit Text">
+      <WordWrap Text="Word wrap"/>
+      <ConfirmChanges Text="Text has been modified. Save changes?"/>
+    </TextEditor>
+    <JsonEditor Text="Json Editor">
+      <Readonly Text="(readonly)"/>
+      <Open Text="Open file"/>
+      <Save Text="Save file"/>
+      <FormatJson Text="Format JSON"/>
+      <Filter Text="json files (*.json)|*.json|txt files (*.txt)|*.txt|All files (*.*)|*.*"/>
+    </JsonEditor>
+    <TotalEditor Text="Edit Total">
+      <TotalName Text="Total name:"/>
+      <Total Text="Total"/>
+      <Function Text="Function:"/>
+      <DataColumnOrExpression Text="Data column or expression:"/>
+      <DataBand Text="Evaluate on each row of the band:"/>
+      <EvaluateCondition Text="Evaluate if the following condition is met:"/>
+      <PrintOn Text="Print on the band:"/>
+      <Options Text="Options"/>
+      <ResetAfterPrint Text="Reset after print"/>
+      <ResetRepeated Text="Reset if band is repeated"/>
+      <InvisibleRows Text="Include invisible rows"/>
+      <Sum Text="Sum"/>
+      <Min Text="Min"/>
+      <Max Text="Max"/>
+      <Avg Text="Average"/>
+      <Count Text="Count"/>
+      <CountDistinct Text="CountDistinct"/>
+      <Custom Text="Custom"/>
+    </TotalEditor>
+    <UIOptions Text="User Interface">
+      <Appearance Text="Appearance:"/>
+      <IconPack Text="Icons:">
+        <Pack1 Text="Classic"/>
+        <Pack2 Text="Visual Studio"/>
+      </IconPack>
+      <Ribbon Text="Use the Ribbon interface"/>
+      <Welcome Text="Show welcome window on startup"/>
+      <RightToLeft Text="Right to Left user interface:">
+        <Auto Text="Auto"/>
+        <No Text="No"/>
+        <Yes Text="Yes"/>
+      </RightToLeft>
+      <DisableHotkeys Text="Disable hotkeys"/>
+      <ShowProgress Text="Show progress window"/>
+      <UseCompactMenu Text="Use compact menu"/>
+      <Restart Text="* Restart required"/>
+      <Reset Text="Reset config"/>
+      <Shortcut Text="Keyboard shortcuts"/>
+    </UIOptions>
+    <WatermarkEditor Text="Watermark">
+      <Enabled Text="Enabled"/>
+      <Text Text="Text"/>
+      <TextItems Text="CONFIDENTIAL,COPY,ORIGINAL,SAMPLE,URGENT"/>
+      <Rotation Text="Rotation"/>
+      <Horizontal Text="Horizontal"/>
+      <Vertical Text="Vertical"/>
+      <ForwardDiagonal Text="Forward Diagonal"/>
+      <BackwardDiagonal Text="Backward Diagonal"/>
+      <Font Text="Font"/>
+      <Color Text="Color"/>
+      <Picture Text="Picture"/>
+      <Load Text="Load"/>
+      <Clear Text="Clear"/>
+      <Size Text="Size"/>
+      <Normal Text="Normal"/>
+      <Center Text="Center"/>
+      <Stretch Text="Stretch"/>
+      <Zoom Text="Zoom"/>
+      <Tile Text="Tile"/>
+      <Transparency Text="Transparency"/>
+      <Zorder Text="Z-Order"/>
+      <TextOnTop Text="Text on top"/>
+      <PictureOnTop Text="Picture on top"/>
+      <ApplyToAll Text="Apply to all pages"/>
+    </WatermarkEditor>
+    <BarcodeEditor Text="Barcode Editor">
+      <Text Text="Text"/>
+      <vCard Text="vCard"/>
+      <URI Text="URI"/>
+      <EmailAddress Text="E-mail Address"/>
+      <EmailMessage Text="E-mail Message"/>
+      <Geolocation Text="Geolocation"/>
+      <SMS Text="SMS"/>
+      <Call Text="Call"/>
+      <Event Text="Event"/>
+      <Wifi Text="Wi-Fi"/>
+      <FirstName Text="First name"/>
+      <LastName Text="Last name"/>
+      <Title Text="Title"/>
+      <Company Text="Company"/>
+      <Website Text="Website"/>
+      <EmailPersonal Text="E-mail (personal)"/>
+      <EmailBusiness Text="E-mail (business)"/>
+      <PhonePersonal Text="Phone (personal)"/>
+      <PhoneMobile Text="Phone (mobile)"/>
+      <PhoneBusiness Text="Phone (business)"/>
+      <Street Text="Street"/>
+      <ZipCode Text="Zip code"/>
+      <City Text="City"/>
+      <Country Text="Country"/>
+      <Email Text="E-mail"/>
+      <Subject Text="Subject"/>
+      <Latitude Text="Latitude"/>
+      <Longitude Text="Longitude"/>
+      <Height Text="Height"/>
+      <PhoneNumber Text="Phone number"/>
+      <Description Text="Text"/>
+      <From Text="From"/>
+      <To Text="To"/>
+      <Encryption Text="Encryption"/>
+      <NetworkName Text="Network name"/>
+      <Password Text="Password"/>
+      <WifiHidden Text="Wi-Fi network is hidden"/>
+      <Save Text="Save"/>
+      <Cancel Text="Cancel"/>
+      <Swiss Text="Swiss QR">
+        <Iban Text="IBAN"/>
+        <IbanType Text="Type"/>
+        <Amount Text="Amount"/>
+        <Currency Text="Currency"/>
+        <Creditor Text="Creditor"/>
+        <Name Text="Name"/>
+        <StreetNr Text="Street / Nr:"/>
+        <ZipCityCountry Text="Zip / City / Country:"/>
+        <Debitor Text="Debitor"/>
+        <AdditionalInformation Text="Additional information"/>
+        <Reference Text="Reference"/>
+        <Type Text="Type"/>
+        <TextType Text="Text type"/>
+        <Message Text="Message"/>
+        <BillInformation Text="Bill Information"/>
+        <AlternativeProcedure Text="Alternative procedure"/>
+      </Swiss>
+      <SberbankQr Text="Sberbank QR">
+        <Name Text="Beneficiary name"/>
+        <PersonalAcc Text="Beneficiary account number"/>
+        <BankName Text="Beneficiary bank name"/>
+        <BIC Text="BIC"/>
+        <CorrespAcc Text="Correspondent account"/>
+        <Sum Text="Payment Amount"/>
+        <Purpose Text="Payment purpose"/>
+        <PayeeINN Text="Payee INN"/>
+        <PayerINN Text="Payer INN"/>
+        <DrawerStatus Text="Drafter status"/>
+        <KPP Text="Payee KPP"/>
+        <CBC Text="CBC"/>
+        <OKTMO Text="OKTMO"/>
+        <PayReason Text="Tax basis for payment"/>
+        <TaxPeriod Text="Tax period"/>
+        <DocNo Text="Document №"/>
+        <DocDate Text="Document date"/>
+        <TaxPaytKind Text="Payment type"/>
+        <LastName Text="Payer's last name"/>
+        <FirstName Text="Payer's first name"/>
+        <MiddleName Text="Payer's middle name"/>
+        <PayerAdress Text="Payer's address"/>
+        <PersonalAccount Text="Payee's personal account"/>
+        <DocIdx Text="Index of payment document"/>
+        <PensAcc Text="Account number in the PFR [Pension Fund of the Russian Federation] - SNILS [Personal insurance policy number] system"/>
+        <Contract Text="Contract number"/>
+        <PersAcc Text="Account number in the organization 
+		    (metering device accounting system)"/>
+        <Flat Text="Apartment number"/>
+        <Phone Text="Phone numbmer"/>
+        <PayerIdType Text="Payee's identifying document type"/>
+        <PayerIdNum Text="Payee's identifying document number"/>
+        <ChildFio Text="Child's full name"/>
+        <BirthDate Text="Birth date"/>
+        <PaymTerm Text="The billing date/Instalment due"/>
+        <PaymPeriod Text="Payment period"/>
+        <Category Text="Payment type"/>
+        <ServiceName Text="Service name / Metering device name"/>
+        <CounterId Text="Metering device ID"/>
+        <CounterVal Text="Metering device reading"/>
+        <QuittId Text="Notice, accrual, invoice ID"/>
+        <QuittDate Text="Notice/accrual/invoice/act date 
+		    (for GIBDD [The State Traffic Safety Inspectorate])"/>
+        <InstNum Text="Facility (medical, educational) number"/>
+        <ClassNum Text="Kindergarten group / school grade"/>
+        <SpecFio Text="Full name of the service providing specialist (teacher)"/>
+        <AddAmount Text="Insurance sum/additional service/fine"/>
+        <RuleId Text="Act number (for GIBDD)"/>
+        <ExecId Text="Enforcement proceeding ID"/>
+        <RegType Text="Payment type code 
+		    (for example, for Rosreestr payments)"/>
+        <UIN Text="Money transfer ID"/>
+        <TechCode Text="Technical code, recommended to be filled by the service provider. 
+		    Can be used by the receiving organization in a data processing system."/>
+        <ObligatoryProps Text="Obligatory details"/>
+        <AdditionalProps Text="Additional details"/>
+        <AnotherProps Text="Other details"/>
+        <NotEnterDate Text="Don't enter date"/>
+        <Error Text="Not all the required banking details are filled in."/>
+        <Warning Text="Incorrect data in the fields:"/>
+      </SberbankQr>
+      <BarcodeRussianPost>
+        <Index Text="Index of the communication enterprise at the receiving location"/>
+        <MonthNumber Text="Sequential number of the month of printing of the barcode identifier"/>
+        <MailNumber Text="Postal item number"/>
+        <CheckDigit Text="The check digit is calculated automatically based on the data from the fields above"/>
+        <Error Text="Not all fields are filled in correctly."/>
+     </BarcodeRussianPost>
+    </BarcodeEditor>
+    <SavingPageOptions Text="Saving">
+      <EnableAutoSave Text="Enable auto save every (minutes)"/>
+    </SavingPageOptions>
+    <LoadAutoSave Text="Auto save recovery">
+      <Message Text="FastReport detected incorrect program shutdown, do you want to recover unsaved report?"/>
+      <Restore Text="Restore"/>
+    </LoadAutoSave>
+    <FastM1nesweeper Text="Fast M1nesweeper">
+      <Welcome Text="Create a new Fast M1nesweeper report game"/>
+      <Settings Text="Settings"/>
+      <Difficulty Text="Difficulty"/>
+      <Custom Text="Custom"/>
+      <Easy Text="Easy"/>
+      <Medium Text="Medium"/>
+      <Hard Text="Hard"/>
+      <Master Text="Master"/>
+      <Bombs Text="Bombs"/>
+      <Columns Text="Columns"/>
+      <Rows Text="Rows"/>
+    </FastM1nesweeper>
+    <AccountWindow Text="Account">
+      <AuthServer Text="https://id.fast-report.com"/>
+      <WebBrowser Text="Authentication"/>
+      <Title Text="Account"/>
+      <SignIn Text="Sign In"/>
+      <NoAccount Text="No account?"/>
+      <Create Text="Create one!"/>
+      <Intro Text="Sign in to your Fast Reports ID account. Your account will be used to synchronize your settings between devices and for other personalization services."/>
+      <Testing Text="&#10;&#10;This feature is in beta!"/>
+      <Expires Text="Expires at {0}"/>
+      <Profile Text="Profile"/>
+      <SignOut Text="Sign Out"/>
+      <Message Text="Your account is used to sync your settings between devices and for other personalization services."/>
+      <SessionExpired Text="Session expired, sign in again!"/>
+    </AccountWindow>
+    <ServerWindow Text="Server">
+      <Server Text="Server"/>
+      <Caption Text="Server"/>
+      <ApiKeyword Text="Api key" />
+      <comboBoxServer Text="FastReport Cloud"/>
+      <DefaultServerHost Text="https://fastreport.cloud"/>
+      <comboBoxCustom Text="Custom server"/>
+    </ServerWindow>
+    <AdvMatrixHeaderEditor Text="Header Editor">
+      <General Text="General">
+        <ItemType Text="Item type:"/>
+        <Simple Text="Simple"/>
+        <Group Text="Group"/>
+        <DisplayText Text="Display text:"/>
+      </General>
+      <Sort Text="Sort">
+        <SortOrder Text="Sort order:"/>
+        <SortBy Text="Sort by:"/>
+        <ItemValue Text="Item value"/>
+        <TotalValue Text="Total value:"/>
+        <InteractiveSortBy Text="Interactive sort by:"/>
+        <SortOrderToggledBy Text="Sort order toggled by:"/>
+        <Auto Text="Auto"/>
+      </Sort>
+      <Filter Text="Filter">
+        <Filter Text="Filter:"/>
+      </Filter>
+      <TopN Text="Top N">
+        <Count Text="Display Top N values:"/>
+        <AdditionalItems Text="Additional items:"/>
+        <TopNTotal Text="Top N total"/>
+        <Others Text="Others"/>
+        <OthersTotal Text="Others total"/>
+        <Create Text="Create additional items in the matrix template for better customization"/>
+      </TopN>
+      <Visibility Text="Visibility">
+        <Visible Text="Visible"/>
+        <VisibleExpression Text="Visibility is set by an expression:"/>
+        <VisibleToggledBy Text="Visible toggled by:"/>
+      </Visibility>
+      <Other Text="Other">
+        <Stepped Text="Stepped layout"/>
+        <Merge Text="Merge with single subitem"/>
+        <PageBreak Text="Page break"/>
+        <ColSpan Text="Column span (0 for auto):"/>
+        <RowSpan Text="Row span (0 for auto):"/>
+      </Other>
+    </AdvMatrixHeaderEditor>
+    <ShortcutsList Text="List of keyboard shortcuts">
+      <Cut Text="Cut"/>
+      <Copy Text="Copy"/>
+      <Redo Text="Redo"/>
+      <Undo Text="Undo"/>
+      <Paste Text="Paste"/>
+      <NewPage Text="Create new page"/>
+      <Find Text="Find"/>
+      <Replace Text="Replace"/>
+      <Contents Text="Show help contents"/>
+      <Open Text="Open"/>
+      <Save Text="Save"/>
+      <SaveAs Text="Save as"/>
+      <SaveAll Text="Save all"/>
+      <Preview Text="Preview"/>
+      <Bold Text="Set bold style "/>
+      <Italic Text="Set italic style"/>
+      <Underline Text="Set underline style"/>
+      <File Text="Working with files"/>
+      <Editing Text="Editing"/>
+      <Help Text="Help"/>
+      <SelectAll Text="Select all"/>
+      <Default Text="Default"/>
+      <Info Text="To change the keyboard shortcut, you need to double-click on the desired one, or select and press Enter."/>
+      <Command Text="Command"/>
+      <Shortcut Text="Keyboard shortcut"/>
+    </ShortcutsList>
+    <ShortcutEditor Text="Keyboard shortcut editor">
+      <NeedInputShortcut Text="Set the keyboard shortcut:"/>
+      <UnsupportedShortcut Text="Unsupported keyboard shortcut"/>
+    </ShortcutEditor>
+  </Forms>
+  <ConnectionEditors>
+    <Common>
+      <Server Text="Server name:"/>
+      <ServerLogon Text="Log on to the server"/>
+      <UserName Text="User name:"/>
+      <Password Text="Password:"/>
+      <Database Text="Connect to a database"/>
+      <DatabaseName Text="Database name:"/>
+      <DatabaseFile Text="Database file:"/>
+      <DataSource Text="Data source"/>
+      <OnlyUrlException Text="There must be a link in the connection!"/>
+      <ErrorUrlException Text="The specified path does not contain the file you are looking for!"/>
+    </Common>
+	<Linter>
+	  <DBProviderNotFound Text="The LINTER data provider could not be found. It may not be installed."/>
+	</Linter>
+    <Excel>
+      <FieldNames Text="Column names in the first row"/>
+    </Excel>
+    <MsSql>
+      <UseWindows Text="Use Windows Authentication"/>
+      <UseSql Text="Use SQL Server Authentication"/>
+      <SavePassword Text="Save my password"/>
+    </MsSql>
+    <Cassandra>
+      <ContactPoints Text="ContactPoints(;):"/>
+      <Port Text="Port:"/>
+      <Keyspace Text="Keyspace:"/>
+    </Cassandra>
+    <OleDb>
+      <ConnectionString Text="Connection string:"/>
+      <Build Text="Build..."/>
+    </OleDb>
+    <Odbc>
+      <DataSource Text="Data source"/>
+      <DsName Text="Use user or system data source name:"/>
+      <ConnString Text="Use connection string:"/>
+      <Login Text="Login"/>
+    </Odbc>
+    <Xml>
+      <Xsd Text="Schema file or URL:"/>
+      <Xml Text="Data file or URL:"/>
+      <Codepage Text="Codepage:"/>
+	  <Codepages>
+		<Default Text="Default"/>
+        <ASCII Text="ASCII"/>
+        <UTF8 Text="UTF8"/>
+	    <Unicode Text="Unicode"/>
+	    <ISO-8859-1  Text="ISO-8859-1"/>
+	  </Codepages>
+    </Xml>
+    <Access>
+      <Provider Text="Provider:"/>
+    </Access>
+    <Xlsx Text="Select .xlsx file:"/>
+    <Csv>
+      <ConfigureDatabase Text="Configure database"/>
+      <SelectFile Text="Select .csv file (path or url):"/>
+      <Codepage Text="Codepage:"/>
+      <Separator Text="Separator:"/>
+      <FieldNames Text="Field names in first string"/>
+      <RemoveQuotes Text="Remove quotation marks"/>
+      <ConvertTypes Text="Try to convert field types"/>
+      <NumberFormat Text="Number format:"/>
+      <CurrencyFormat Text="Currency format:"/>
+      <DateTimeFormat Text="Date/Time format:"/>
+      <FilePreview Text="File preview:"/>
+      <DataPreview Text="Data preview:"/>
+      <Codepages>
+        <Default Text="Default"/>
+        <ASCII Text="ASCII"/>
+        <UTF8 Text="UTF8"/>
+        <UTF7 Text="UTF7"/>
+        <UTF32 Text="UTF32"/>
+        <Unicode Text="Unicode"/>
+        <BigEndianUnicode Text="Big Endian Unicode"/>
+      </Codepages>
+      <Separators>
+        <Semicolon Text=";"/>
+        <Comma Text=","/>
+        <Space Text="Space"/>
+        <Tab Text="Tab"/>
+        <Other Text="Other"/>
+      </Separators>
+    </Csv>
+    <Json>
+      <Path Text="Path to file or URL:"/>
+      <Settings Text="Connection settings"/>
+      <Encoding Text="Encoding"/>
+      <Input Text="Json or URL"/>
+      <Schema Text="Json Schema"/>
+      <RequestHeaders Text="Request Headers"/>
+      <HeaderKey Text="Header"/>
+      <HeaderVal Text="Value"/>
+      <ConfirmChanges Text="Json has been modified. Generate a new schema?" />
+      <SimpleStructure Text="Simple structure"/>
+    </Json>
+    <MongoDB>
+      <Scheme Text="Scheme:"/>
+      <Host Text="Host:"/>
+      <Port Text="Port:"/>
+      <UseSsl Text="Use SSL"/>
+    </MongoDB>
+    <Clickhouse>
+      <Server Text="Server"/>
+      <ServerPort Text="Server port:"/>
+      <Database Text="Database"/>
+    </Clickhouse>
+    <Postgres>
+      <EnableSystemSchemas Text="Enable System Schemas"/>
+    </Postgres>
+    <Ignite>
+      <Endpoints Text="Endpoints:"/>
+    </Ignite>
+    <GoogleSheets>
+      <Errors>
+        <ApiKeyRequiredError Text="API key is required"/>
+        <AuthFailedOrCancelled Text="Google Sheets authentication was canceled or failed"/>
+        <CredentialsNotProvidedError Text="Google Sheets connection credentials were not provided. Please set the 'Credentials' property"/>
+        <GetTableNamesError Text="Failed to retrieve table names from Google Sheets: {0}"/>
+        <InvalidSpreadsheetUrlOrIdError Text="The input is not a valid Google Sheets URL or spreadsheet ID"/>
+        <LoadDataError Text="Failed to load data for table '{0}': {1}"/>
+        <LoadSchemaError Text="Failed to load schema for table '{0}': {1}"/>
+        <OAuthFlowError Text="An error occurred during the Google Sheets OAuth flow: {0}"/>
+        <OAuthJsonFileNotFound Text="OAuth credentials JSON file not found (path: {0})"/>
+        <OAuthJsonInvalidFormat Text="Invalid format of OAuth credentials file: {0}"/>
+        <OAuthJsonMissingKeys Text="JSON file is missing 'client_id' or 'client_secret' in the 'installed' section"/>
+        <OAuthNotConfigured Text="Google Sheets credentials are not configured for OAuth 2.0"/>
+        <RangeRequiredError Text="A sheet name or range is required"/>
+        <SpreadsheetIdRequiredError Text="Spreadsheet ID is required"/>
+        <SpreadsheetUrlOrIdCannotBeEmptyError Text="Spreadsheet URL or ID cannot be empty"/>
+        <TestConnectionNoDataError Text="Google Sheets connection test failed"/>
+      </Errors>
+      <ConfigureDatabase Text="Select database file"/>
+      <SelectSpreadsheetId Text="Select SpreadsheetId or URL address:"/>
+      <FieldNames Text="Column headings from the first row"/>
+      <IncludeHidden Text="Add hidden sheets"/>
+      <SignIn Text="Sign in"/>
+      <ProgressLabelText Text="The browser tab is open&#13;&#10;Please complete the authorization process"/>
+      <SignInGoogle Text="Google Sheets Authorization">
+        <Caption Text="Authentication method"/>
+        <ClientId Text="Client ID"/>
+        <ClientSecret Text="Client secret"/>
+        <PathToFile Text="Path to .json file"/>
+        <ApiKey Text="API key"/>
+        <CheckPathToJson Text="Connect using .the json file"/>
+      </SignInGoogle>
+    </GoogleSheets>
+  </ConnectionEditors>
+  <ComponentMenu>
+    <Component>
+      <Edit Text="Edit..."/>
+    </Component>
+    <ReportComponent>
+      <CanGrow Text="Can Grow"/>
+      <CanShrink Text="Can Shrink"/>
+      <GrowToBottom Text="Grow to Bottom"/>
+      <Hyperlink Text="Hyperlink..."/>
+      <Style Text="Style"/>
+    </ReportComponent>
+    <BreakableComponent>
+      <CanBreak Text="Can Break"/>
+    </BreakableComponent>
+    <Band>
+      <AddChildBand Text="Add Child Band"/>
+      <StartNewPage Text="Start New Page"/>
+      <PrintOnBottom Text="Print On Bottom"/>
+    </Band>
+    <DataBand>
+      <AddDetailDataBand Text="Add Detail Data Band"/>
+      <KeepTogether Text="Keep Together"/>
+      <KeepDetail Text="Keep Detail"/>
+      <ColumnsEditor Text="Columns Editor"/>
+    </DataBand>
+    <HeaderBand>
+      <RepeatOnEveryPage Text="Repeat on Every Page"/>
+      <KeepWithData Text="Keep With Data"/>
+    </HeaderBand>
+    <GroupHeaderBand>
+      <ResetPageNumber Text="Reset Page Number"/>
+    </GroupHeaderBand>
+    <ChildBand>
+      <FillUnusedSpace Text="Fill Unused Space"/>
+      <CompleteToNRows Text="Complete upto N data rows:"/>
+    </ChildBand>
+    <PictureObject>
+      <SizeMode Text="Size Mode"/>
+      <AutoSize Text="Auto Size"/>
+      <CenterImage Text="Center Image"/>
+      <Normal Text="Normal"/>
+      <StretchImage Text="Stretch Image"/>
+      <Zoom Text="Zoom"/>
+    </PictureObject>
+    <TextObject>
+      <Format Text="Format..."/>
+      <Clear Text="Clear"/>
+      <AutoWidth Text="Auto Width"/>
+      <WordWrap Text="Word Wrap"/>
+      <AllowExpressions Text="Allow Expressions"/>
+      <HideZeros Text="Hide Zeros"/>
+    </TextObject>
+    <SubreportObject>
+      <PrintOnParent Text="Print on Parent"/>
+    </SubreportObject>
+    <TableObject>
+      <RepeatHeaders Text="Repeat Headers"/>
+    </TableObject>
+    <TableRow>
+      <InsertAbove Text="Insert row above"/>
+      <InsertBelow Text="Insert row below"/>
+      <AutoSize Text="Auto Size"/>
+    </TableRow>
+    <TableColumn>
+      <InsertToLeft Text="Insert column on the left"/>
+      <InsertToRight Text="Insert column on the right"/>
+    </TableColumn>
+    <TableCell>
+      <Merge Text="Merge Cells"/>
+      <Split Text="Split Cell"/>
+      <RemoveRow Text="Remove the entire line"/>
+      <RemoveColumn Text="Remove the entire column"/>
+      <Insert Text="Insert"/>
+      <Remove Text="Remove"/>
+      <Styles Text="Style"/>
+    </TableCell>
+    <MatrixObject>
+      <CellsSideBySide Text="Cells Side by Side"/>
+      <ShowTitle Text="Show Title"/>
+      <Style Text="Style"/>
+    </MatrixObject>
+    <MatrixCell>
+      <Totals Text="Totals"/>
+      <Function Text="Function"/>
+      <SuppressTotals Text="Suppress Totals"/>
+      <TotalsFirst Text="Totals First"/>
+      <Percent Text="Percent"/>
+      <PercentColumnTotal Text="% of Column Total"/>
+      <PercentRowTotal Text="% of Row Total"/>
+      <PercentGrandTotal Text="% of Grand Total"/>
+    </MatrixCell>
+    <AdvMatrixObject>
+      <Style Text="Style"/>
+      <Swap Text="Swap columns and rows"/>
+    </AdvMatrixObject>
+    <AdvMatrixCell>
+      <Function Text="Function">
+        <Sum Text="Sum"/>
+        <Min Text="Min"/>
+        <Max Text="Max"/>
+        <Avg Text="Average"/>
+        <Count Text="Count"/>
+        <CountDistinct Text="Count distinct values"/>
+        <StDev Text="Standard deviation (StDev)"/>
+        <StDevP Text="Standard deviation of a population (StDevP)"/>
+        <Var Text="Variance (Var)"/>
+        <VarP Text="Variance of a population (VarP)"/>
+        <First Text="First value"/>
+        <Last Text="Last value"/>
+        <ValuesList Text="Values list"/>
+      </Function>
+      <Percent Text="Percent">
+        <None Text="None"/>
+        <PercentOfColumnTotal Text="% of Column Total"/>
+        <PercentOfRowTotal Text="% of Row Total"/>
+        <PercentOfGrandTotal Text="% of Grand Total"/>
+        <PercentOfPreviousColumn Text="% of Previous Column"/>
+        <PercentOfPreviousRow Text="% of Previous Row"/>
+      </Percent>
+      <Insert Text="Insert">
+        <Chart Text="Sparkline"/>
+        <Gauge Text="Progress gauge"/>
+      </Insert>
+      <AggregateFunctions Text="Aggregate functions"/>
+      <SpecialFunctions Text="Special functions"/>
+      <Properties Text="Properties"/>
+    </AdvMatrixCell>
+    <AdvMatrixHeader>
+      <CollapseButton Text="Collapse button"/>
+      <SortButton Text="Sort button"/>
+      <AddTotal Text="Add total"/>
+      <Insert Text="Insert new item">
+        <After Text="After"/>
+        <Before Text="Before"/>
+        <Parent Text="Parent item"/>
+        <Child Text="Child item"/>
+      </Insert>
+      <Delete Text="Delete">
+        <ThisItem Text="Selected item"/>
+        <ItemTree Text="Item tree"/>
+      </Delete>
+    </AdvMatrixHeader>
+    <GridControl>
+      <EditColumns Text="Edit Columns..."/>
+    </GridControl>
+    <Barcode>
+      <BarcodeType Text="Barcode Type"/>
+      <AutoSize Text="Auto Size"/>
+      <AutoEncode Text="Auto Encode"/>
+      <CalcChecksum Text="Calc Checksum"/>
+      <ShowText Text="Show Text"/>
+      <Barcodes Optional="true">
+        <Barcode0 Text="2/5 Interleaved"/>
+        <Barcode1 Text="2/5 Industrial"/>
+        <Barcode2 Text="2/5 Matrix"/>
+        <Barcode3 Text="Deutsche Identcode"/>
+        <Barcode4 Text="Deutsche Leitcode"/>
+        <Barcode5 Text="ITF-14"/>
+        <Barcode6 Text="Codabar"/>
+        <Barcode7 Text="Code128"/>
+        <Barcode8 Text="Code39"/>
+        <Barcode9 Text="Code39 Extended"/>
+        <Barcode10 Text="Code93"/>
+        <Barcode11 Text="Code93 Extended"/>
+        <Barcode12 Text="EAN8"/>
+        <Barcode13 Text="EAN13"/>
+        <Barcode14 Text="MSI"/>
+        <Barcode15 Text="PostNet"/>
+        <Barcode16 Text="UPC-A"/>
+        <Barcode17 Text="UPC-E0"/>
+        <Barcode18 Text="UPC-E1"/>
+        <Barcode19 Text="Supplement 2"/>
+        <Barcode20 Text="Supplement 5"/>
+        <Barcode21 Text="PDF417"/>
+        <Barcode22 Text="Datamatrix"/>
+        <Barcode23 Text="QR Code"/>
+        <Barcode24 Text="Aztec"/>
+        <Barcode25 Text="Plessey"/>
+        <Barcode26 Text="GS1-128 (UCC/EAN-128)"/>
+        <Barcode27 Text="Pharmacode"/>
+        <Barcode28 Text="Intelligent Mail (USPS)"/>
+        <Barcode29 Text="MaxiCode"/>
+      </Barcodes>
+    </Barcode>
+    <ZipCodeObject>
+      <ShowMarkers Text="Show Markers"/>
+      <ShowGrid Text="Show Grid"/>
+    </ZipCodeObject>
+    <Report>
+      <DesignReport Text="Design Report..."/>
+      <SelectDataSource Text="Select Data Source..."/>
+    </Report>
+    <WebReport>
+      <SelectReportFile Text="Select Report File"/>
+      <SelectLocalizationFile Text="Select Localization File"/>
+    </WebReport>
+  </ComponentMenu>
+  <ComponentsMisc>
+    <Table>
+      <CalcBounds Text="Calculating bounds..."/>
+    </Table>
+    <Matrix>
+      <FillData Text="Filling the matrix..."/>
+      <NewColumn Text="Drag data here to&#13;&#10;create a new column"/>
+      <NewRow Text="Drag data here to&#13;&#10;create a new row"/>
+      <NewCell Text="Drag data here to&#13;&#10;create a new cell"/>
+      <Total Text="Total"/>
+      <Title Text="Title"/>
+      <White Text="White"/>
+      <Gray Text="Gray"/>
+      <Orange Text="Orange"/>
+      <Green Text="Green"/>
+      <GreenOrange Text="Green and Orange"/>
+      <Blue Text="Blue"/>
+      <BlueWhite Text="Blue and White"/>
+      <GrayOrange Text="Gray and Orange"/>
+      <BlueOrange Text="Blue and Orange"/>
+      <OrangeWhite Text="Orange and White"/>
+    </Matrix>
+    <AdvMatrix>
+      <NewItems Text="Drag data here to create columns, rows and cells"/>
+    </AdvMatrix>
+    <Map>
+      <Hint Text="Doubleclick to add layers.&#13;&#10;&#13;&#10;Use left mouse button to pan, mouse wheel to zoom."/>
+    </Map>
+    <CrossView>
+      <SetSource Text="Set FastCube source"/>
+      <FillData Text="Filling the matrix..."/>
+    </CrossView>
+  </ComponentsMisc>
+  <Wizards>
+    <BlankReport Text="Blank Report"/>
+    <StandardReport Text="Standard Report Wizard"/>
+    <InheritedReport Text="Inherited Report"/>
+    <Label Text="Label Wizard"/>
+    <NewDataSource Text="New Data Source"/>
+    <NewPage Text="New Report Page"/>
+    <NewDialog Text="New Dialog Form"/>
+    <CISWizard Text="Visualization wizard of control (identification) signs"/>
+    <FastM1nesweeper Text="Fast M1nesweeper"/>
+  </Wizards>
+  <Export>
+    <Misc>
+      <Performance Text="Export done in {0} ms"/>
+      <OrderByCells Text="Order by cells"/>
+      <AnalyzeObjects Text="Analyze objects"/>
+      <SavePage Text="Save page"/>
+      <Wysiwyg Text="WYSIWYG"/>
+      <UseFileStream Text="Use file stream"/>
+      <PageBreaks Text="Page breaks"/>
+      <OpenAfterExport Text="Open after export"/>
+      <Pictures Text="Pictures"/>
+      <Options Text="Options"/>
+      <None Text="None"/>
+      <Metafile Text="Metafile"/>
+      <SaveFile Text="Saving the file"/>
+      <TableBased Text="Table"/>
+      <LayerBased Text="Layers"/>
+      <ParagraphBased Text="Paragraphs"/>
+      <Seamless Text="Seamless table"/>
+      <ToMultipleFiles Text="Export to multiple files"/>
+      <PrintOptimized Text="Print Optimized"/>
+      <ExportAllTabs Text="Export all tabs"/>
+      <SplitPages Text="Split Pages"/>
+      <Localization Text="Locale export"/>
+      <UseDesigerLocale Text="Use designer locale"/>
+    </Misc>
+    <Editor Text="Exports Menu Editor">
+      <ExportsMenu Text="Exports Menu"/>
+      <DefaultMenu Text="Default Menu"/>
+    </Editor>
+    <ExportGroups>
+      <Prepared Text="Prepared"/>
+      <Office Text="Office"/>
+      <XML Text="XML"/>
+      <Web Text="Web"/>
+      <Image Text="Images"/>
+      <DataBase Text="Data Base"/>
+      <Print Text="Print"/>
+      <Other Text="Other"/>
+      <Cloud Text="Storage"/>
+      <Messengers Text="Messengers"/>
+    </ExportGroups>
+    <Image Text="Export to Image">
+      <File Text="Image file"/>
+      <ImageFormat Text="Format:"/>
+      <ImageParceFormatException Text="The bitmap cannot be converted to the selected format."/>
+      <Resolution Text="Resolution:"/>
+      <Quality Text="Jpeg quality:"/>
+      <SeparateFiles Text="Separate file for each page"/>
+      <MultiFrame Text="Multi-frame TIFF"/>
+      <Monochrome Text="Monochrome TIFF"/>
+      <Bmp Text="Bitmap image"/>
+      <Png Text="PNG image"/>
+      <Jpeg Text="JPG image"/>
+      <Gif Text="GIF image"/>
+      <Tiff Text="TIFF image"/>
+      <Metafile Text="Windows metafile"/>
+    </Image>
+    <RichText Text="Export to Rich Text">
+      <File Text="Rich Text file"/>
+      <RTFObjectAs Text="RTF object as" />
+      <Picture Text="Picture" />
+      <EmbeddedRTF Text="Embedded RTF" />
+    </RichText>
+    <Text Text="Export to Text/Matrix Printer">
+      <File Text="Text File/Matrix Printer"/>
+      <EmptyLines Text="Empty Lines"/>
+      <DataOnly Text="Data only"/>
+      <Frames Text="Frames"/>
+      <FramesNone Text="None"/>
+      <FramesText Text="Text"/>
+      <FramesGraphic Text="Graphic"/>
+      <Codepage Text="Codepage"/>
+      <Default Text="Default"/>
+      <Unicode Text="Unicode"/>
+      <OEM Text="OEM"/>
+      <ScaleX Text="Scale X:"/>
+      <ScaleY Text="Scale Y:"/>
+      <AutoScale Text="Auto Scale"/>
+      <PrinterType Text="Printer type"/>
+      <Commands Text="Commands"/>
+      <PageWidth Text="Page width:"/>
+      <PageHeight Text="Page height:"/>
+      <DataLoss Text="POSSIBLE DATA LOSS&#13;&#10;please increase Scale X/Y"/>
+      <ScaleMessage Text="Calculate optimal scale"/>
+      <Scale Text="Scale"/>
+    </Text>
+    <Csv Text="Export to CSV">
+      <File Text="CSV file"/>
+      <Separator Text="Separator"/>
+      <Codepage Text="Codepage"/>
+      <Default Text="Default"/>
+      <Unicode Text="Unicode"/>
+      <OEM Text="OEM"/>
+      <DataOnly Text="Data only"/>
+      <NoQuotes Text="Disable quotation marks"/>
+      <EscapeQuotes Text="Escape quotation marks"/>
+    </Csv>
+    <Dbf Text="Export to DBF">
+      <File Text="DBF table"/>
+      <Codepage Text="Codepage"/>
+      <Default Text="Default"/>
+      <OEM Text="OEM"/>
+      <DataOnly Text="Data only"/>
+      <ExportType Text="Export types of data"/>
+      <FieldNames Text="Field names (for example, Field1;Field2):"/>
+    </Dbf>
+    <Xml Text="Export to XML">
+      <File Text="XML (Excel) table"/>
+    </Xml>
+    <Odf>
+      <Compliance Text="ODF Compliance:  "/>
+      <TranslateRich Text="Translate RichObject"/>
+      <ParagraphBased Text="Paragraphs mode"/>
+    </Odf>
+    <Odt Text="Export to Open Office Writer">
+      <File Text="OpenOffice Writer"/>
+    </Odt>
+    <Ods Text="Export to Open Office Calc">
+      <File Text="OpenOffice Calc"/>
+    </Ods>
+    <Xlsx Text="Export to Excel">
+      <File Text="Microsoft Excel file"/>
+      <FontScale Text="Font Scale:" />
+      <PrintScaling Text="Print Scaling" />
+      <NoScaling Text="No Scaling" />
+      <FitSheetOnOnePage Text="Fit Sheet on One Page" />
+      <FitAllColumsOnOnePage Text="Fit All Colums on One Page" />
+      <FitAllRowsOnOnePage Text="Fit All Rows on One Page" />
+      <GroupOnSeparateSheet Text="Groups on separate sheets"/>
+      <ForEachGroup Text="All groups"/>
+      <PictureProperties Text="Pictures properties"/>
+      <MoveAndModify Text="Move and modify along with the cell"/>
+      <MoveOnly Text="Move but not resize"/>
+      <Unchangeable Text="Do not move or resize"/>
+      <ScaleInPercent Text="Set scale in percent:"/>
+      <PinnedCells Text="Pinned cells"/>
+      <WithoutPinning Text="Without pinning"/>
+      <FirstColumn Text="First column"/>
+      <FirstLine Text="First line"/>
+      <OtherPinning Text="Other Pinning"/>
+      <Columns Text="Columns:"/>
+      <Rows Text="Rows:"/>
+      <Basic Text="Basic"/>
+      <Other Text="Other"/>
+      <ShowGridlines Text="Show gridlines"/>
+      <UngroupSheets Text="Ungroup sheets"/>
+      <MergePagesIntoSingleSheet Text="Merge all the report pages into one sheet"/>
+      <UseLocaleFormating Text="Use locale formatting of data"/>
+      <CurrencyToAccounting Text="Convert currency to accounting format"/>
+      <GeneralToText Text="Convert general to text format"/>
+      <UseCustomFormat Text="Use custom format"/>
+      <ShrinkToFit Text="Shrink to fit" />
+      <ExportFormulas Text="Export formulas"/>
+    </Xlsx>
+    <Xls Text="Export to Excel 97">
+      <File Text="Excel 97 file"/>
+      <HideGridLines Text="Hide gridlines"/>
+    </Xls>
+    <Pptx Text="Export to PowerPoint">
+      <File Text="Microsoft PowerPoint file"/>
+    </Pptx>
+    <Docx Text="Export to Microsoft Word">
+      <File Text="Microsoft Word file"/>
+      <RowHeight Text="Row height is"/>
+      <SaveRowHeight Text="Save row height"/>
+      <Exactly Text="Exactly"/>
+      <Minimum Text="Minimum"/>
+      <DoNotExpandShiftReturn Text="Do not expand shift return"/>
+      <DisableSectionBreak Text="Do not add section breaks on page breaks"/>
+      <Bookmarks Text="Add bookmark to each page"/>
+      <UseHeaderAndFooter Text="Use Word page headers and footers"/>
+      <ImageQuality Text="Image quality"/>
+      <StandardQuality Text="Standard quality"/>
+    </Docx>
+    <Xaml Text="Export to XAML">
+      <File Text="XAML file"/>
+      <IsScrolled Text="Add scroll bar"/>
+    </Xaml>
+    <Svg Text="Export to SVG">
+      <File Text="SVG file"/>
+      <EmbPic Text="Embedding pictures"/>
+    </Svg>
+    <Ppml Text="Export to PPML">
+      <File Text="PPML file"/>
+    </Ppml>
+    <PS Text="Export to PostScript">
+      <File Text="PostScript file"/>
+      <PagesInDiffFiles Text="Pages in different files"/>
+      <SaveImagesSeparately Text="Save images separately"/>
+    </PS>
+    <Xps Text="Export to XPS">
+      <File Text="Microsoft XPS file"/>
+    </Xps>
+    <Pdf Text="Export to PDF">
+      <!-- Main -->
+      <File Text="Adobe Acrobat"/>
+      <Export Text="Export"/>
+      <!-- Options tab -->
+      <PDFCompliance Text="PDF Compliance:  "/>
+      <EmbeddedFonts Text="Embedded Fonts"/>
+      <Background Text="Background"/>
+      <TextInCurves Text="Text in Curves"/>
+      <Images Text="Images"/>
+      <ColorSpace Text="Color Space:  "/>
+      <OriginalResolution Text="Original Resolution"/>
+      <PrintOptimized Text="Print Optimized"/>
+      <JpegCompression Text="Jpeg Compression"/>
+      <JpegQuality Text="Jpeg quality:  "/>
+      <InteractiveForms Text="Interactive Forms"/>
+      <!-- Information tab -->
+      <Information Text="Information"/>
+      <DocumentInformation Text="Document Information"/>
+      <Title Text="Title"/>
+      <Author Text="Author"/>
+      <Subject Text="Subject"/>
+      <Keywords Text="Keywords"/>
+      <Creator Text="Creator"/>
+      <Producer Text="Producer"/>
+      <!-- Security tab -->
+      <Security Text="Security"/>
+      <Authentification Text="Authentification"/>
+      <OwnerPassword Text="Owner Password:  "/>
+      <UserPassword Text="User Password:  "/>
+      <Permissions Text="Permissions"/>
+      <PrintTheDocument Text="Print the document"/>
+      <ModifyTheDocument Text="Modify the document"/>
+      <CopyOfTextAndGraphics Text="Copy of text and graphics"/>
+      <AddOrModifyTextAnnotations Text="Add or modify text annotations"/>
+      <!-- Viewer tab -->
+      <Viewer Text="Viewer"/>
+      <ViewerPreferences Text="Viewer Preferences"/>
+      <ShowPrintDialog Text="Show Print Dialog"/>
+      <HideToolbar Text="Hide toolbar"/>
+      <HideMenubar Text="Hide menubar"/>
+      <HideWindowUserInterface Text="Hide window user interface"/>
+      <FitWindow Text="Fit window"/>
+      <CenterWindow Text="Center window"/>
+      <PrintScaling Text="Print scaling"/>
+      <Outline Text="Outline"/>
+      <InitialZoom Text="Initial Zoom:  "/>
+      <ActualSize Text="Actual size"/>
+      <FitPage Text="Fit Page"/>
+      <FitWidth Text="Fit Width"/>
+      <Default Text="Default"/>
+      <!-- Vector tab -->
+      <VectorGraphics Text="Vector Graphics">
+        <GradientQuality Text="Gradient Quality" />
+        <ExportAsImage Text="Export as image" />
+        <LowQuality Text="Low quality" />
+        <MediumQuality Text="Medium quality" />
+        <HighQuality Text="High quality" />
+        <GradientInterpolation Text="Gradient Interpolation:" />
+        <Curves Text="Curves" />
+        <CurvesInterpolation Text="Curves Interpolation:" />
+        <TextInterpolation Text="Text Interpolation:" />
+        <Disabled Text="Disabled" />
+        <SvgAsPicture Text="Svg as Picture" />
+      </VectorGraphics>
+      <!-- Digital signature tab -->
+      <DigitalSignature Text="Digital signature">
+        <SignInformation Text="Sign Information"/>
+        <SignDocument Text="Sign document"/>
+        <Location Text="Location"/>
+        <Reason Text="Reason"/>
+        <ContactInfo Text="Contact info"/>
+        <CertificateInformation Text="Certificate Information"/>
+        <CertificatePath Text="Certificate path"/>
+        <CertificatePassword Text="Certificate password"/>
+        <CertificateSavePassword Text="Save password"/>
+        <CertificateSavePasswordWarning Text="Attention!!! Saving a password may be insecure!"/>
+        <ClickToChangeThePassword Text="Click to change password"/>
+      </DigitalSignature>
+    </Pdf>
+    <Html Text="Export to HTML">
+      <File Text="HTML file"/>
+      <MHTFile Text="MHT file"/>
+      <Format Text="Format"/>
+      <SinglePage Text="Single page"/>
+      <SubFolder Text="Sub-folder"/>
+      <Navigator Text="Navigator"/>
+      <Layers Text="Layers"/>
+      <HighQualitySVG Text="High quality SVG"/>
+      <EmbPic Text="Embedding pictures"/>
+      <Total Text="Total"/>
+      <NotRotateLandscapePage Text="Don't rotate landscape pages when printing"/>
+      <UsePageBreaks Text="Use page breaks"/>
+      <CenterAndWrapPages Text="Enable centered alignment and multipage view mode"/>
+      <ShowPageBorder Text="Enable the display of page borders"/>
+      <First Text="&lt;&lt;"/>
+      <Last Text="&gt;&gt;"/>
+      <Prev Text="&lt;"/>
+      <Next Text="&gt;"/>
+    </Html>
+    <Mht Text="Export to MHT (web-archive)">
+      <File Text="MHT file (web-archive)"/>
+    </Mht>
+    <Json Text="Export to Json">
+      <File Text="Json file"/>
+    </Json>
+    <LaTeX Text="Export to LaTeX">
+      <File Text="LaTeX file"/>
+    </LaTeX>
+    <Zpl Text="Export to ZPL">
+      <File Text="ZPL file"/>
+      <PrinterSettings Text="Printer Settings"/>
+      <Density Text="Density"/>
+      <FontScale Text="Font Scale"/>
+      <BarcodeScale Text="Barcode Scale"/>
+      <PrintAsBitmap Text="Print As Bitmap"/>
+      <Version Text="Version of ZPL"/>
+    </Zpl>
+    <Email Text="Send E-mail">
+      <Email Text="E-mail"/>
+      <Account Text="Account"/>
+      <Address Text="Address:"/>
+      <CC Text="CC:"/>
+      <CCTooltip Text="You can enter multiple addresses by separating them with a semicolon.&#13;&#10;For example: name1@url.com; name2@url.com"/>
+      <Subject Text="Subject:"/>
+      <Message Text="Message:"/>
+      <Attachment Text="Attachment:"/>
+      <Settings Text="Settings..."/>
+      <Name Text="Name:"/>
+      <Template Text="Template:"/>
+      <Host Text="Host:"/>
+      <Port Text="Port:"/>
+      <UserName Text="User name:"/>
+      <Password Text="Password:"/>
+      <AddressError Text="Invalid e-mail address."/>
+      <HostError Text="Host cannot be empty."/>
+      <SendingEmail Text="Sending email - {0} Kb"/>
+      <EnableSSL Text="Enable SSL"/>
+      <NameAttachmentFile Text="Name attachment file:"/>
+      <SuccessfulEmailSending Text="The email has been sent successfully"/>
+      <ErrorEmailSending Text="The email has not been sent"/>
+    </Email>
+    <Dxf Text="Export to DXF">
+      <File Text="DXF file"/>
+      <FillMode Text="Fill mode:"/>
+      <FillModeBorder Text="Border"/>
+      <FillModeSolid Text="Solid"/>
+      <BarcodesGap Text="Barcodes gap (mm):"/>
+    </Dxf>
+    <Hpgl Text="Export to Hpgl (plt)">
+      <File Text="Hpgl (plt) file"/>
+      <FillMode Text="Fill mode:"/>
+      <FillModeSolid Text="Solid"/>
+      <FillModeBorder Text="Border"/>
+    </Hpgl>
+  </Export>
+  <Cloud>
+    <CloudStorage Text="Save to Cloud">
+      <File Text="File"/>
+      <Proxy Text="Proxy"/>
+      <FileType Text="File Type:"/>
+      <Settings Text="Settings..."/>
+      <Server Text="Server:"/>
+      <Username Text="Username:"/>
+      <Password Text="Password:"/>
+      <PortError Text="Port should be numeric."/>
+    </CloudStorage>
+    <Ftp Text="Save to FTP">
+      <Name Text="FTP"/>
+      <FtpServer Text="FTP Server:"/>
+      <FtpUsername Text="Username:"/>
+      <FtpPassword Text="Password:"/>
+      <ServerConnectionFiledError Text="Connection failed to the specified server."/>
+      <ServerNotFoundError Text="The specified server was not found."/>
+      <AccessDeniedError Text="Access denied. Invalid username or password."/>
+      <SaveSuccess Text="Save Success."/>
+    </Ftp>
+    <Box Text="Save to Box">
+      <Name Text="Box"/>
+      <ClientInfoDialog Text="Client Info"/>
+      <ClientId Text="Client ID:"/>
+      <ClientSecret Text="Client Secret:"/>
+    </Box>
+    <Dropbox Text="Save to Dropbox">
+      <Name Text="Dropbox"/>
+      <ApplicationInfoDialog Text="Application Info"/>
+      <AccessToken Text="Access Token:"/>
+      <File Text="File"/>
+      <Proxy Text="Proxy"/>
+      <FileType Text="File Type:"/>
+      <Settings Text="Settings..."/>
+      <Save Text="Save"/>
+      <Server Text="Server:"/>
+      <Username Text="Username:"/>
+      <Password Text="Password:"/>
+      <PortError Text="Port should be numeric."/>
+    </Dropbox>
+    <FastCloud Text="Save to FastReport Cloud">
+      <Name Text="FastReport Cloud"/>
+      <UserDetails Text="User details"/>
+      <Email Text="Login:"/>
+      <UserPassword Text="Password:"/>
+    </FastCloud>
+    <GoogleDrive Text="Save to Google Drive">
+      <Name Text="GoogleDrive"/>
+      <ClientInfoDialog Text="Client Info"/>
+      <ClientId Text="Client ID:"/>
+      <ClientSecret Text="Client Secret:"/>
+    </GoogleDrive>
+    <SkyDrive Text="Save to OneDrive">
+      <Name Text="OneDrive"/>
+      <ClientInfoDialog Text="Client Info"/>
+      <ClientId Text="Client ID:"/>
+      <ClientSecret Text="Client Secret:"/>
+      <File Text="File"/>
+      <Proxy Text="Proxy"/>
+      <FileType Text="File Type:"/>
+      <Settings Text="Settings..."/>
+      <Server Text="Server:"/>
+      <Username Text="Username:"/>
+      <Password Text="Password:"/>
+      <PortError Text="Port should be numeric."/>
+    </SkyDrive>
+    <S3 Text="Save to S3">
+      <Name Text="Simple Storage Service"/>
+      <ClientInfoDialog Text="Authorization in S3"/>
+      <AccessKeyId Text="Access key id:"/>
+      <SecretAccessKey Text="Secret access key:"/>
+      <Region Text="Bucket fetch region:"/>
+      <Host Text="Host:"/>
+      <Bucket Text="Bucket:"/>
+      <FileName Text="File name:"/>
+      <MissingBuckets Text="Missing buckets"/>
+      <UploadRegion Text="Upload region:"/>
+      <RequestStyle Text="Request style:"/>
+    </S3>
+  </Cloud>
+  <Messaging>
+    <MessengerForm Text="Send Report">
+      <File Text="File"/>
+      <Proxy Text="Proxy"/>
+      <FileType Text="File Type:"/>
+      <Settings Text="Settings..."/>
+      <Server Text="Server:"/>
+      <Username Text="Username:"/>
+      <Password Text="Password:"/>
+      <PortError Text="Port should be numeric."/>
+    </MessengerForm>
+    <Xmpp Text="Send report via XMPP">
+      <Name Text="XMPP"/>
+      <JidFrom Text="Jabber ID:"/>
+      <Password Text="Password:"/>
+      <JidTo Text="Send to JID:"/>
+      <CloudWarning Text="Warning! File will be uploaded to FastReport Cloud. User will get link to download file."/>
+      <Errors>
+        <InvalidJidOrPassword Text="Invalid Jabber ID or password!"/>
+        <UnableToUploadFile Text="Unable to upload file to cloud!"/>
+      </Errors>
+    </Xmpp>
+	<Telegram Text="Send report via Telegram">
+      <Name Text="Telegram" />
+      <SenderPhone Text="The sender's phone number" />
+      <Password Text="Telegram password" />
+      <CodeToAuthenticate Text="Code to authenticate" />
+      <RecipientPhone Text="The recipient's phone number" />
+      <SignOut Text="Sign Out" />
+      <Errors>
+        <InvalidSenderPhoneOrPassword Text="Invalid sender phone or password!"/>
+        <UnableToUploadFile Text="Unable to upload file to cloud!"/>
+      </Errors>
+    </Telegram>
+  </Messaging>
+  <Web>
+    <Print Text="Print"/>
+    <PrintFromBrowser Text="Print from browser"/>
+    <PrintFromAcrobat Text="Print from Adobe Reader"/>
+    <FitWidth Text="Fit width"/>
+    <FitPage Text="Fit page"/>
+    <Export Text="Export"/>
+    <Zoom Text="Zoom"/>
+    <Refresh Text="Refresh report"/>
+    <First Text="Go to first page"/>
+    <Prev Text="Go to previous page"/>
+    <Next Text="Go to next page"/>
+    <Last Text="Go to last page"/>
+    <Search Text="Search"/>
+    <SearchPlaceholder Text="Enter the text"/>
+    <MatchCase Text="Match case"/>
+    <WholeWord Text="Whole word"/>
+    <SearchNext Text="Search next"/>
+    <SearchPrev Text="Search prev"/>
+    <SearchNotFound Text="Not found"/>
+    <EnterPage Text="Enter the page number to jump"/>
+    <TotalPages Text="Total pages (read only)"/>
+    <Back Text="Back"/>
+	<ScriptSecurity>
+	    <ForbiddenType Text="Please, don't use the type {typeName}"/>
+		<ForbiddenMethod Text="Please, don't use the method {methodName}"/>
+	</ScriptSecurity>
+  </Web>
+  <Properties>
+    <Categories>
+      <Appearance Text="Appearance"/>
+      <Behavior Text="Behavior"/>
+      <Build Text="Build"/>
+      <Data Text="Data"/>
+      <Design Text="Design"/>
+      <Designer Text="Designer"/>
+      <Email Text="Email"/>
+      <Engine Text="Engine"/>
+      <Events Text="Events"/>
+      <Hierarchy Text="Hierarchy"/>
+      <Layout Text="Layout"/>
+      <Misc Text="Misc"/>
+      <Navigation Text="Navigation"/>
+      <Paper Text="Paper"/>
+      <Preview Text="Preview"/>
+      <Print Text="Print"/>
+      <Report Text="Report"/>
+      <Script Text="Script"/>
+      <Spatial Text="Spatial"/>
+      <Toolbars Text="Toolbars"/>
+      <UI Text="UI"/>
+    </Categories>
+  </Properties>
+  <SystemWindowsForms>
+    <Buttons>
+      <OK Text="OK"/>
+      <Cancel Text="Cancel"/>
+      <Yes Text="Yes"/>
+      <No Text="No"/>
+    </Buttons>
+    <Collection Text="{0} collection editor">
+      <Members Text="Members:"/>
+      <AllProperties Text="Properties:"/>
+      <Properties Text="{0} properties:"/>
+      <Add Text="Add"/>
+      <Remove Text="Remove"/>
+    </Collection>
+    <Color Text="Color">
+      <Color Text="Color"/>
+      <H Text="H:"/>
+      <S Text="S:"/>
+      <V Text="V:"/>
+      <R Text="R:"/>
+      <G Text="G:"/>
+      <B Text="B:"/>
+      <Define Text="Define custom colors &gt;&gt;"/>
+      <Add Text="Add to custom colors"/>
+      <Base Text="Base colors:"/>
+      <User Text="User colors:"/>
+    </Color>
+    <Colors>
+      <Custom Text="Custom"/>
+      <Web Text="Web"/>
+      <System Text="System"/>
+      <Other Text="Other"/>
+    </Colors>
+    <Dock>
+      <None Text="None"/>
+    </Dock>
+    <Font Text="Font">
+      <Style Text="Font style:"/>
+      <Example Text="Example"/>
+      <Font Text="Font:"/>
+      <Effects Text="Effects"/>
+      <Strikethrough Text="Strikethrough"/>
+      <Underlined Text="Underlined"/>
+      <Size Text="Size:"/>
+      <Regular Text="Regular"/>
+      <Bold Text="Bold"/>
+      <Italic Text="Italic"/>
+      <BoldItalic Text="Bold Italic"/>
+    </Font>
+    <Image Text="Open image file">
+      <All Text="All image files"/>
+    </Image>
+    <Property>
+      <Alphabetic Text="Alphabetic"/>
+      <Categorized Text="Categorized"/>
+      <Misc Text="Misc"/>
+      <Window Text="Properties window"/>
+      <Error Text="'{0}' is not a valid value for '{1}'"/>
+    </Property>
+    <StringCollection Text="String collection editor">
+      <Hint Text="Enter the strings in the collection (one per line):"/>
+    </StringCollection>
+  </SystemWindowsForms>
+</Language>

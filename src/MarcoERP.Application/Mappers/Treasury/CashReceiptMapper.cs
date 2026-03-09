@@ -18,7 +18,9 @@ namespace MarcoERP.Application.Mappers.Treasury
                 CashboxId = entity.CashboxId,
                 CashboxName = entity.Cashbox?.NameAr,
                 AccountId = entity.AccountId,
+                AccountName = entity.Account?.AccountNameAr,
                 CustomerId = entity.CustomerId,
+                CustomerName = entity.Customer?.NameAr,
                 SalesInvoiceId = entity.SalesInvoiceId,
                 Amount = entity.Amount,
                 Description = entity.Description,
@@ -38,6 +40,8 @@ namespace MarcoERP.Application.Mappers.Treasury
                 ReceiptNumber = entity.ReceiptNumber,
                 ReceiptDate = entity.ReceiptDate,
                 CashboxName = entity.Cashbox?.NameAr,
+                AccountName = entity.Account?.AccountNameAr,
+                CustomerName = entity.Customer?.NameAr,
                 Amount = entity.Amount,
                 Status = entity.Status.ToString()
             };

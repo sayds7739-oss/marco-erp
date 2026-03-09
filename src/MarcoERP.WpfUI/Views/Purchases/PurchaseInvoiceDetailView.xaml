@@ -13,6 +13,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ═══ Row 0: Compact Toolbar ═══ -->
@@ -167,50 +168,85 @@
         </Border>
 
         <!-- ═══ Row 2: Compact Header — All 4 fields in one row ═══ -->
-        <Border Grid.Row="2" Style="{StaticResource CardPanel}" Padding="10,6" Margin="0,0,0,3">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" MinWidth="140" />
-                    <ColumnDefinition Width="6" />
-                    <ColumnDefinition Width="Auto" MinWidth="130" />
-                    <ColumnDefinition Width="6" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="6" />
-                    <ColumnDefinition Width="Auto" MinWidth="140" />
-                </Grid.ColumnDefinitions>
-                <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="رقم الفاتورة"
-                         materialDesign:HintAssist.IsFloating="True"
-                         Text="{Binding FormNumber}" IsReadOnly="True"
-                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                         FontSize="12" Padding="6,4" />
-                <DatePicker Grid.Column="2" materialDesign:HintAssist.Hint="التاريخ"
-                            materialDesign:HintAssist.IsFloating="True"
-                            SelectedDate="{Binding FormDate}" IsEnabled="{Binding IsEditing}"
-                            Style="{StaticResource MaterialDesignOutlinedDatePicker}"
-                            FontSize="14" Padding="6,4" Width="145" />
-                <ComboBox Grid.Column="4" materialDesign:HintAssist.Hint="المورد (F1 للبحث)"
-                          materialDesign:HintAssist.IsFloating="True"
-                          ItemsSource="{Binding Suppliers}" SelectedValue="{Binding FormSupplierId}"
-                          SelectedValuePath="Id" DisplayMemberPath="NameAr"
-                          IsEnabled="{Binding IsEditing}" IsEditable="True"
-                          common:F1SearchBehavior.IsEnabled="True"
-                          common:F1SearchBehavior.Title="بحث الموردين"
-                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                          FontSize="12" />
-                <ComboBox Grid.Column="6" materialDesign:HintAssist.Hint="المخزن (F1 للبحث)"
-                          materialDesign:HintAssist.IsFloating="True"
-                          ItemsSource="{Binding Warehouses}" SelectedValue="{Binding FormWarehouseId}"
-                          SelectedValuePath="Id" DisplayMemberPath="NameAr"
-                          IsEnabled="{Binding IsEditing}" IsEditable="True"
-                          common:F1SearchBehavior.IsEnabled="True"
-                          common:F1SearchBehavior.Title="بحث المخازن"
-                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                          FontSize="12" />
-            </Grid>
+        <Border Grid.Row="2" Style="{StaticResource CardPanel}" Padding="8,4" Margin="0,0,0,2">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" MinWidth="140" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="Auto" MinWidth="130" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="Auto" MinWidth="140" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="رقم الفاتورة"
+                             materialDesign:HintAssist.IsFloating="True"
+                             Text="{Binding FormNumber}" IsReadOnly="True"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             FontSize="12" Padding="6,4" />
+                    <DatePicker Grid.Column="2" materialDesign:HintAssist.Hint="التاريخ"
+                                materialDesign:HintAssist.IsFloating="True"
+                                SelectedDate="{Binding FormDate}" IsEnabled="{Binding IsEditing}"
+                                Style="{StaticResource MaterialDesignDatePicker}"
+                                FontSize="14" Padding="6,4" Width="145" />
+                    <ComboBox Grid.Column="4" materialDesign:HintAssist.Hint="المورد (F1 للبحث)"
+                              materialDesign:HintAssist.IsFloating="True"
+                              ItemsSource="{Binding Suppliers}" SelectedValue="{Binding FormSupplierId}"
+                              SelectedValuePath="Id" DisplayMemberPath="NameAr"
+                              IsEnabled="{Binding IsEditing}" IsEditable="True"
+                              common:F1SearchBehavior.IsEnabled="True"
+                              common:F1SearchBehavior.Title="بحث الموردين"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              FontSize="12" />
+                    <ComboBox Grid.Column="6" materialDesign:HintAssist.Hint="المخزن (F1 للبحث)"
+                              materialDesign:HintAssist.IsFloating="True"
+                              ItemsSource="{Binding Warehouses}" SelectedValue="{Binding FormWarehouseId}"
+                              SelectedValuePath="Id" DisplayMemberPath="NameAr"
+                              IsEnabled="{Binding IsEditing}" IsEditable="True"
+                              common:F1SearchBehavior.IsEnabled="True"
+                              common:F1SearchBehavior.Title="بحث المخازن"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              FontSize="12" />
+                </Grid>
+
+                <!-- نوع الفاتورة وطريقة الدفع وتاريخ الاستحقاق -->
+                <Grid Margin="0,4,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" MinWidth="120" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="Auto" MinWidth="140" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="Auto" MinWidth="150" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ComboBox Grid.Column="0" materialDesign:HintAssist.Hint="نوع الفاتورة"
+                              materialDesign:HintAssist.IsFloating="True"
+                              ItemsSource="{Binding InvoiceTypes}"
+                              SelectedValue="{Binding FormInvoiceType}"
+                              SelectedValuePath="Key" DisplayMemberPath="Value"
+                              IsEnabled="{Binding IsEditing}"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              FontSize="12" />
+                    <ComboBox Grid.Column="2" materialDesign:HintAssist.Hint="طريقة الدفع"
+                              materialDesign:HintAssist.IsFloating="True"
+                              ItemsSource="{Binding PaymentMethods}"
+                              SelectedValue="{Binding FormPaymentMethod}"
+                              SelectedValuePath="Key" DisplayMemberPath="Value"
+                              IsEnabled="{Binding IsEditing}"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              FontSize="12" />
+                    <DatePicker Grid.Column="4" materialDesign:HintAssist.Hint="تاريخ الاستحقاق"
+                                materialDesign:HintAssist.IsFloating="True"
+                                SelectedDate="{Binding FormDueDate}" IsEnabled="{Binding IsEditing}"
+                                Style="{StaticResource MaterialDesignOutlinedDatePicker}"
+                                FontSize="12" Padding="6,4" Width="150" />
+                </Grid>
+            </StackPanel>
         </Border>
 
         <!-- ═══ Row 3: Invoice Lines ═══ -->
-        <Border Grid.Row="3" Style="{StaticResource CardPanel}" Padding="8,6">
+        <Border Grid.Row="3" Style="{StaticResource CardPanel}" Padding="8,4">
             <DockPanel>
                 <!-- Lines Header Bar -->
                 <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
@@ -243,7 +279,7 @@
                           SelectionMode="Single" GridLinesVisibility="Horizontal"
                           HeadersVisibility="Column" FontSize="12"
                           RowHeight="30" ColumnHeaderHeight="30" BorderThickness="1"
-                          BorderBrush="#E0E0E0" MinHeight="200"
+                          BorderBrush="#E0E0E0" MinHeight="260"
                           materialDesign:DataGridAssist.CellPadding="6 3"
                           materialDesign:DataGridAssist.ColumnHeaderPadding="6 6"
                           PreviewKeyDown="DataGrid_PreviewKeyDown"
@@ -352,8 +388,60 @@
             </DockPanel>
         </Border>
 
-        <!-- ═══ Row 4: Compact Totals Bar ═══ -->
-        <Border Grid.Row="4" Background="White" CornerRadius="6" Padding="14,8" Margin="0,3,0,0"
+        <!-- ═══ Row 4: Header Discount & Delivery Fee (compact bar) ═══ -->
+        <Border Grid.Row="4" Style="{StaticResource CardPanel}" Padding="10,5" Margin="0,2,0,0"
+                Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="خصم %" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{StaticResource SubtitleBrush}" Margin="0,0,6,0" />
+                <TextBox Grid.Column="1"
+                         Text="{Binding FormHeaderDiscountPercent, StringFormat='{}{0:N2}'}"
+                         IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,3"
+                         FlowDirection="LeftToRight" HorizontalContentAlignment="Center"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                <TextBlock Grid.Column="3" Text="خصم مبلغ" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{StaticResource SubtitleBrush}" Margin="0,0,6,0" />
+                <TextBox Grid.Column="4"
+                         Text="{Binding FormHeaderDiscountAmount, StringFormat='{}{0:N2}'}"
+                         IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,3"
+                         FlowDirection="LeftToRight" HorizontalContentAlignment="Center"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                <TextBlock Grid.Column="6" Text="توصيل" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{StaticResource SubtitleBrush}" Margin="0,0,6,0" />
+                <TextBox Grid.Column="7"
+                         Text="{Binding FormDeliveryFee, StringFormat='{}{0:N2}'}"
+                         IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,3"
+                         FlowDirection="LeftToRight" HorizontalContentAlignment="Center"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+            </Grid>
+        </Border>
+
+        <!-- ═══ Row 4b: Discount & Delivery display (read-only when not editing) ═══ -->
+        <Border Grid.Row="4" Style="{StaticResource CardPanel}" Padding="10,4" Margin="0,2,0,0"
+                Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVisConverter}}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock Text="خصم إجمالي %" FontSize="11" Foreground="{StaticResource SubtitleBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <TextBlock Text="{Binding FormHeaderDiscountPercent, StringFormat=N2}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <TextBlock Text="خصم مبلغ:" FontSize="11" Foreground="{StaticResource SubtitleBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <TextBlock Text="{Binding FormHeaderDiscountAmount, StringFormat=N2}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <TextBlock Text="توصيل:" FontSize="11" Foreground="{StaticResource SubtitleBrush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <TextBlock Text="{Binding FormDeliveryFee, StringFormat=N2}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- ═══ Row 5: Compact Totals Bar ═══ -->
+        <Border Grid.Row="5" Background="White" CornerRadius="6" Padding="12,6" Margin="0,2,0,0"
                 BorderBrush="#E0E0E0" BorderThickness="1">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -393,8 +481,8 @@
             </Grid>
         </Border>
 
-        <!-- ═══ Row 5: Notes + Status Bar ═══ -->
-        <Border Grid.Row="5" Background="#ECEFF1" CornerRadius="4" Padding="8,4" Margin="0,3,0,0">
+        <!-- ═══ Row 6: Notes + Status Bar ═══ -->
+        <Border Grid.Row="6" Background="#ECEFF1" CornerRadius="4" Padding="8,3" Margin="0,2,0,0">
             <DockPanel>
                 <TextBox DockPanel.Dock="Right" Width="300"
                          materialDesign:HintAssist.Hint="ملاحظات"

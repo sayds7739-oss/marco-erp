@@ -14,6 +14,8 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Treasury;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Treasury;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Treasury
 {
@@ -29,19 +31,25 @@ namespace MarcoERP.Application.Services.Treasury
         private readonly ICurrentUserService _currentUser;
         private readonly IValidator<CreateBankAccountDto> _createValidator;
         private readonly IValidator<UpdateBankAccountDto> _updateValidator;
+        private readonly ILogger<BankAccountService> _logger;
+        private readonly IFeatureService _featureService;
 
         public BankAccountService(
             IBankAccountRepository bankAccountRepo,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
             IValidator<CreateBankAccountDto> createValidator,
-            IValidator<UpdateBankAccountDto> updateValidator)
+            IValidator<UpdateBankAccountDto> updateValidator,
+            ILogger<BankAccountService> logger = null,
+            IFeatureService featureService = null)
         {
             _bankAccountRepo = bankAccountRepo ?? throw new ArgumentNullException(nameof(bankAccountRepo));
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<BankAccountService>.Instance;
+            _featureService = featureService;
         }
 
         public async Task<ServiceResult<IReadOnlyList<BankAccountDto>>> GetAllAsync(CancellationToken ct)
@@ -68,8 +76,20 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult<BankAccountDto>> CreateAsync(CreateBankAccountDto dto, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check<BankAccountDto>(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "BankAccount", 0);
+
+            // Feature Guard — block operation if Treasury module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<BankAccountDto>(_featureService, FeatureKeys.Treasury, ct);
+                if (guard != null) return guard;
+            }
+
+            // Defense-in-depth: auth guard
+            if (!_currentUser.IsAuthenticated)
+                return ServiceResult<BankAccountDto>.Failure("يجب تسجيل الدخول أولاً.");
+            if (!_currentUser.HasPermission(PermissionKeys.TreasuryCreate))
+                return ServiceResult<BankAccountDto>.Failure("لا تملك الصلاحية لتنفيذ هذه العملية.");
 
             var vr = await _createValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
@@ -88,7 +108,7 @@ namespace MarcoERP.Application.Services.Treasury
 
                 // If first bank account, make it default
                 var existing = await _bankAccountRepo.GetAllAsync(ct);
-                if (existing.Count == 0)
+                if (existing.Count == 1)
                     entity.SetAsDefault();
 
                 await _unitOfWork.SaveChangesAsync(ct);
@@ -102,9 +122,7 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult<BankAccountDto>> UpdateAsync(UpdateBankAccountDto dto, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check<BankAccountDto>(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "BankAccount", dto.Id);
             var vr = await _updateValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<BankAccountDto>.Failure(
@@ -130,9 +148,7 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult> SetDefaultAsync(int id, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "SetDefaultAsync", "BankAccount", id);
             var entity = await _bankAccountRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("الحساب البنكي غير موجود.");
 
@@ -151,9 +167,7 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "BankAccount", id);
             var entity = await _bankAccountRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("الحساب البنكي غير موجود.");
 
@@ -165,9 +179,7 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "BankAccount", id);
             var entity = await _bankAccountRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("الحساب البنكي غير موجود.");
 

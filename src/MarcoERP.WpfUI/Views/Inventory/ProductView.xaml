@@ -317,6 +317,27 @@
                                                  IsEnabled="{Binding IsEditing}"
                                                  FontSize="12" Padding="6,4" FlowDirection="LeftToRight" />
                                     </Grid>
+
+                                    <!-- Wholesale + Retail prices -->
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="6" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding FormWholesalePrice, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
+                                                 materialDesign:HintAssist.Hint="سعر الجملة"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}"
+                                                 FontSize="12" Padding="6,4" FlowDirection="LeftToRight" />
+                                        <TextBox Grid.Column="2"
+                                                 Text="{Binding FormRetailPrice, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
+                                                 materialDesign:HintAssist.Hint="سعر القطاعي"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}"
+                                                 FontSize="12" Padding="6,4" FlowDirection="LeftToRight" />
+                                    </Grid>
                                 </StackPanel>
                             </Border>
 
@@ -343,6 +364,20 @@
                                                  IsEnabled="{Binding IsEditing}"
                                                  FontSize="12" Padding="6,4" FlowDirection="LeftToRight" />
                                         <TextBox Grid.Column="2"
+                                                 Text="{Binding FormMaximumStock, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
+                                                 materialDesign:HintAssist.Hint="الحد الأقصى"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}"
+                                                 FontSize="12" Padding="6,4" FlowDirection="LeftToRight" />
+                                    </Grid>
+
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="6" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
                                                  Text="{Binding FormReorderLevel, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
                                                  materialDesign:HintAssist.Hint="نقطة إعادة الطلب"
                                                  materialDesign:HintAssist.IsFloating="True"
@@ -512,6 +547,14 @@
                                           IsEnabled="{Binding IsEditing}"
                                           FontSize="12" Padding="6,4"
                                           materialDesign:ComboBoxAssist.ShowSelectedItem="True" />
+
+                                <!-- Image path -->
+                                <TextBox Text="{Binding FormImagePath, UpdateSourceTrigger=PropertyChanged}"
+                                         materialDesign:HintAssist.Hint="مسار الصورة"
+                                         materialDesign:HintAssist.IsFloating="True"
+                                         IsEnabled="{Binding IsEditing}"
+                                         FontSize="12" Padding="6,4" Margin="0,6,0,0"
+                                         FlowDirection="LeftToRight" />
 
                                 <TextBox Text="{Binding FormDescription, UpdateSourceTrigger=PropertyChanged}"
                                          materialDesign:HintAssist.Hint="وصف / ملاحظات"

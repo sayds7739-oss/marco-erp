@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using MarcoERP.Domain.Entities.Common;
+using MarcoERP.Domain.Entities.Inventory;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Sales;
 
@@ -27,17 +28,20 @@ namespace MarcoERP.Domain.Entities.Sales
         public SalesInvoice(
             string invoiceNumber,
             DateTime invoiceDate,
-            int customerId,
+            int? customerId,
             int warehouseId,
             string notes,
             int? salesRepresentativeId = null,
             CounterpartyType counterpartyType = CounterpartyType.Customer,
-            int? supplierId = null)
+            int? supplierId = null,
+            InvoiceType invoiceType = InvoiceType.Cash,
+            PaymentMethod paymentMethod = PaymentMethod.Cash,
+            DateTime? dueDate = null)
         {
             if (string.IsNullOrWhiteSpace(invoiceNumber))
                 throw new SalesInvoiceDomainException("رقم فاتورة البيع مطلوب.");
 
-            if (counterpartyType == CounterpartyType.Customer && customerId <= 0)
+            if (counterpartyType == CounterpartyType.Customer && (!customerId.HasValue || customerId <= 0))
                 throw new SalesInvoiceDomainException("العميل مطلوب.");
 
             if (warehouseId <= 0)
@@ -48,12 +52,15 @@ namespace MarcoERP.Domain.Entities.Sales
 
             InvoiceNumber = invoiceNumber.Trim();
             InvoiceDate = invoiceDate;
-            CustomerId = customerId;
+            CustomerId = counterpartyType == CounterpartyType.Customer ? customerId : null;
             WarehouseId = warehouseId;
             SalesRepresentativeId = salesRepresentativeId;
             CounterpartyType = counterpartyType;
             SupplierId = counterpartyType == CounterpartyType.Supplier ? supplierId : null;
             Status = InvoiceStatus.Draft;
+            InvoiceType = invoiceType;
+            PaymentMethod = paymentMethod;
+            DueDate = invoiceType == InvoiceType.Credit ? dueDate : null;
             Notes = notes?.Trim();
 
             Subtotal = 0;
@@ -61,6 +68,9 @@ namespace MarcoERP.Domain.Entities.Sales
             VatTotal = 0;
             NetTotal = 0;
             PaidAmount = 0;
+            HeaderDiscountPercent = 0;
+            HeaderDiscountAmount = 0;
+            DeliveryFee = 0;
             PaymentStatus = PaymentStatus.Unpaid;
             Customer = null;
         }
@@ -73,14 +83,17 @@ namespace MarcoERP.Domain.Entities.Sales
         /// <summary>Invoice date.</summary>
         public DateTime InvoiceDate { get; private set; }
 
-        /// <summary>FK to Customer.</summary>
-        public int CustomerId { get; private set; }
+        /// <summary>FK to Customer (null when CounterpartyType is Supplier).</summary>
+        public int? CustomerId { get; private set; }
 
         /// <summary>Navigation property.</summary>
         public Customer Customer { get; private set; }
 
         /// <summary>FK to Warehouse delivering the goods.</summary>
         public int WarehouseId { get; private set; }
+
+        /// <summary>Navigation property to Warehouse (read-only for queries).</summary>
+        public Warehouse Warehouse { get; private set; }
 
         /// <summary>FK to SalesRepresentative (optional — مندوب المبيعات).</summary>
         public int? SalesRepresentativeId { get; private set; }
@@ -100,6 +113,15 @@ namespace MarcoERP.Domain.Entities.Sales
         /// <summary>Current lifecycle status.</summary>
         public InvoiceStatus Status { get; private set; }
 
+        /// <summary>نوع الفاتورة (نقدي / آجل).</summary>
+        public InvoiceType InvoiceType { get; private set; }
+
+        /// <summary>طريقة الدفع.</summary>
+        public PaymentMethod PaymentMethod { get; private set; }
+
+        /// <summary>تاريخ الاستحقاق (للفواتير الآجلة).</summary>
+        public DateTime? DueDate { get; private set; }
+
         /// <summary>Sum of all line subtotals (before discount, before VAT).</summary>
         public decimal Subtotal { get; private set; }
 
@@ -109,8 +131,17 @@ namespace MarcoERP.Domain.Entities.Sales
         /// <summary>Total VAT across all lines.</summary>
         public decimal VatTotal { get; private set; }
 
-        /// <summary>Net total = Subtotal - DiscountTotal + VatTotal.</summary>
+        /// <summary>Net total = Subtotal - DiscountTotal + VatTotal + DeliveryFee.</summary>
         public decimal NetTotal { get; private set; }
+
+        /// <summary>Header-level discount percentage (0–100). Applied after line discounts.</summary>
+        public decimal HeaderDiscountPercent { get; private set; }
+
+        /// <summary>Header-level fixed discount amount. Applied after line discounts.</summary>
+        public decimal HeaderDiscountAmount { get; private set; }
+
+        /// <summary>Delivery / shipping fee added to the invoice total.</summary>
+        public decimal DeliveryFee { get; private set; }
 
         /// <summary>Total amount paid so far against this invoice.</summary>
         public decimal PaidAmount { get; private set; }
@@ -129,6 +160,9 @@ namespace MarcoERP.Domain.Entities.Sales
 
         /// <summary>FK to auto-generated COGS journal entry (set on posting).</summary>
         public int? CogsJournalEntryId { get; private set; }
+
+        /// <summary>FK to auto-generated commission journal entry (set on posting when sales rep has commission).</summary>
+        public int? CommissionJournalEntryId { get; private set; }
 
         /// <summary>Invoice line items.</summary>
         public IReadOnlyCollection<SalesInvoiceLine> Lines => _lines.AsReadOnly();
@@ -181,36 +215,57 @@ namespace MarcoERP.Domain.Entities.Sales
         /// <summary>Updates the invoice header. Only allowed in Draft status.</summary>
         public void UpdateHeader(
             DateTime invoiceDate,
-            int customerId,
+            int? customerId,
             int warehouseId,
             string notes,
             int? salesRepresentativeId = null,
             CounterpartyType counterpartyType = CounterpartyType.Customer,
-            int? supplierId = null)
+            int? supplierId = null,
+            decimal headerDiscountPercent = 0,
+            decimal headerDiscountAmount = 0,
+            decimal deliveryFee = 0,
+            InvoiceType invoiceType = InvoiceType.Cash,
+            PaymentMethod paymentMethod = PaymentMethod.Cash,
+            DateTime? dueDate = null)
         {
             EnsureDraft("لا يمكن تعديل فاتورة مرحّلة أو ملغاة.");
 
-            if (counterpartyType == CounterpartyType.Customer && customerId <= 0)
+            if (counterpartyType == CounterpartyType.Customer && (!customerId.HasValue || customerId <= 0))
                 throw new SalesInvoiceDomainException("العميل مطلوب.");
             if (warehouseId <= 0)
                 throw new SalesInvoiceDomainException("المستودع مطلوب.");
             if (counterpartyType == CounterpartyType.Supplier && (!supplierId.HasValue || supplierId <= 0))
                 throw new SalesInvoiceDomainException("المورد مطلوب عند اختيار نوع الطرف (مورد).");
+            if (headerDiscountPercent < 0 || headerDiscountPercent > 100)
+                throw new SalesInvoiceDomainException("نسبة الخصم الإجمالي يجب أن تكون بين 0 و 100.");
+            if (headerDiscountAmount < 0)
+                throw new SalesInvoiceDomainException("مبلغ الخصم لا يمكن أن يكون سالباً.");
+            if (deliveryFee < 0)
+                throw new SalesInvoiceDomainException("رسوم التوصيل لا يمكن أن تكون سالبة.");
 
             InvoiceDate = invoiceDate;
-            CustomerId = customerId;
+            CustomerId = counterpartyType == CounterpartyType.Customer ? customerId : null;
             WarehouseId = warehouseId;
             SalesRepresentativeId = salesRepresentativeId;
             CounterpartyType = counterpartyType;
             SupplierId = counterpartyType == CounterpartyType.Supplier ? supplierId : null;
             Notes = notes?.Trim();
+            HeaderDiscountPercent = headerDiscountPercent;
+            HeaderDiscountAmount = headerDiscountAmount;
+            DeliveryFee = deliveryFee;
+            InvoiceType = invoiceType;
+            PaymentMethod = paymentMethod;
+            DueDate = invoiceType == InvoiceType.Credit ? dueDate : null;
+            RecalculateTotals();
         }
 
         /// <summary>
-        /// Posts the invoice. Sets both revenue and COGS journal entry IDs.
+        /// Posts the invoice. Sets revenue journal entry ID and optional COGS journal entry ID.
+        /// COGS journal is null when all products have zero weighted-average cost.
+        /// Commission journal is null when no sales representative or zero commission rate.
         /// The service layer handles: journal creation, COGS calculation, stock deduction.
         /// </summary>
-        public void Post(int journalEntryId, int cogsJournalEntryId)
+        public void Post(int journalEntryId, int? cogsJournalEntryId, int? commissionJournalEntryId = null)
         {
             EnsureDraft("لا يمكن ترحيل فاتورة مرحّلة بالفعل أو ملغاة.");
 
@@ -220,12 +275,16 @@ namespace MarcoERP.Domain.Entities.Sales
             if (journalEntryId <= 0)
                 throw new SalesInvoiceDomainException("معرف القيد المحاسبي (الإيرادات) غير صالح.");
 
-            if (cogsJournalEntryId <= 0)
+            if (cogsJournalEntryId.HasValue && cogsJournalEntryId.Value <= 0)
                 throw new SalesInvoiceDomainException("معرف قيد تكلفة البضاعة المباعة غير صالح.");
+
+            if (commissionJournalEntryId.HasValue && commissionJournalEntryId.Value <= 0)
+                throw new SalesInvoiceDomainException("معرف قيد العمولة غير صالح.");
 
             Status = InvoiceStatus.Posted;
             JournalEntryId = journalEntryId;
             CogsJournalEntryId = cogsJournalEntryId;
+            CommissionJournalEntryId = commissionJournalEntryId;
         }
 
         /// <summary>Cancels a posted invoice. Blocks if any payment has been recorded.</summary>
@@ -245,9 +304,50 @@ namespace MarcoERP.Domain.Entities.Sales
         {
             EnsureDraft("لا يمكن تعديل بنود فاتورة مرحّلة أو ملغاة.");
 
-            _lines.Clear();
-            if (newLines != null)
-                _lines.AddRange(newLines);
+            var incomingLines = (newLines ?? Enumerable.Empty<SalesInvoiceLine>()).ToList();
+            var existingById = _lines
+                .Where(l => l.Id > 0)
+                .ToDictionary(l => l.Id);
+
+            var incomingIds = new HashSet<int>();
+            var newIncomingLines = new List<SalesInvoiceLine>();
+
+            foreach (var incoming in incomingLines)
+            {
+                if (incoming.Id > 0)
+                {
+                    if (!incomingIds.Add(incoming.Id))
+                        throw new SalesInvoiceDomainException("تكرار معرف بند الفاتورة غير مسموح.");
+
+                    if (!existingById.TryGetValue(incoming.Id, out var existingLine))
+                        throw new SalesInvoiceDomainException("لا يمكن تحديث بند غير موجود في الفاتورة.");
+
+                    existingLine.UpdateDetails(
+                        incoming.ProductId,
+                        incoming.UnitId,
+                        incoming.Quantity,
+                        incoming.UnitPrice,
+                        incoming.ConversionFactor,
+                        incoming.DiscountPercent,
+                        incoming.VatRate);
+                }
+                else
+                {
+                    newIncomingLines.Add(incoming);
+                }
+            }
+
+            // Remove existing persisted lines not in incoming
+            var linesToRemove = existingById.Values
+                .Where(l => !incomingIds.Contains(l.Id))
+                .ToList();
+
+            foreach (var line in linesToRemove)
+                _lines.Remove(line);
+
+            // Remove all unsaved (Id=0) lines and replace with new incoming ones
+            _lines.RemoveAll(l => l.Id == 0);
+            _lines.AddRange(newIncomingLines);
 
             RecalculateTotals();
         }
@@ -292,6 +392,45 @@ namespace MarcoERP.Domain.Entities.Sales
             RecalculatePaymentStatus();
         }
 
+        /// <summary>
+        /// Applies a sales return credit against this invoice (reduces the net total effectively).
+        /// Called when a sales return is posted against this invoice.
+        /// </summary>
+        public void ApplyReturnCredit(decimal amount)
+        {
+            if (Status != InvoiceStatus.Posted)
+                throw new SalesInvoiceDomainException("لا يمكن تطبيق مرتجع على فاتورة غير مرحّلة.");
+
+            if (amount <= 0)
+                throw new SalesInvoiceDomainException("مبلغ المرتجع يجب أن يكون أكبر من صفر.");
+
+            if (amount > BalanceDue)
+                throw new SalesInvoiceDomainException(
+                    $"مبلغ المرتجع ({amount:N2}) يتجاوز الرصيد المستحق ({BalanceDue:N2}).");
+
+            PaidAmount += amount;
+            RecalculatePaymentStatus();
+        }
+
+        /// <summary>
+        /// Reverses a previously applied return credit (called when a sales return is cancelled).
+        /// </summary>
+        public void ReverseReturnCredit(decimal amount)
+        {
+            if (Status == InvoiceStatus.Cancelled)
+                throw new SalesInvoiceDomainException("لا يمكن عكس مرتجع على فاتورة ملغاة.");
+
+            if (amount <= 0)
+                throw new SalesInvoiceDomainException("مبلغ عكس المرتجع يجب أن يكون أكبر من صفر.");
+
+            if (amount > PaidAmount)
+                throw new SalesInvoiceDomainException(
+                    $"مبلغ عكس المرتجع ({amount:N2}) يتجاوز المبلغ المدفوع ({PaidAmount:N2}).");
+
+            PaidAmount -= amount;
+            RecalculatePaymentStatus();
+        }
+
         private void RecalculatePaymentStatus()
         {
             if (PaidAmount <= 0)
@@ -327,9 +466,28 @@ namespace MarcoERP.Domain.Entities.Sales
         private void RecalculateTotals()
         {
             Subtotal = _lines.Sum(l => l.SubTotal);
-            DiscountTotal = _lines.Sum(l => l.DiscountAmount);
-            VatTotal = _lines.Sum(l => l.VatAmount);
-            NetTotal = _lines.Sum(l => l.TotalWithVat);
+            var lineDiscountTotal = _lines.Sum(l => l.DiscountAmount);
+            var lineVatTotal      = _lines.Sum(l => l.VatAmount);
+
+            // Header discount applied on (Subtotal - lineDiscountTotal)
+            var subAfterLineDiscount = Subtotal - lineDiscountTotal;
+            var headerPercentValue = Math.Round(subAfterLineDiscount * HeaderDiscountPercent / 100m, 4);
+            var totalHeaderDiscount = headerPercentValue + HeaderDiscountAmount;
+
+            DiscountTotal = lineDiscountTotal + totalHeaderDiscount;
+
+            // ZATCA fix: reduce VatTotal proportionally when header discount is applied.
+            // The header discount lowers the taxable base, so VAT must be recalculated.
+            decimal vatAdjustment = 0m;
+            if (subAfterLineDiscount > 0 && totalHeaderDiscount > 0 && lineVatTotal > 0)
+            {
+                var effectiveVatRate = lineVatTotal / subAfterLineDiscount;
+                vatAdjustment = Math.Round(totalHeaderDiscount * effectiveVatRate, 4);
+            }
+            VatTotal = lineVatTotal - vatAdjustment;
+
+            // NetTotal = taxable base (after all discounts) + adjusted VAT + delivery fee
+            NetTotal = (subAfterLineDiscount - totalHeaderDiscount) + VatTotal + DeliveryFee;
         }
     }
 }

@@ -21,18 +21,23 @@ namespace MarcoERP.Application.Interfaces.Treasury
         Task<ServiceResult<BankAccountDto>> GetByIdAsync(int id, CancellationToken ct = default);
 
         /// <summary>إنشاء حساب بنكي جديد — Creates a new bank account.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult<BankAccountDto>> CreateAsync(CreateBankAccountDto dto, CancellationToken ct = default);
 
         /// <summary>تعديل حساب بنكي — Updates an existing bank account.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult<BankAccountDto>> UpdateAsync(UpdateBankAccountDto dto, CancellationToken ct = default);
 
         /// <summary>تعيين حساب بنكي كافتراضي — Sets a bank account as the default.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult> SetDefaultAsync(int id, CancellationToken ct = default);
 
         /// <summary>تفعيل حساب بنكي — Activates a bank account.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult> ActivateAsync(int id, CancellationToken ct = default);
 
         /// <summary>تعطيل حساب بنكي — Deactivates a bank account.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct = default);
     }
 }

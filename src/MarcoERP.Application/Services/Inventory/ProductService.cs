@@ -14,6 +14,8 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Inventory;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Inventory
 {
@@ -27,6 +29,8 @@ namespace MarcoERP.Application.Services.Inventory
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IValidator<CreateProductDto> _createValidator;
         private readonly IValidator<UpdateProductDto> _updateValidator;
+        private readonly ILogger<ProductService> _logger;
+        private readonly IFeatureService _featureService;
 
         private const string ProductNotFoundMessage = "الصنف غير موجود.";
 
@@ -37,7 +41,9 @@ namespace MarcoERP.Application.Services.Inventory
             ICurrentUserService currentUser,
             IDateTimeProvider dateTimeProvider,
             IValidator<CreateProductDto> createValidator,
-            IValidator<UpdateProductDto> updateValidator)
+            IValidator<UpdateProductDto> updateValidator,
+            ILogger<ProductService> logger = null,
+            IFeatureService featureService = null)
         {
             _productRepo = productRepo ?? throw new ArgumentNullException(nameof(productRepo));
             _warehouseProductRepo = warehouseProductRepo ?? throw new ArgumentNullException(nameof(warehouseProductRepo));
@@ -46,6 +52,8 @@ namespace MarcoERP.Application.Services.Inventory
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ProductService>.Instance;
+            _featureService = featureService;
         }
 
         // ── Queries ─────────────────────────────────────────────
@@ -110,8 +118,13 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult<ProductDto>> CreateAsync(CreateProductDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<ProductDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "Product", 0);
+            // Feature Guard — block operation if Inventory module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<ProductDto>(_featureService, FeatureKeys.Inventory, ct);
+                if (guard != null) return guard;
+            }
 
             var vr = await _createValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
@@ -126,7 +139,8 @@ namespace MarcoERP.Application.Services.Inventory
                 var product = new Product(
                     dto.Code, dto.NameAr, dto.NameEn, dto.CategoryId, dto.BaseUnitId,
                     dto.CostPrice, dto.DefaultSalePrice, dto.MinimumStock, dto.ReorderLevel,
-                    dto.VatRate, dto.Barcode, dto.Description);
+                    dto.VatRate, dto.Barcode, dto.Description,
+                    dto.WholesalePrice, dto.RetailPrice, dto.ImagePath, dto.MaximumStock);
 
                 if (dto.DefaultSupplierId.HasValue)
                     product.SetDefaultSupplier(dto.DefaultSupplierId);
@@ -159,9 +173,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult<ProductDto>> UpdateAsync(UpdateProductDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<ProductDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "Product", dto.Id);
             var vr = await _updateValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<ProductDto>.Failure(
@@ -175,7 +187,7 @@ namespace MarcoERP.Application.Services.Inventory
             {
                 product.Update(dto.NameAr, dto.NameEn, dto.CategoryId, dto.DefaultSalePrice,
                     dto.MinimumStock, dto.ReorderLevel, dto.VatRate, dto.Barcode, dto.Description,
-                    dto.DefaultSupplierId);
+                    dto.DefaultSupplierId, dto.WholesalePrice, dto.RetailPrice, dto.ImagePath, dto.MaximumStock);
 
                 product.UpdateCostPrice(dto.CostPrice);
 
@@ -197,9 +209,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "Product", id);
             var product = await _productRepo.GetByIdAsync(id, ct);
             if (product == null) return ServiceResult.Failure(ProductNotFoundMessage);
 
@@ -211,9 +221,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "Product", id);
             var product = await _productRepo.GetByIdAsync(id, ct);
             if (product == null) return ServiceResult.Failure(ProductNotFoundMessage);
 
@@ -225,15 +233,13 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult> DeleteAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteAsync", "Product", id);
             var product = await _productRepo.GetByIdAsync(id, ct);
             if (product == null) return ServiceResult.Failure(ProductNotFoundMessage);
 
             // Check if product has stock
             var totalStock = await _warehouseProductRepo.GetTotalStockAsync(id, ct);
-            if (totalStock > 0)
+            if (totalStock != 0)
                 return ServiceResult.Failure($"لا يمكن حذف صنف له رصيد ({totalStock:N2}).");
 
             product.SoftDelete(_currentUser.Username, _dateTimeProvider.UtcNow);

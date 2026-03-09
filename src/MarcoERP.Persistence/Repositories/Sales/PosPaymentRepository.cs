@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -26,12 +27,14 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<PosPayment> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.PosPayments
+                .AsNoTracking()
                 .FirstOrDefaultAsync(pp => pp.Id == id, cancellationToken);
         }
 
         public async Task<IReadOnlyList<PosPayment>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _context.PosPayments
+                .AsNoTracking()
                 .OrderByDescending(pp => pp.PaidAt)
                 .ToListAsync(cancellationToken);
         }
@@ -43,7 +46,12 @@ namespace MarcoERP.Persistence.Repositories.Sales
 
         public void Update(PosPayment entity)
         {
-            _context.PosPayments.Update(entity);
+            ArgumentNullException.ThrowIfNull(entity);
+            var local = _context.PosPayments.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && local != entity)
+                _context.Entry(local).CurrentValues.SetValues(entity);
+            else
+                _context.Entry(entity).State = EntityState.Modified;
         }
 
         public void Remove(PosPayment entity)
@@ -56,6 +64,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<PosPayment>> GetByInvoiceAsync(int salesInvoiceId, CancellationToken ct = default)
         {
             return await _context.PosPayments
+                .AsNoTracking()
                 .Where(pp => pp.SalesInvoiceId == salesInvoiceId)
                 .OrderBy(pp => pp.PaidAt)
                 .ToListAsync(ct);
@@ -64,6 +73,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<PosPayment>> GetBySessionAsync(int posSessionId, CancellationToken ct = default)
         {
             return await _context.PosPayments
+                .AsNoTracking()
                 .Where(pp => pp.PosSessionId == posSessionId)
                 .OrderBy(pp => pp.PaidAt)
                 .ToListAsync(ct);

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Inventory;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Inventory;
 using MarcoERP.WpfUI.Common;
 
@@ -15,13 +16,23 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
     /// </summary>
     public sealed class BulkPriceUpdateViewModel : BaseViewModel
     {
+        private const string PercentageMode = "Percentage";
+        private const string DirectMode = "Direct";
+        private const string SalePriceTarget = "SalePrice";
+        private const string MajorUnitLevel = "MajorUnit";
+        private const string MinorUnitLevel = "MinorUnit";
+
         private readonly IProductService _productService;
         private readonly IBulkPriceUpdateService _bulkService;
+        private readonly ILineCalculationService _lineCalculationService;
+        private readonly IDialogService _dialog;
 
-        public BulkPriceUpdateViewModel(IProductService productService, IBulkPriceUpdateService bulkService)
+        public BulkPriceUpdateViewModel(IProductService productService, IBulkPriceUpdateService bulkService, ILineCalculationService lineCalculationService, IDialogService dialog)
         {
             _productService = productService ?? throw new ArgumentNullException(nameof(productService));
             _bulkService = bulkService ?? throw new ArgumentNullException(nameof(bulkService));
+            _lineCalculationService = lineCalculationService ?? throw new ArgumentNullException(nameof(lineCalculationService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllProducts = new ObservableCollection<SelectableProduct>();
             PreviewItems = new ObservableCollection<BulkPricePreviewItemDto>();
@@ -40,7 +51,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
 
         // ── Form Fields ─────────────────────────────────────────
 
-        private string _selectedMode = "Percentage";
+        private string _selectedMode = PercentageMode;
         public string SelectedMode
         {
             get => _selectedMode;
@@ -55,14 +66,82 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             }
         }
 
-        public bool IsPercentageMode => SelectedMode == "Percentage";
-        public bool IsDirectMode => SelectedMode == "Direct";
+        public bool IsPercentageMode
+        {
+            get => SelectedMode == PercentageMode;
+            set
+            {
+                if (value && SelectedMode != PercentageMode)
+                    SelectedMode = PercentageMode;
+            }
+        }
 
-        private string _selectedPriceTarget = "SalePrice";
+        public bool IsDirectMode
+        {
+            get => SelectedMode == DirectMode;
+            set
+            {
+                if (value && SelectedMode != DirectMode)
+                    SelectedMode = DirectMode;
+            }
+        }
+
+        private string _selectedPriceTarget = SalePriceTarget;
         public string SelectedPriceTarget
         {
             get => _selectedPriceTarget;
             set => SetProperty(ref _selectedPriceTarget, value);
+        }
+
+        private string _selectedUnitLevel = MajorUnitLevel;
+        public string SelectedUnitLevel
+        {
+            get => _selectedUnitLevel;
+            set
+            {
+                if (SetProperty(ref _selectedUnitLevel, value))
+                {
+                    OnPropertyChanged(nameof(IsMajorUnitLevel));
+                    OnPropertyChanged(nameof(IsMinorUnitLevel));
+                    OnPropertyChanged(nameof(ShowMajorColumns));
+                    OnPropertyChanged(nameof(ShowMinorColumns));
+                    OnPropertyChanged(nameof(ShowMajorPreviewColumns));
+                    OnPropertyChanged(nameof(ShowMinorPreviewColumns));
+                    OnPropertyChanged(nameof(CanPreview));
+                }
+            }
+        }
+
+        public bool IsMajorUnitLevel
+        {
+            get => SelectedUnitLevel == MajorUnitLevel;
+            set
+            {
+                if (value && SelectedUnitLevel != MajorUnitLevel)
+                    SelectedUnitLevel = MajorUnitLevel;
+            }
+        }
+
+        public bool IsMinorUnitLevel
+        {
+            get => SelectedUnitLevel == MinorUnitLevel;
+            set
+            {
+                if (value && SelectedUnitLevel != MinorUnitLevel)
+                    SelectedUnitLevel = MinorUnitLevel;
+            }
+        }
+
+        public bool ShowMajorColumns => SelectedUnitLevel == MajorUnitLevel;
+        public bool ShowMinorColumns => SelectedUnitLevel == MinorUnitLevel;
+        public bool ShowMajorPreviewColumns => ShowPreview && ShowMajorColumns;
+        public bool ShowMinorPreviewColumns => ShowPreview && ShowMinorColumns;
+
+        private bool _syncByConversion = true;
+        public bool SyncByConversion
+        {
+            get => _syncByConversion;
+            set => SetProperty(ref _syncByConversion, value);
         }
 
         private decimal _percentageChange;
@@ -91,6 +170,9 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                     foreach (var p in AllProducts)
                         p.ClearPreview();
                 }
+
+                OnPropertyChanged(nameof(ShowMajorPreviewColumns));
+                OnPropertyChanged(nameof(ShowMinorPreviewColumns));
             }
         }
 
@@ -121,8 +203,9 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             {
                 var anySelected = AllProducts.Any(p => p.IsSelected);
                 if (!anySelected) return false;
-                if (SelectedMode == "Percentage" && PercentageChange == 0) return false;
-                if (SelectedMode == "Direct" && DirectPrice < 0) return false;
+                if (SelectedUnitLevel == MinorUnitLevel && !AllProducts.Any(p => p.IsSelected && p.HasMinorUnit)) return false;
+                if (SelectedMode == PercentageMode && PercentageChange == 0) return false;
+                if (SelectedMode == DirectMode && DirectPrice < 0) return false;
                 return true;
             }
         }
@@ -133,7 +216,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
 
         // ── Load ─────────────────────────────────────────────────
 
-        private ObservableCollection<SelectableProduct> _allProductsBackup = new();
+        private readonly ObservableCollection<SelectableProduct> _allProductsBackup = new();
 
         public async Task LoadProductsAsync()
         {
@@ -149,13 +232,32 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                     _allProductsBackup.Clear();
                     foreach (var p in result.Data)
                     {
+                        var minorUnit = p.Units?
+                            .Where(u => u.UnitId != p.BaseUnitId && u.ConversionFactor > 0)
+                            .OrderByDescending(u => u.ConversionFactor)
+                            .FirstOrDefault();
+
+                        var minorSalePrice = minorUnit?.SalePrice ?? (minorUnit != null
+                            ? _lineCalculationService.ConvertPrice(p.DefaultSalePrice, minorUnit.ConversionFactor)
+                            : 0);
+
+                        var minorCostPrice = minorUnit?.PurchasePrice ?? (minorUnit != null
+                            ? _lineCalculationService.ConvertPrice(p.CostPrice, minorUnit.ConversionFactor)
+                            : 0);
+
                         var sp = new SelectableProduct
                         {
                             Id = p.Id,
                             Code = p.Code,
                             NameAr = p.NameAr,
+                            BaseUnitName = p.BaseUnitName,
                             DefaultSalePrice = p.DefaultSalePrice,
                             CostPrice = p.CostPrice,
+                            MinorUnitName = minorUnit?.UnitNameAr,
+                            MinorUnitFactor = minorUnit?.ConversionFactor ?? 0,
+                            MinorSalePrice = minorSalePrice,
+                            MinorCostPrice = minorCostPrice,
+                            HasMinorUnit = minorUnit != null,
                             IsSelected = false
                         };
                         AllProducts.Add(sp);
@@ -210,6 +312,8 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                             p.NewPrice = preview.NewPrice;
                             p.Difference = preview.Difference;
                             p.PercentageChange = preview.PercentageChange;
+                            p.PreviewMajorPrice = preview.NewMajorPrice;
+                            p.PreviewMinorPrice = preview.NewMinorPrice;
                         }
                         else
                         {
@@ -241,11 +345,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
 
         private async Task ApplyAsync()
         {
-            var confirm = MessageBox.Show(
-                $"سيتم تحديث أسعار {PreviewItems.Count} صنف.\nهل أنت متأكد؟",
-                "تأكيد التحديث",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"سيتم تحديث أسعار {PreviewItems.Count} صنف.\nهل أنت متأكد؟", "تأكيد التحديث")) return;
 
             IsBusy = true;
             ClearError();
@@ -283,13 +383,20 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
 
         private BulkPriceUpdateRequestDto BuildRequest()
         {
+            var selectedIds = AllProducts
+                .Where(p => p.IsSelected && (SelectedUnitLevel != MinorUnitLevel || p.HasMinorUnit))
+                .Select(p => p.Id)
+                .ToList();
+
             return new BulkPriceUpdateRequestDto
             {
-                ProductIds = AllProducts.Where(p => p.IsSelected).Select(p => p.Id).ToList(),
+                ProductIds = selectedIds,
                 Mode = SelectedMode,
                 PercentageChange = PercentageChange,
                 DirectPrice = DirectPrice,
-                PriceTarget = SelectedPriceTarget
+                PriceTarget = SelectedPriceTarget,
+                UnitLevel = SelectedUnitLevel,
+                SyncByConversion = SyncByConversion
             };
         }
 
@@ -317,8 +424,14 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         public int Id { get; set; }
         public string Code { get; set; }
         public string NameAr { get; set; }
+        public string BaseUnitName { get; set; }
         public decimal DefaultSalePrice { get; set; }
         public decimal CostPrice { get; set; }
+        public string MinorUnitName { get; set; }
+        public decimal MinorUnitFactor { get; set; }
+        public decimal MinorSalePrice { get; set; }
+        public decimal MinorCostPrice { get; set; }
+        public bool HasMinorUnit { get; set; }
 
         private bool _isSelected;
         public bool IsSelected
@@ -350,11 +463,27 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             set => SetProperty(ref _percentageChange, value);
         }
 
+        private decimal _previewMajorPrice;
+        public decimal PreviewMajorPrice
+        {
+            get => _previewMajorPrice;
+            set => SetProperty(ref _previewMajorPrice, value);
+        }
+
+        private decimal _previewMinorPrice;
+        public decimal PreviewMinorPrice
+        {
+            get => _previewMinorPrice;
+            set => SetProperty(ref _previewMinorPrice, value);
+        }
+
         public void ClearPreview()
         {
             NewPrice = 0;
             Difference = 0;
             PercentageChange = 0;
+            PreviewMajorPrice = 0;
+            PreviewMinorPrice = 0;
         }
     }
 }

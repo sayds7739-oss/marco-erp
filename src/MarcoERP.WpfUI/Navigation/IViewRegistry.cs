@@ -1,5 +1,8 @@
 using System;
+using System.Threading.Tasks;
 using System.Windows.Controls;
+using System.Windows.Media;
+using MaterialDesignThemes.Wpf;
 
 namespace MarcoERP.WpfUI.Navigation
 {
@@ -9,8 +12,12 @@ namespace MarcoERP.WpfUI.Navigation
             where TView : UserControl
             where TViewModel : class;
 
+        void Register<TView, TViewModel>(string key, string title, PackIconKind iconKind, Brush iconBrush = null)
+            where TView : UserControl
+            where TViewModel : class;
+
         bool TryGet(string key, out NavigationRoute route);
 
-        UserControl CreateView(string key, IServiceProvider serviceProvider);
+        Task<UserControl> CreateViewAsync(string key, IServiceProvider serviceProvider);
     }
 }

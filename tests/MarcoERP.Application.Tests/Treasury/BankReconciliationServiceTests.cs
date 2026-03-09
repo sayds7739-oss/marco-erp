@@ -25,6 +25,7 @@ namespace MarcoERP.Application.Tests.Treasury
         private readonly Mock<ICurrentUserService> _currentUserMock = new();
         private readonly Mock<IValidator<CreateBankReconciliationDto>> _createValidatorMock = new();
         private readonly Mock<IValidator<CreateBankReconciliationItemDto>> _itemValidatorMock = new();
+        private readonly Mock<IValidator<UpdateBankReconciliationDto>> _updateValidatorMock = new();
 
         public BankReconciliationServiceTests()
         {
@@ -39,7 +40,8 @@ namespace MarcoERP.Application.Tests.Treasury
             _unitOfWorkMock.Object,
             _currentUserMock.Object,
             _createValidatorMock.Object,
-            _itemValidatorMock.Object);
+            _itemValidatorMock.Object,
+            _updateValidatorMock.Object);
 
         private void SetupAuth(bool authenticated = true, bool hasPermission = true)
         {

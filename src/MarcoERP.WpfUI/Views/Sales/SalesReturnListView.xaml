@@ -57,9 +57,9 @@
                       CanUserAddRows="False" CanUserDeleteRows="False"
                       SelectionMode="Single" GridLinesVisibility="Horizontal"
                       HeadersVisibility="Column" FontSize="12"
-                      RowHeight="38" ColumnHeaderHeight="42" BorderThickness="0"
-                      materialDesign:DataGridAssist.CellPadding="12 8"
-                      materialDesign:DataGridAssist.ColumnHeaderPadding="12 10"
+                      RowHeight="32" ColumnHeaderHeight="34" BorderThickness="0"
+                      materialDesign:DataGridAssist.CellPadding="8 4"
+                      materialDesign:DataGridAssist.ColumnHeaderPadding="8 6"
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
                       EnableRowVirtualization="True">
@@ -67,33 +67,75 @@
                     <MouseBinding Gesture="LeftDoubleClick" Command="{Binding OpenDetailCommand}" />
                 </DataGrid.InputBindings>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="رقم المرتجع" Binding="{Binding ReturnNumber}" Width="130" />
-                    <DataGridTextColumn Header="التاريخ" Binding="{Binding ReturnDate, StringFormat=yyyy-MM-dd}" Width="110" />
+                    <DataGridTextColumn Header="رقم المرتجع" Binding="{Binding ReturnNumber}" Width="130">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                                <Setter Property="FlowDirection" Value="LeftToRight" />
+                                <Setter Property="Foreground" Value="#546E7A" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="التاريخ" Binding="{Binding ReturnDate, StringFormat='{}{0:yyyy-MM-dd}'}" Width="110">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FlowDirection" Value="LeftToRight" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                     <DataGridTextColumn Header="العميل" Binding="{Binding CustomerNameAr}" Width="*" MinWidth="150" />
                     <DataGridTextColumn Header="الإجمالي" Binding="{Binding NetTotal, StringFormat=N2}" Width="120">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Center" />
-                                <Setter Property="FontWeight" Value="SemiBold" />
+                                <Setter Property="FontWeight" Value="Bold" />
+                                <Setter Property="FlowDirection" Value="LeftToRight" />
+                                <Setter Property="TextAlignment" Value="Right" />
+                                <Setter Property="Foreground" Value="#1B5E20" />
                             </Style>
                         </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                    <DataGridTextColumn Header="الحالة" Binding="{Binding Status, Converter={StaticResource StatusToArabicConverter}}" Width="90">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Center" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Status}" Value="Posted">
-                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
-                                        <Setter Property="FontWeight" Value="SemiBold" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding Status}" Value="Cancelled">
-                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
-                                    </DataTrigger>
-                                </Style.Triggers>
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}">
+                                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                <Setter Property="FontWeight" Value="Bold" />
                             </Style>
-                        </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn.HeaderStyle>
                     </DataGridTextColumn>
+                    <DataGridTemplateColumn Header="الحالة" Width="90">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="8" Padding="8,2" HorizontalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#FFF3E0" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Status}" Value="Posted">
+                                                    <Setter Property="Background" Value="#E8F5E9" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                    <Setter Property="Background" Value="#FFEBEE" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding Status, Converter={StaticResource StatusToArabicConverter}}" FontSize="11" HorizontalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#E65100" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Posted">
+                                                        <Setter Property="Foreground" Value="#2E7D32" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                        <Setter Property="Foreground" Value="#C62828" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
         </Border>

@@ -39,18 +39,23 @@ namespace MarcoERP.Application.Interfaces.Accounting
         // ── Commands ────────────────────────────────────────────
 
         /// <summary>Creates a new account with hierarchy validation.</summary>
+        [RequiresPermission(PermissionKeys.AccountsCreate)]
         Task<ServiceResult<AccountDto>> CreateAsync(CreateAccountDto dto, CancellationToken cancellationToken = default);
 
         /// <summary>Updates an existing account's mutable fields.</summary>
+        [RequiresPermission(PermissionKeys.AccountsEdit)]
         Task<ServiceResult<AccountDto>> UpdateAsync(UpdateAccountDto dto, CancellationToken cancellationToken = default);
 
         /// <summary>Deactivates an account (ACC-INV-10, ACC-INV-11).</summary>
+        [RequiresPermission(PermissionKeys.AccountsEdit)]
         Task<ServiceResult> DeactivateAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>Reactivates a previously deactivated account.</summary>
+        [RequiresPermission(PermissionKeys.AccountsEdit)]
         Task<ServiceResult> ActivateAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>Soft-deletes an account (ACC-INV-08, ACC-INV-10).</summary>
+        [RequiresPermission(PermissionKeys.AccountsDelete)]
         Task<ServiceResult> DeleteAsync(int id, CancellationToken cancellationToken = default);
     }
 }

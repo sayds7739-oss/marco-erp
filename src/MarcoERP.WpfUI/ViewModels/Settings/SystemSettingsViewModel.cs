@@ -2,8 +2,10 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Settings;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Settings;
 
 namespace MarcoERP.WpfUI.ViewModels.Settings
@@ -15,10 +17,14 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
     public sealed class SystemSettingsViewModel : BaseViewModel
     {
         private readonly ISystemSettingsService _settingsService;
+        private readonly IDataPurgeService _dataPurgeService;
+        private readonly IDialogService _dialog;
 
-        public SystemSettingsViewModel(ISystemSettingsService settingsService)
+        public SystemSettingsViewModel(ISystemSettingsService settingsService, IDataPurgeService dataPurgeService, IDialogService dialog)
         {
             _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+            _dataPurgeService = dataPurgeService ?? throw new ArgumentNullException(nameof(dataPurgeService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllSettings = new ObservableCollection<SystemSettingDto>();
             GroupNames = new ObservableCollection<string>();
@@ -26,6 +32,7 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
 
             LoadCommand = new AsyncRelayCommand(LoadSettingsAsync);
             SaveAllCommand = new AsyncRelayCommand(SaveAllAsync);
+            PurgeDataCommand = new AsyncRelayCommand(PurgeDataAsync, () => !IsBusy);
         }
 
         // ── Collections ──────────────────────────────────────────
@@ -47,10 +54,46 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
             }
         }
 
+        private bool _keepCustomers = true;
+        public bool KeepCustomers
+        {
+            get => _keepCustomers;
+            set => SetProperty(ref _keepCustomers, value);
+        }
+
+        private bool _keepSuppliers = true;
+        public bool KeepSuppliers
+        {
+            get => _keepSuppliers;
+            set => SetProperty(ref _keepSuppliers, value);
+        }
+
+        private bool _keepProducts = true;
+        public bool KeepProducts
+        {
+            get => _keepProducts;
+            set => SetProperty(ref _keepProducts, value);
+        }
+
+        private bool _keepSalesRepresentatives = true;
+        public bool KeepSalesRepresentatives
+        {
+            get => _keepSalesRepresentatives;
+            set => SetProperty(ref _keepSalesRepresentatives, value);
+        }
+
+        private string _purgeSummary;
+        public string PurgeSummary
+        {
+            get => _purgeSummary;
+            set => SetProperty(ref _purgeSummary, value);
+        }
+
         // ── Commands ─────────────────────────────────────────────
 
         public ICommand LoadCommand { get; }
         public ICommand SaveAllCommand { get; }
+        public ICommand PurgeDataCommand { get; }
 
         // ── Load ─────────────────────────────────────────────────
 
@@ -101,7 +144,8 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
             ClearError();
             try
             {
-                var updates = FilteredSettings
+                // Save ALL settings, not just the currently filtered group
+                var updates = AllSettings
                     .Select(s => new UpdateSystemSettingDto
                     {
                         SettingKey = s.SettingKey,
@@ -140,6 +184,67 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
 
             foreach (var s in source)
                 FilteredSettings.Add(s);
+        }
+
+        private async Task PurgeDataAsync()
+        {
+            var confirmationText =
+                "سيتم مسح البيانات التشغيلية (فواتير، سندات، قيود، حركات مخزون...) من قاعدة البيانات.\n\n" +
+                $"- إبقاء العملاء: {(KeepCustomers ? "نعم" : "لا")}\n" +
+                $"- إبقاء الموردين: {(KeepSuppliers ? "نعم" : "لا")}\n" +
+                $"- إبقاء الأصناف: {(KeepProducts ? "نعم" : "لا")}\n" +
+                $"- إبقاء مندوبي المبيعات: {(KeepSalesRepresentatives ? "نعم" : "لا")}\n\n" +
+                "هل تريد المتابعة؟";
+
+            if (!_dialog.Confirm(
+                confirmationText,
+                "تأكيد مسح البيانات"))
+                return;
+
+            IsBusy = true;
+            ClearError();
+            try
+            {
+                var options = new DataPurgeOptionsDto
+                {
+                    KeepCustomers = KeepCustomers,
+                    KeepSuppliers = KeepSuppliers,
+                    KeepProducts = KeepProducts,
+                    KeepSalesRepresentatives = KeepSalesRepresentatives
+                };
+
+                var result = await _dataPurgeService.PurgeAsync(options);
+                if (result.IsFailure)
+                {
+                    ErrorMessage = result.ErrorMessage;
+                    return;
+                }
+
+                var topItems = string.Join("\n", result.Data.Items
+                    .Where(i => i.DeletedRows > 0)
+                    .OrderByDescending(i => i.DeletedRows)
+                    .Take(8)
+                    .Select(i => $"- {i.EntityName}: {i.DeletedRows:N0}"));
+
+                PurgeSummary =
+                    $"آخر تنفيذ: {result.Data.ExecutedAtUtc:yyyy-MM-dd HH:mm} UTC | " +
+                    $"إجمالي الصفوف المحذوفة: {result.Data.TotalDeletedRows:N0}";
+
+                StatusMessage = "تم مسح البيانات بنجاح.";
+                _dialog.ShowInfo(
+                    $"تم تنفيذ مسح البيانات بنجاح.\n\nإجمالي الصفوف المحذوفة: {result.Data.TotalDeletedRows:N0}\n\n{topItems}",
+                    "نجاح العملية");
+
+                await LoadSettingsAsync();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = FriendlyErrorMessage("مسح البيانات", ex);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
         }
     }
 }

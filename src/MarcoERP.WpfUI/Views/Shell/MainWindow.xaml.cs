@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -115,6 +116,7 @@ namespace MarcoERP.WpfUI.Views.Shell
         /// <summary>Phase 7B: 5 clicks within 3 seconds on the shield icon.</summary>
         private void GovernanceTrigger_Click(object sender, MouseButtonEventArgs e)
         {
+            // TODO: Replace with IDateTimeProvider when refactored — code-behind cannot easily use DI
             var now = DateTime.UtcNow;
 
             if (_governanceClickCount == 0 || (now - _governanceFirstClickTime) > ClickWindow)
@@ -179,17 +181,22 @@ namespace MarcoERP.WpfUI.Views.Shell
         private void OpenGovernanceConsole(string governanceUser, IServiceScope scope)
         {
             var consoleView = scope.ServiceProvider.GetRequiredService<GovernanceConsoleView>();
+            var consoleVm = scope.ServiceProvider.GetRequiredService<MarcoERP.WpfUI.ViewModels.Settings.GovernanceConsoleViewModel>();
+            consoleView.DataContext = consoleVm;
 
             var governanceWindow = new Window
             {
                 Title = $"وحدة التحكم — {governanceUser}",
                 Content = consoleView,
-                Width = 1100,
-                Height = 700,
+                Width = 900,
+                Height = 580,
+                MinWidth = 700,
+                MinHeight = 450,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
                 FlowDirection = FlowDirection.RightToLeft,
-                Background = System.Windows.Media.Brushes.White
+                Background = System.Windows.Media.Brushes.White,
+                ResizeMode = ResizeMode.CanResizeWithGrip
             };
 
             governanceWindow.Closed += (_, _) => scope.Dispose();
@@ -225,20 +232,36 @@ namespace MarcoERP.WpfUI.Views.Shell
 
         private async void MainWindow_OnClosing(object sender, CancelEventArgs e)
         {
+            // AUTH-08: Stop session timer to prevent resource leak
+            _sessionTimer?.Stop();
+            _sessionTimer = null;
+
             if (_allowClose)
                 return;
 
             if (DataContext is not MainWindowViewModel vm)
                 return;
 
-            if (vm.CurrentView?.DataContext is not IDirtyStateAware dirty || !dirty.IsDirty)
+            // Check ALL open tabs for unsaved changes, not just the active one
+            var dirtyTabs = vm.OpenTabs
+                .Where(t => t.View?.DataContext is IDirtyStateAware d && d.IsDirty)
+                .ToList();
+
+            if (dirtyTabs.Count == 0)
                 return;
 
             e.Cancel = true;
 
-            var canClose = await DirtyStateGuard.ConfirmContinueAsync(dirty);
-            if (!canClose)
-                return;
+            // Prompt for each dirty tab
+            foreach (var tab in dirtyTabs)
+            {
+                if (tab.View?.DataContext is not IDirtyStateAware dirty)
+                    continue;
+
+                var canClose = await DirtyStateGuard.ConfirmContinueAsync(dirty, tab.Title);
+                if (!canClose)
+                    return; // User chose to cancel — abort closing
+            }
 
             _allowClose = true;
             Close();

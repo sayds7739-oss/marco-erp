@@ -1,0 +1,52 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net6.0</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <TargetFrameworks>$(TargetFrameworks);net462</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>../../../FastReport.Plugins.snk</AssemblyOriginatorKeyFile>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <Copyright>Fast Reports Inc.</Copyright>
+    <Company>Fast Reports Inc.</Company>
+    <PackageLicenseUrl>https://github.com/FastReports/FastReport/blob/master/LICENSE.md</PackageLicenseUrl>
+    <PackageProjectUrl>https://www.fast-report.com/products/fast-report-net</PackageProjectUrl>
+    <Authors>Fast Reports Inc.</Authors>
+    <Product>FastReport</Product>
+    <PackageId>FastReport.OpenSource.Export.PdfSimple</PackageId>
+    <PackageIconUrl>https://www.fast-report.com/download/images/frlogo-big.png</PackageIconUrl>
+    <PackageTags>reporting, reports, pdf, core</PackageTags>
+    <Version>1.0.0</Version>
+    <Configurations>Debug;Release</Configurations>
+    <Description>
+      FastReport Open Source provides a free report generator for .NET/.NET Core/.NET Framework. You can use the FastReport Open Source in MVC, Web API, console applications.
+      
+      FastReport is written in C# and it is compatible with .NET Standard 2.0 and higher. Extendable FastReport architecture allows creating your own objects, export filters, wizards, and DB engines.
+      
+      PDF export is available as a plugin. You can see an example of its use here. If this export is not enough for you and you need a full-featured PDF export with encryption, digital signing and fonts embedding - take a look at FastReport .NET Core.
+    </Description>
+    <RepositoryUrl>https://github.com/FastReports/FastReport</RepositoryUrl>
+
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!--See https://devblogs.microsoft.com/dotnet/producing-packages-with-source-link/#deterministic-builds -->
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\FastReport.OpenSource\FastReport.OpenSource.csproj" />
+  </ItemGroup>
+
+  <!--Source Link-->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>

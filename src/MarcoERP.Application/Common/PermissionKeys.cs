@@ -2,7 +2,7 @@ namespace MarcoERP.Application.Common
 {
     /// <summary>
     /// Centralized permission key constants.
-    /// Matches the 29 permission keys seeded in SecuritySeed.
+    /// Matches the 41 permission keys seeded in SecuritySeed.
     /// AUTHZ-01: Authorization checked at Application layer.
     /// </summary>
     public static class PermissionKeys
@@ -69,11 +69,19 @@ namespace MarcoERP.Application.Common
         public const string InventoryAdjustmentCreate = "inventoryadjustment.create";
         public const string InventoryAdjustmentPost = "inventoryadjustment.post";
 
+        // ── Opening Balance ───────────────────────────────────
+        public const string OpeningBalanceView = "openingbalance.view";
+        public const string OpeningBalanceManage = "openingbalance.manage";
+
         // ── Governance (Phase 7) ──────────────────────────────
         /// <summary>
         /// Required to access the Governance Console.
         /// NOT assigned to any default role — must be granted explicitly.
         /// </summary>
         public const string GovernanceAccess = "governance.access";
+
+        // ── Recycle Bin ─────────────────────────────────────
+        public const string RecycleBinView = "recyclebin.view";
+        public const string RecycleBinRestore = "recyclebin.restore";
     }
 }

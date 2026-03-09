@@ -159,9 +159,47 @@ namespace MarcoERP.Domain.Entities.Inventory
         {
             EnsureDraft("لا يمكن تعديل بنود تسوية مرحّلة أو ملغاة.");
 
-            _lines.Clear();
-            if (newLines != null)
-                _lines.AddRange(newLines);
+            var incomingLines = (newLines ?? Enumerable.Empty<InventoryAdjustmentLine>()).ToList();
+            var existingById = _lines
+                .Where(l => l.Id > 0)
+                .ToDictionary(l => l.Id);
+
+            var incomingIds = new HashSet<int>();
+            var newIncomingLines = new List<InventoryAdjustmentLine>();
+
+            foreach (var incoming in incomingLines)
+            {
+                if (incoming.Id > 0)
+                {
+                    if (!incomingIds.Add(incoming.Id))
+                        throw new InventoryDomainException("تكرار معرف بند التسوية غير مسموح.");
+
+                    if (!existingById.TryGetValue(incoming.Id, out var existingLine))
+                        throw new InventoryDomainException("لا يمكن تحديث بند غير موجود في التسوية.");
+
+                    existingLine.UpdateDetails(
+                        incoming.ProductId,
+                        incoming.UnitId,
+                        incoming.SystemQuantity,
+                        incoming.ActualQuantity,
+                        incoming.ConversionFactor,
+                        incoming.UnitCost);
+                }
+                else
+                {
+                    newIncomingLines.Add(incoming);
+                }
+            }
+
+            var linesToRemove = existingById.Values
+                .Where(l => !incomingIds.Contains(l.Id))
+                .ToList();
+
+            foreach (var line in linesToRemove)
+                _lines.Remove(line);
+
+            _lines.RemoveAll(l => l.Id == 0);
+            _lines.AddRange(newIncomingLines);
 
             RecalculateTotalCostDifference();
         }

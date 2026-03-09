@@ -13,8 +13,12 @@ using MarcoERP.Application.Mappers.Accounting;
 using MarcoERP.Domain.Entities.Accounting;
 using MarcoERP.Domain.Entities.Accounting.Policies;
 using MarcoERP.Domain.Enums;
+using MarcoERP.Application.Interfaces.Settings;
+using MarcoERP.Domain.Exceptions;
 using MarcoERP.Domain.Exceptions.Accounting;
 using MarcoERP.Domain.Interfaces;
+using MarcoERP.Domain.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Accounting
 {
@@ -36,6 +40,9 @@ namespace MarcoERP.Application.Services.Accounting
         private readonly IAuditLogger _auditLogger;
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IValidator<CreateJournalEntryDto> _createValidator;
+        private readonly ISystemSettingRepository _systemSettingRepository;
+        private readonly ILogger<JournalEntryService> _logger;
+        private readonly IFeatureService _featureService;
 
         public JournalEntryService(
             IJournalEntryRepository journalEntryRepository,
@@ -46,7 +53,10 @@ namespace MarcoERP.Application.Services.Accounting
             ICurrentUserService currentUser,
             IAuditLogger auditLogger,
             IDateTimeProvider dateTimeProvider,
-            IValidator<CreateJournalEntryDto> createValidator)
+            IValidator<CreateJournalEntryDto> createValidator,
+            ISystemSettingRepository systemSettingRepository = null,
+            ILogger<JournalEntryService> logger = null,
+            IFeatureService featureService = null)
         {
             _journalEntryRepository = journalEntryRepository ?? throw new ArgumentNullException(nameof(journalEntryRepository));
             _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
@@ -57,6 +67,9 @@ namespace MarcoERP.Application.Services.Accounting
             _auditLogger = auditLogger ?? throw new ArgumentNullException(nameof(auditLogger));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
+            _systemSettingRepository = systemSettingRepository;
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<JournalEntryService>.Instance;
+            _featureService = featureService;
         }
 
         // ── Queries ─────────────────────────────────────────────
@@ -118,8 +131,23 @@ namespace MarcoERP.Application.Services.Accounting
         public async Task<ServiceResult<JournalEntryDto>> CreateDraftAsync(
             CreateJournalEntryDto dto, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check<JournalEntryDto>(_currentUser, PermissionKeys.JournalCreate);
-            if (authCheck != null) return authCheck;
+            // Defense-in-depth: auth guard
+            if (!_currentUser.IsAuthenticated)
+                return ServiceResult<JournalEntryDto>.Failure("يجب تسجيل الدخول أولاً.");
+            if (!_currentUser.HasPermission(PermissionKeys.JournalCreate))
+                return ServiceResult<JournalEntryDto>.Failure("لا تملك الصلاحية لتنفيذ هذه العملية.");
+
+            // Feature Guard — block operation if Accounting module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<JournalEntryDto>(_featureService, FeatureKeys.Accounting, cancellationToken);
+                if (guard != null) return guard;
+            }
+
+            _logger.LogInformation(
+                "CreateDraftAsync started for {Entity} operation {Operation}.",
+                nameof(JournalEntry),
+                "Create");
 
             // Step 1: DTO format validation
             var validationResult = await _createValidator.ValidateAsync(dto, cancellationToken);
@@ -187,19 +215,30 @@ namespace MarcoERP.Application.Services.Accounting
             }
 
             // Step 7: Persist + audit in one transaction
-            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            try
             {
-                await _journalEntryRepository.AddAsync(entry, cancellationToken);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _unitOfWork.ExecuteInTransactionAsync(async () =>
+                {
+                    await _journalEntryRepository.AddAsync(entry, cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-                await _auditLogger.LogAsync(
-                    "JournalEntry", entry.Id, "DraftCreated",
-                    _currentUser.Username,
-                    $"Draft '{entry.DraftCode}' created with {entry.Lines.Count} lines. Total: {entry.TotalDebit:N2}.",
-                    cancellationToken);
+                    await _auditLogger.LogAsync(
+                        "JournalEntry", entry.Id, "DraftCreated",
+                        _currentUser.Username,
+                        $"Draft '{entry.DraftCode}' created with {entry.Lines.Count} lines. Total: {entry.TotalDebit:N2}.",
+                        cancellationToken);
 
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-            }, IsolationLevel.ReadCommitted, cancellationToken);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                }, IsolationLevel.ReadCommitted, cancellationToken);
+            }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult<JournalEntryDto>.Failure("تعذر حفظ القيد بسبب تعارض تزامن. الرجاء إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult<JournalEntryDto>.Failure("رقم/مرجع القيد مستخدم بالفعل. الرجاء إعادة المحاولة.");
+            }
 
             return ServiceResult<JournalEntryDto>.Success(JournalEntryMapper.ToDto(entry));
         }
@@ -226,13 +265,28 @@ namespace MarcoERP.Application.Services.Accounting
         public async Task<ServiceResult<PostJournalResultDto>> PostAsync(
             int journalEntryId, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check<PostJournalResultDto>(_currentUser, PermissionKeys.JournalPost);
-            if (authCheck != null) return authCheck;
+            // Defense-in-depth: auth guard
+            if (!_currentUser.IsAuthenticated)
+                return ServiceResult<PostJournalResultDto>.Failure("يجب تسجيل الدخول أولاً.");
+            if (!_currentUser.HasPermission(PermissionKeys.JournalPost))
+                return ServiceResult<PostJournalResultDto>.Failure("لا تملك الصلاحية لتنفيذ هذه العملية.");
+
+            _logger.LogInformation(
+                "PostAsync started for {Entity}Id {EntityId} operation {Operation}.",
+                nameof(JournalEntry),
+                journalEntryId,
+                "Post");
 
             // Step 1+2: Load with lines
             var entry = await _journalEntryRepository.GetWithLinesAsync(journalEntryId, cancellationToken);
             if (entry == null)
                 return ServiceResult<PostJournalResultDto>.Failure("القيد غير موجود.");
+
+            if (await ProductionHardening.IsProductionModeAsync(_systemSettingRepository, cancellationToken)
+                && ProductionHardening.IsBackdated(entry.JournalDate, _dateTimeProvider.UtcNow))
+            {
+                return ServiceResult<PostJournalResultDto>.Failure("لا يمكن الترحيل بتاريخ سابق أثناء وضع الإنتاج.");
+            }
 
             // Step 3: Must be Draft
             if (entry.Status != JournalEntryStatus.Draft)
@@ -292,8 +346,15 @@ namespace MarcoERP.Application.Services.Accounting
             {
                 await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
+                    entry = await _journalEntryRepository.GetWithLinesAsync(journalEntryId, cancellationToken);
+                    if (entry == null)
+                        throw new JournalEntryDomainException("القيد غير موجود.");
+
+                    if (entry.Status != JournalEntryStatus.Draft)
+                        throw new JournalEntryDomainException("يمكن ترحيل المسودات فقط.");
+
                     // Step 11: Generate JournalNumber
-                    journalNumber = _numberGenerator.NextNumber(entry.FiscalYearId);
+                    journalNumber = await _numberGenerator.NextNumberAsync(entry.FiscalYearId, cancellationToken);
 
                     // Step 12: Post (domain method — sets Status, JournalNumber, PostedBy, PostingDate)
                     entry.Post(journalNumber, _currentUser.Username, _dateTimeProvider.UtcNow);
@@ -327,10 +388,19 @@ namespace MarcoERP.Application.Services.Accounting
             {
                 return ServiceResult<PostJournalResultDto>.Failure(ex.Message);
             }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult<PostJournalResultDto>.Failure("تعذر ترحيل القيد بسبب تعارض تزامن. الرجاء إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult<PostJournalResultDto>.Failure("تعذر ترحيل القيد بسبب تعارض في البيانات. الرجاء إعادة المحاولة.");
+            }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "PostAsync failed for JournalEntry.");
                 return ServiceResult<PostJournalResultDto>.Failure(
-                    $"فشل في ترحيل القيد: {ex.Message}");
+                    ErrorSanitizer.SanitizeGeneric(ex, "ترحيل القيد"));
             }
 
             // Step 15: Return result
@@ -346,8 +416,13 @@ namespace MarcoERP.Application.Services.Accounting
         public async Task<ServiceResult<PostJournalResultDto>> ReverseAsync(
             ReverseJournalEntryDto dto, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check<PostJournalResultDto>(_currentUser, PermissionKeys.JournalReverse);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ReverseAsync", "JournalEntry", dto.JournalEntryId);
+
+            // Defense-in-depth: auth guard
+            if (!_currentUser.IsAuthenticated)
+                return ServiceResult<PostJournalResultDto>.Failure("يجب تسجيل الدخول أولاً.");
+            if (!_currentUser.HasPermission(PermissionKeys.JournalReverse))
+                return ServiceResult<PostJournalResultDto>.Failure("لا تملك الصلاحية لتنفيذ هذه العملية.");
 
             // Load original entry
             var originalEntry = await _journalEntryRepository.GetWithLinesAsync(dto.JournalEntryId, cancellationToken);
@@ -397,7 +472,7 @@ namespace MarcoERP.Application.Services.Accounting
                 await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
                     // Generate number and auto-post the reversal entry
-                    reversalNumber = _numberGenerator.NextNumber(reversalYear.Id);
+                    reversalNumber = await _numberGenerator.NextNumberAsync(reversalYear.Id, cancellationToken);
                     reversalEntry.Post(reversalNumber, _currentUser.Username, _dateTimeProvider.UtcNow);
 
                     // Persist reversal entry first (to get its Id)
@@ -432,8 +507,9 @@ namespace MarcoERP.Application.Services.Accounting
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "ReverseAsync failed for JournalEntry.");
                 return ServiceResult<PostJournalResultDto>.Failure(
-                    $"فشل في عكس القيد: {ex.Message}");
+                    ErrorSanitizer.SanitizeGeneric(ex, "عكس القيد"));
             }
 
             return ServiceResult<PostJournalResultDto>.Success(JournalEntryMapper.ToPostResult(reversalEntry));
@@ -441,8 +517,7 @@ namespace MarcoERP.Application.Services.Accounting
 
         public async Task<ServiceResult> DeleteDraftAsync(int journalEntryId, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.JournalCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteDraftAsync", "JournalEntry", journalEntryId);
 
             var entry = await _journalEntryRepository.GetWithLinesAsync(journalEntryId, cancellationToken);
             if (entry == null)

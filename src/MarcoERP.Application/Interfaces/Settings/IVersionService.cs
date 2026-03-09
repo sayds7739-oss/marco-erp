@@ -17,6 +17,7 @@ namespace MarcoERP.Application.Interfaces.Settings
         /// Registers a new system version.
         /// Only called explicitly when publishing an official release.
         /// </summary>
+        [RequiresPermission(PermissionKeys.SettingsManage)]
         Task<ServiceResult> RegisterNewVersionAsync(string version, string description, CancellationToken ct = default);
     }
 }

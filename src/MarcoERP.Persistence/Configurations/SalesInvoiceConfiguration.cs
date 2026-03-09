@@ -9,20 +9,31 @@ namespace MarcoERP.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<SalesInvoice> builder)
         {
-            builder.ToTable("SalesInvoices");
+            builder.ToTable("SalesInvoices", t =>
+            {
+                // FIN-CK-03: Paid amount cannot exceed net total
+                t.HasCheckConstraint("CK_SalesInvoices_PaidAmount",
+                    DbProviderHelper.CheckExpr("{0} >= 0 AND {0} <= {1}", "PaidAmount", "NetTotal"));
+            });
 
             builder.HasKey(si => si.Id);
             builder.Property(si => si.Id).UseIdentityColumn();
 
-            builder.Property(si => si.RowVersion).IsRowVersion().IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(si => si.InvoiceNumber).IsRequired().HasMaxLength(30).IsUnicode(false);
             builder.Property(si => si.InvoiceDate).IsRequired().HasColumnType("date");
             builder.Property(si => si.Status).IsRequired().HasConversion<int>();
+            builder.Property(si => si.InvoiceType).IsRequired().HasConversion<int>().HasDefaultValue(Domain.Enums.InvoiceType.Cash);
+            builder.Property(si => si.PaymentMethod).IsRequired().HasConversion<int>().HasDefaultValue(Domain.Enums.PaymentMethod.Cash);
+            builder.Property(si => si.DueDate).HasColumnType("date");
             builder.Property(si => si.Subtotal).IsRequired().HasPrecision(18, 4);
             builder.Property(si => si.DiscountTotal).IsRequired().HasPrecision(18, 4);
             builder.Property(si => si.VatTotal).IsRequired().HasPrecision(18, 4);
             builder.Property(si => si.NetTotal).IsRequired().HasPrecision(18, 4);
+            builder.Property(si => si.HeaderDiscountPercent).IsRequired().HasPrecision(18, 4).HasDefaultValue(0m);
+            builder.Property(si => si.HeaderDiscountAmount).IsRequired().HasPrecision(18, 4).HasDefaultValue(0m);
+            builder.Property(si => si.DeliveryFee).IsRequired().HasPrecision(18, 4).HasDefaultValue(0m);
             builder.Property(si => si.PaidAmount).IsRequired().HasPrecision(18, 4).HasDefaultValue(0m);
             builder.Property(si => si.PaymentStatus).IsRequired().HasConversion<int>();
             builder.Ignore(si => si.BalanceDue);
@@ -45,9 +56,10 @@ namespace MarcoERP.Persistence.Configurations
 
             // Relationships
             builder.HasOne(si => si.Customer).WithMany()
-                .HasForeignKey(si => si.CustomerId).OnDelete(DeleteBehavior.Restrict);
+                .HasForeignKey(si => si.CustomerId).OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
 
-            builder.HasOne<Warehouse>().WithMany()
+            builder.HasOne(si => si.Warehouse).WithMany()
                 .HasForeignKey(si => si.WarehouseId).OnDelete(DeleteBehavior.Restrict);
 
             // Counterparty type
@@ -69,6 +81,11 @@ namespace MarcoERP.Persistence.Configurations
                 .HasForeignKey(si => si.CogsJournalEntryId).OnDelete(DeleteBehavior.Restrict)
                 .IsRequired(false);
 
+            // Commission journal entry
+            builder.HasOne<MarcoERP.Domain.Entities.Accounting.JournalEntry>().WithMany()
+                .HasForeignKey(si => si.CommissionJournalEntryId).OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
+
             builder.HasMany(si => si.Lines).WithOne()
                 .HasForeignKey(l => l.SalesInvoiceId).OnDelete(DeleteBehavior.Restrict);
 
@@ -79,9 +96,9 @@ namespace MarcoERP.Persistence.Configurations
 
             // Indexes
             // Unique index with filter: allows reusing invoice numbers for soft-deleted records
-            builder.HasIndex(si => si.InvoiceNumber).IsUnique()
-                .HasDatabaseName("IX_SalesInvoices_InvoiceNumber")
-                .HasFilter("[IsDeleted] = 0");
+            builder.HasIndex(si => new { si.CompanyId, si.InvoiceNumber }).IsUnique()
+                .HasDatabaseName("IX_SalesInvoices_Company_InvoiceNumber")
+                .HasFilter(DbProviderHelper.SoftDeleteFilter());
             builder.HasIndex(si => si.InvoiceDate)
                 .HasDatabaseName("IX_SalesInvoices_InvoiceDate");
             builder.HasIndex(si => si.CustomerId)
@@ -92,16 +109,19 @@ namespace MarcoERP.Persistence.Configurations
                 .HasDatabaseName("IX_SalesInvoices_Status");
             builder.HasIndex(si => si.JournalEntryId)
                 .HasDatabaseName("IX_SalesInvoices_JournalEntryId")
-                .HasFilter("[JournalEntryId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("JournalEntryId"));
             builder.HasIndex(si => si.CogsJournalEntryId)
                 .HasDatabaseName("IX_SalesInvoices_CogsJournalEntryId")
-                .HasFilter("[CogsJournalEntryId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("CogsJournalEntryId"));
+            builder.HasIndex(si => si.CommissionJournalEntryId)
+                .HasDatabaseName("IX_SalesInvoices_CommissionJournalEntryId")
+                .HasFilter(DbProviderHelper.IsNotNullFilter("CommissionJournalEntryId"));
             builder.HasIndex(si => si.SalesRepresentativeId)
                 .HasDatabaseName("IX_SalesInvoices_SalesRepresentativeId")
-                .HasFilter("[SalesRepresentativeId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("SalesRepresentativeId"));
             builder.HasIndex(si => si.SupplierId)
                 .HasDatabaseName("IX_SalesInvoices_SupplierId")
-                .HasFilter("[SupplierId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("SupplierId"));
         }
     }
 }

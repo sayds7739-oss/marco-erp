@@ -5,12 +5,18 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using MarcoERP.Domain.Entities.Common;
+using MarcoERP.Domain.Entities.Inventory;
+using MarcoERP.Domain.Entities.Purchases;
+using MarcoERP.Domain.Entities.Sales;
+using MarcoERP.Domain.Entities.Settings;
 
 namespace MarcoERP.Persistence.Interceptors
 {
     /// <summary>
-    /// EF Core interceptor that prevents hard deletion of any entity inheriting SoftDeletableEntity.
-    /// Enforces RECORD_PROTECTION_POLICY: financial and business records must be soft-deleted only.
+    /// EF Core interceptor that prevents hard deletion of:
+    ///   1. Any entity inheriting SoftDeletableEntity (must use SoftDelete() instead).
+    ///   2. Any entity implementing IImmutableFinancialRecord (never deletable at all).
+    /// Enforces RECORD_PROTECTION_POLICY: financial and business records must never be removed.
     /// </summary>
     public sealed class HardDeleteProtectionInterceptor : SaveChangesInterceptor
     {
@@ -35,19 +41,103 @@ namespace MarcoERP.Persistence.Interceptors
         {
             if (context == null) return;
 
-            var deletedEntities = context.ChangeTracker
+            var deletedEntries = context.ChangeTracker
+                .Entries()
+                .Where(e => e.State == EntityState.Deleted)
+                .ToList();
+
+            if (deletedEntries.Count == 0)
+                return;
+
+            if (IsProductionModeEnabled(context))
+            {
+                var prohibitedInProduction = deletedEntries
+                    .Where(e => !IsDraftEditableAggregateLine(e.Entity))
+                    .ToList();
+
+                if (prohibitedInProduction.Count == 0)
+                    return;
+
+                var entityTypes = string.Join(", ", prohibitedInProduction
+                    .Select(e => e.Entity.GetType().Name)
+                    .Distinct());
+
+                throw new InvalidOperationException(
+                    "الحذف النهائي ممنوع أثناء تفعيل وضع الإنتاج. " +
+                    $"الأنواع المتأثرة: {entityTypes}");
+            }
+
+            // ── Guard 1: SoftDeletableEntity descendants ────────────────
+            var softDeletableEntries = context.ChangeTracker
                 .Entries<SoftDeletableEntity>()
                 .Where(e => e.State == EntityState.Deleted)
                 .ToList();
 
-            if (deletedEntities.Count > 0)
+            if (softDeletableEntries.Count > 0)
             {
                 var entityTypes = string.Join(", ",
-                    deletedEntities.Select(e => e.Entity.GetType().Name).Distinct());
+                    softDeletableEntries.Select(e => e.Entity.GetType().Name).Distinct());
 
                 throw new InvalidOperationException(
-                    $"Hard deletion of soft-deletable entities is prohibited (RECORD_PROTECTION_POLICY). " +
-                    $"Use SoftDelete() instead. Affected types: {entityTypes}");
+                    $"الحذف النهائي للسجلات القابلة للحذف الناعم ممنوع (سياسة حماية السجلات). " +
+                    $"استخدم SoftDelete() بدلاً من ذلك. الأنواع المتأثرة: {entityTypes}");
+            }
+
+            // ── Guard 2: IImmutableFinancialRecord entities ─────────────
+            var immutableEntries = context.ChangeTracker
+                .Entries()
+                .Where(e => e.State == EntityState.Deleted
+                         && e.Entity is IImmutableFinancialRecord
+                         && !IsDraftEditableAggregateLine(e.Entity))
+                .ToList();
+
+            if (immutableEntries.Count > 0)
+            {
+                var entityTypes = string.Join(", ",
+                    immutableEntries.Select(e => e.Entity.GetType().Name).Distinct());
+
+                throw new InvalidOperationException(
+                    $"حذف السجلات المالية الثابتة ممنوع منعًا باتًا (سياسة حماية السجلات). " +
+                    $"هذه السجلات للإضافة فقط ولا يمكن إزالتها. الأنواع المتأثرة: {entityTypes}");
+            }
+        }
+
+        private static bool IsDraftEditableAggregateLine(object entity)
+        {
+            return entity is SalesInvoiceLine
+                or PurchaseInvoiceLine
+                or SalesReturnLine
+                or PurchaseReturnLine
+                or InventoryAdjustmentLine;
+        }
+
+        private static bool IsProductionModeEnabled(DbContext context)
+        {
+            try
+            {
+                var tracked = context.ChangeTracker
+                    .Entries<SystemSetting>()
+                    .FirstOrDefault(e => string.Equals(e.Entity.SettingKey, "IsProductionMode", StringComparison.OrdinalIgnoreCase));
+
+                var rawValue = tracked?.Entity?.SettingValue;
+
+                if (string.IsNullOrWhiteSpace(rawValue))
+                {
+                    rawValue = context.Set<SystemSetting>()
+                        .AsNoTracking()
+                        .Where(s => s.SettingKey == "IsProductionMode")
+                        .Select(s => s.SettingValue)
+                        .FirstOrDefault();
+                }
+
+                if (string.IsNullOrWhiteSpace(rawValue))
+                    return true;
+
+                return bool.TryParse(rawValue, out var parsed) ? parsed : true;
+            }
+            catch
+            {
+                return true;
             }
         }
     }

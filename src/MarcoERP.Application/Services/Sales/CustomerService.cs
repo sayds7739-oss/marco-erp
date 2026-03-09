@@ -14,6 +14,8 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Sales;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Sales;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Sales
 {
@@ -31,6 +33,8 @@ namespace MarcoERP.Application.Services.Sales
         private readonly IDateTimeProvider _dateTime;
         private readonly IValidator<CreateCustomerDto> _createValidator;
         private readonly IValidator<UpdateCustomerDto> _updateValidator;
+        private readonly ILogger<CustomerService> _logger;
+        private readonly IFeatureService _featureService;
 
         public CustomerService(
             ICustomerRepository customerRepo,
@@ -39,7 +43,9 @@ namespace MarcoERP.Application.Services.Sales
             ICurrentUserService currentUser,
             IDateTimeProvider dateTime,
             IValidator<CreateCustomerDto> createValidator,
-            IValidator<UpdateCustomerDto> updateValidator)
+            IValidator<UpdateCustomerDto> updateValidator,
+            ILogger<CustomerService> logger = null,
+            IFeatureService featureService = null)
         {
             _customerRepo = customerRepo ?? throw new ArgumentNullException(nameof(customerRepo));
             _accountRepo = accountRepo ?? throw new ArgumentNullException(nameof(accountRepo));
@@ -48,6 +54,8 @@ namespace MarcoERP.Application.Services.Sales
             _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<CustomerService>.Instance;
+            _featureService = featureService;
         }
 
         public async Task<ServiceResult<IReadOnlyList<CustomerDto>>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -80,8 +88,13 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult<CustomerDto>> CreateAsync(CreateCustomerDto dto, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check<CustomerDto>(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "Customer", 0);
+            // Feature Guard — block operation if Sales module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<CustomerDto>(_featureService, FeatureKeys.Sales, cancellationToken);
+                if (guard != null) return guard;
+            }
 
             // 1. Validate DTO
             var vr = await _createValidator.ValidateAsync(dto, cancellationToken);
@@ -106,6 +119,14 @@ namespace MarcoERP.Application.Services.Sales
                     Address = dto.Address,
                     City = dto.City,
                     TaxNumber = dto.TaxNumber,
+                    Email = dto.Email,
+                    CustomerType = dto.CustomerType,
+                    CommercialRegister = dto.CommercialRegister,
+                    Country = dto.Country,
+                    PostalCode = dto.PostalCode,
+                    ContactPerson = dto.ContactPerson,
+                    Website = dto.Website,
+                    DefaultDiscountPercent = dto.DefaultDiscountPercent,
                     PreviousBalance = dto.PreviousBalance,
                     CreditLimit = dto.CreditLimit,
                     DaysAllowed = dto.DaysAllowed,
@@ -114,17 +135,20 @@ namespace MarcoERP.Application.Services.Sales
                     Notes = dto.Notes
                 });
 
-                await _customerRepo.AddAsync(entity, cancellationToken);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-                // 4. Auto-link to Accounts Receivable GL account (1121)
-                var arAccount = await _accountRepo.GetByCodeAsync(AccountsReceivableCode, cancellationToken);
-                if (arAccount != null)
+                await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
-                    entity.SetAccountId(arAccount.Id);
-                    _customerRepo.Update(entity);
+                    await _customerRepo.AddAsync(entity, cancellationToken);
                     await _unitOfWork.SaveChangesAsync(cancellationToken);
-                }
+
+                    // 4. Auto-link to Accounts Receivable GL account (1121)
+                    var arAccount = await _accountRepo.GetByCodeAsync(AccountsReceivableCode, cancellationToken);
+                    if (arAccount != null)
+                    {
+                        entity.SetAccountId(arAccount.Id);
+                        _customerRepo.Update(entity);
+                        await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    }
+                }, cancellationToken: cancellationToken);
 
                 return ServiceResult<CustomerDto>.Success(CustomerMapper.ToDto(entity));
             }
@@ -136,9 +160,7 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult<CustomerDto>> UpdateAsync(UpdateCustomerDto dto, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check<CustomerDto>(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "Customer", dto.Id);
             // 1. Validate DTO
             var vr = await _updateValidator.ValidateAsync(dto, cancellationToken);
             if (!vr.IsValid)
@@ -162,6 +184,14 @@ namespace MarcoERP.Application.Services.Sales
                     Address = dto.Address,
                     City = dto.City,
                     TaxNumber = dto.TaxNumber,
+                    Email = dto.Email,
+                    CustomerType = dto.CustomerType,
+                    CommercialRegister = dto.CommercialRegister,
+                    Country = dto.Country,
+                    PostalCode = dto.PostalCode,
+                    ContactPerson = dto.ContactPerson,
+                    Website = dto.Website,
+                    DefaultDiscountPercent = dto.DefaultDiscountPercent,
                     CreditLimit = dto.CreditLimit,
                     DaysAllowed = dto.DaysAllowed,
                     BlockedOnOverdue = dto.BlockedOnOverdue,
@@ -182,9 +212,7 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "Customer", id);
             var entity = await _customerRepo.GetByIdAsync(id, cancellationToken);
             if (entity == null)
                 return ServiceResult.Failure(CustomerNotFoundMessage);
@@ -198,9 +226,7 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "Customer", id);
             var entity = await _customerRepo.GetByIdAsync(id, cancellationToken);
             if (entity == null)
                 return ServiceResult.Failure(CustomerNotFoundMessage);
@@ -214,9 +240,7 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult> DeleteAsync(int id, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteAsync", "Customer", id);
             var entity = await _customerRepo.GetByIdAsync(id, cancellationToken);
             if (entity == null)
                 return ServiceResult.Failure(CustomerNotFoundMessage);

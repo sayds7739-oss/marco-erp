@@ -138,12 +138,14 @@
                                      materialDesign:HintAssist.Hint="رقم الفاتورة"
                                      materialDesign:HintAssist.IsFloating="True"
                                      Text="{Binding FormNumber}" IsReadOnly="True"
+                                                 TabIndex="0"
                                      Style="{StaticResource MaterialDesignOutlinedTextBox}" />
                             <DatePicker Grid.Column="2"
                                         materialDesign:HintAssist.Hint="التاريخ"
                                         materialDesign:HintAssist.IsFloating="True"
                                         SelectedDate="{Binding FormDate}"
                                         IsEnabled="{Binding IsEditing}"
+                                                     TabIndex="1"
                                         Style="{StaticResource MaterialDesignOutlinedDatePicker}" />
                         </Grid>
 
@@ -162,6 +164,7 @@
                                       SelectedValuePath="Id"
                                       DisplayMemberPath="NameAr"
                                       IsEnabled="{Binding IsEditing}" IsEditable="True"
+                                      TabIndex="2"
                                       common:F1SearchBehavior.IsEnabled="True"
                                       common:F1SearchBehavior.Title="بحث الموردين"
                                       Style="{StaticResource MaterialDesignOutlinedComboBox}" />
@@ -173,6 +176,7 @@
                                       SelectedValuePath="Id"
                                       DisplayMemberPath="NameAr"
                                       IsEnabled="{Binding IsEditing}" IsEditable="True"
+                                      TabIndex="3"
                                       common:F1SearchBehavior.IsEnabled="True"
                                       common:F1SearchBehavior.Title="بحث المخازن"
                                       Style="{StaticResource MaterialDesignOutlinedComboBox}" />
@@ -234,7 +238,7 @@
                                     <DataGridTemplateColumn Header="الكمية" Width="70">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBox Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged, StringFormat=0.00}"
+                                                <TextBox Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}"
                                                          IsEnabled="{Binding DataContext.IsEditing, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                          TextAlignment="Center" BorderThickness="0" FontSize="12" />
                                             </DataTemplate>
@@ -245,7 +249,7 @@
                                     <DataGridTemplateColumn Header="السعر" Width="80">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBox Text="{Binding UnitPrice, UpdateSourceTrigger=PropertyChanged, StringFormat=N2}"
+                                                <TextBox Text="{Binding UnitPrice, UpdateSourceTrigger=PropertyChanged}"
                                                          IsEnabled="{Binding DataContext.IsEditing, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                          TextAlignment="Center" BorderThickness="0" FontSize="12" />
                                             </DataTemplate>
@@ -256,7 +260,7 @@
                                     <DataGridTemplateColumn Header="خصم%" Width="60">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBox Text="{Binding DiscountPercent, UpdateSourceTrigger=PropertyChanged, StringFormat=N1}"
+                                                <TextBox Text="{Binding DiscountPercent, UpdateSourceTrigger=PropertyChanged}"
                                                          IsEnabled="{Binding DataContext.IsEditing, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                          TextAlignment="Center" BorderThickness="0" FontSize="12" />
                                             </DataTemplate>
@@ -333,6 +337,7 @@
                                  Text="{Binding FormNotes, UpdateSourceTrigger=PropertyChanged}"
                                  IsEnabled="{Binding IsEditing}"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 TabIndex="4"
                                  Margin="0,8,0,0" AcceptsReturn="True" TextWrapping="Wrap"
                                  MinHeight="50" MaxHeight="80" />
 

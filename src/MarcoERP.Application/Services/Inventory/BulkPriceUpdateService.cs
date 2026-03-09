@@ -10,6 +10,8 @@ using MarcoERP.Application.Interfaces.Inventory;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Inventory
 {
@@ -20,25 +22,28 @@ namespace MarcoERP.Application.Services.Inventory
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
         private readonly IAuditLogger _auditLogger;
+        private readonly ILogger<BulkPriceUpdateService> _logger;
+        private readonly IFeatureService _featureService;
 
         public BulkPriceUpdateService(
             IProductRepository productRepo,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
-            IAuditLogger auditLogger)
+            IAuditLogger auditLogger,
+            ILogger<BulkPriceUpdateService> logger = null,
+            IFeatureService featureService = null)
         {
             _productRepo = productRepo ?? throw new ArgumentNullException(nameof(productRepo));
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             _auditLogger = auditLogger ?? throw new ArgumentNullException(nameof(auditLogger));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<BulkPriceUpdateService>.Instance;
+            _featureService = featureService;
         }
 
         public async Task<ServiceResult<IReadOnlyList<BulkPricePreviewItemDto>>> PreviewAsync(
             BulkPriceUpdateRequestDto request, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<IReadOnlyList<BulkPricePreviewItemDto>>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
             var validationError = ValidateRequest(request);
             if (validationError != null)
                 return ServiceResult<IReadOnlyList<BulkPricePreviewItemDto>>.Failure(validationError);
@@ -47,21 +52,34 @@ namespace MarcoERP.Application.Services.Inventory
 
             foreach (var productId in request.ProductIds)
             {
-                var product = await _productRepo.GetByIdAsync(productId, ct);
+                var product = await _productRepo.GetByIdWithUnitsAsync(productId, ct);
                 if (product == null) continue;
 
-                var currentPrice = request.PriceTarget == "CostPrice" ? product.CostPrice : product.DefaultSalePrice;
-                var newPrice = CalculateNewPrice(currentPrice, request);
+                var pricingContext = BuildPricingContext(product, request);
+                if (!pricingContext.IsValid)
+                    continue;
+
+                var newTargetPrice = CalculateNewPrice(pricingContext.CurrentTargetPrice, request);
+                var (newMajorPrice, newMinorPrice) = CalculateMajorMinorPrices(pricingContext, newTargetPrice);
 
                 items.Add(new BulkPricePreviewItemDto
                 {
                     ProductId = product.Id,
                     Code = product.Code,
                     NameAr = product.NameAr,
-                    CurrentPrice = currentPrice,
-                    NewPrice = newPrice,
-                    Difference = newPrice - currentPrice,
-                    PercentageChange = currentPrice != 0 ? Math.Round((newPrice - currentPrice) / currentPrice * 100, 2) : 0
+                    UnitLevel = request.UnitLevel,
+                    UnitNameAr = pricingContext.UnitNameAr,
+                    ConversionFactor = pricingContext.MinorConversionFactor,
+                    CurrentPrice = pricingContext.CurrentTargetPrice,
+                    NewPrice = newTargetPrice,
+                    Difference = newTargetPrice - pricingContext.CurrentTargetPrice,
+                    PercentageChange = pricingContext.CurrentTargetPrice != 0
+                        ? Math.Round((newTargetPrice - pricingContext.CurrentTargetPrice) / pricingContext.CurrentTargetPrice * 100, 2)
+                        : 0,
+                    CurrentMajorPrice = pricingContext.CurrentMajorPrice,
+                    NewMajorPrice = newMajorPrice,
+                    CurrentMinorPrice = pricingContext.CurrentMinorPrice,
+                    NewMinorPrice = newMinorPrice
                 });
             }
 
@@ -71,8 +89,13 @@ namespace MarcoERP.Application.Services.Inventory
         public async Task<ServiceResult<BulkPriceUpdateResultDto>> ApplyAsync(
             BulkPriceUpdateRequestDto request, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<BulkPriceUpdateResultDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ApplyAsync", "BulkPriceUpdate", 0);
+            // Feature Guard — block operation if Inventory module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<BulkPriceUpdateResultDto>(_featureService, FeatureKeys.Inventory, ct);
+                if (guard != null) return guard;
+            }
 
             var validationError = ValidateRequest(request);
             if (validationError != null)
@@ -80,68 +103,69 @@ namespace MarcoERP.Application.Services.Inventory
 
             var result = new BulkPriceUpdateResultDto();
 
-            foreach (var productId in request.ProductIds)
+            // A-04 Fix: Wrap entire bulk operation in a transaction for atomicity.
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                try
+                foreach (var productId in request.ProductIds)
                 {
-                    var product = await _productRepo.GetByIdAsync(productId, ct);
-                    if (product == null)
+                    try
                     {
+                        var product = await _productRepo.GetByIdWithUnitsAsync(productId, ct);
+                        if (product == null)
+                        {
+                            result.FailedCount++;
+                            result.Errors.Add($"الصنف {productId} غير موجود.");
+                            continue;
+                        }
+
+                        var pricingContext = BuildPricingContext(product, request);
+                        if (!pricingContext.IsValid)
+                        {
+                            result.FailedCount++;
+                            result.Errors.Add($"الصنف {product.Code}: {pricingContext.ValidationMessage}");
+                            continue;
+                        }
+
+                        var newTargetPrice = CalculateNewPrice(pricingContext.CurrentTargetPrice, request);
+                        var (newMajorPrice, newMinorPrice) = CalculateMajorMinorPrices(pricingContext, newTargetPrice);
+
+                        if (newTargetPrice < 0 || newMajorPrice < 0 || newMinorPrice < 0)
+                        {
+                            result.FailedCount++;
+                            result.Errors.Add($"السعر الجديد سالب للصنف {product.Code}.");
+                            continue;
+                        }
+
+                        ApplyMajorPrice(product, request, newMajorPrice);
+
+                        if (request.SyncByConversion)
+                            SyncUnitPricesByConversion(product, request, newMajorPrice);
+                        else
+                            UpdateTargetUnitOnly(pricingContext, request, newTargetPrice);
+
+                        _productRepo.Update(product);
+
+                        await _auditLogger.LogAsync(
+                            "Product",
+                            product.Id,
+                            "BulkPriceUpdate",
+                            _currentUser.Username ?? "System",
+                            $"تحديث {request.PriceTarget} ({request.UnitLevel}) للصنف {product.Code} من {pricingContext.CurrentTargetPrice:N2} إلى {newTargetPrice:N2}",
+                            ct);
+
+                        result.UpdatedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "ApplyAsync failed for Product {ProductId}.", productId);
                         result.FailedCount++;
-                        result.Errors.Add($"الصنف {productId} غير موجود.");
-                        continue;
+                        result.Errors.Add(ErrorSanitizer.SanitizeGeneric(ex, $"تحديث سعر الصنف {productId}"));
                     }
-
-                    var currentPrice = request.PriceTarget == "CostPrice" ? product.CostPrice : product.DefaultSalePrice;
-                    var newPrice = CalculateNewPrice(currentPrice, request);
-
-                    if (newPrice < 0)
-                    {
-                        result.FailedCount++;
-                        result.Errors.Add($"السعر الجديد سالب للصنف {product.Code}: {newPrice:N2}");
-                        continue;
-                    }
-
-                    // Update the product price via domain method
-                    if (request.PriceTarget == "CostPrice")
-                    {
-                        product.UpdateCostPrice(newPrice);
-                    }
-                    else
-                    {
-                        product.Update(
-                            product.NameAr,
-                            product.NameEn,
-                            product.CategoryId,
-                            newPrice,
-                            product.MinimumStock,
-                            product.ReorderLevel,
-                            product.VatRate,
-                            product.Barcode,
-                            product.Description);
-                    }
-
-                    _productRepo.Update(product);
-
-                    await _auditLogger.LogAsync(
-                        "Product",
-                        product.Id,
-                        "BulkPriceUpdate",
-                        _currentUser.Username ?? "System",
-                        $"تحديث سعر {request.PriceTarget} للصنف {product.Code} من {currentPrice:N2} إلى {newPrice:N2}",
-                        ct);
-
-                    result.UpdatedCount++;
                 }
-                catch (Exception ex)
-                {
-                    result.FailedCount++;
-                    result.Errors.Add($"خطأ في الصنف {productId}: {ex.Message}");
-                }
-            }
 
-            if (result.UpdatedCount > 0)
-                await _unitOfWork.SaveChangesAsync(ct);
+                if (result.UpdatedCount > 0)
+                    await _unitOfWork.SaveChangesAsync(ct);
+            }, cancellationToken: ct);
 
             return ServiceResult<BulkPriceUpdateResultDto>.Success(result);
         }
@@ -162,10 +186,146 @@ namespace MarcoERP.Application.Services.Inventory
             if (request.ProductIds == null || request.ProductIds.Count == 0) return "يجب اختيار صنف واحد على الأقل.";
             if (request.Mode != "Percentage" && request.Mode != "Direct") return "وضع التحديث غير صالح (Percentage أو Direct).";
             if (request.PriceTarget != "SalePrice" && request.PriceTarget != "CostPrice") return "هدف السعر غير صالح.";
+            if (request.UnitLevel != "MajorUnit" && request.UnitLevel != "MinorUnit") return "مستوى الوحدة غير صالح.";
             if (request.Mode == "Direct" && request.DirectPrice < 0) return "السعر المباشر لا يمكن أن يكون سالباً.";
             if (request.Mode == "Percentage" && (request.PercentageChange < -100 || request.PercentageChange > 1000))
                 return "نسبة التغيير يجب أن تكون بين -100% و 1000%.";
             return null;
+        }
+
+        private static PricingContext BuildPricingContext(Domain.Entities.Inventory.Product product, BulkPriceUpdateRequestDto request)
+        {
+            var majorPrice = request.PriceTarget == "CostPrice" ? product.CostPrice : product.DefaultSalePrice;
+
+            var minorUnit = product.ProductUnits
+                .Where(unit => unit.UnitId != product.BaseUnitId && unit.ConversionFactor > 0)
+                .OrderByDescending(unit => unit.ConversionFactor)
+                .FirstOrDefault();
+
+            if (request.UnitLevel == "MinorUnit" && minorUnit == null)
+            {
+                return new PricingContext
+                {
+                    IsValid = false,
+                    ValidationMessage = "لا يوجد وحدة صغرى مرتبطة بالصنف.",
+                    UnitNameAr = "-"
+                };
+            }
+
+            if (minorUnit == null)
+            {
+                return new PricingContext
+                {
+                    IsValid = true,
+                    UnitNameAr = "الوحدة الكلية",
+                    MinorConversionFactor = 1,
+                    CurrentMajorPrice = majorPrice,
+                    CurrentMinorPrice = majorPrice,
+                    CurrentTargetPrice = majorPrice,
+                    TargetUnit = null
+                };
+            }
+
+            var minorPrice = request.PriceTarget == "CostPrice"
+                ? minorUnit.PurchasePrice
+                : minorUnit.SalePrice;
+
+            if (minorPrice <= 0)
+            {
+                minorPrice = Math.Round(majorPrice / minorUnit.ConversionFactor, 4);
+            }
+
+            return new PricingContext
+            {
+                IsValid = true,
+                UnitNameAr = minorUnit.Unit?.NameAr ?? "الوحدة الصغرى",
+                MinorConversionFactor = minorUnit.ConversionFactor,
+                CurrentMajorPrice = majorPrice,
+                CurrentMinorPrice = minorPrice,
+                CurrentTargetPrice = request.UnitLevel == "MinorUnit" ? minorPrice : majorPrice,
+                TargetUnit = minorUnit
+            };
+        }
+
+        private static (decimal NewMajorPrice, decimal NewMinorPrice) CalculateMajorMinorPrices(PricingContext context, decimal newTargetPrice)
+        {
+            if (context.TargetUnit == null)
+                return (newTargetPrice, newTargetPrice);
+
+            if (context.CurrentTargetPrice == context.CurrentMinorPrice)
+            {
+                var majorFromMinor = Math.Round(newTargetPrice * context.MinorConversionFactor, 4);
+                return (majorFromMinor, newTargetPrice);
+            }
+
+            var minorFromMajor = Math.Round(newTargetPrice / context.MinorConversionFactor, 4);
+            return (newTargetPrice, minorFromMajor);
+        }
+
+        private static void ApplyMajorPrice(Domain.Entities.Inventory.Product product, BulkPriceUpdateRequestDto request, decimal newMajorPrice)
+        {
+            if (request.PriceTarget == "CostPrice")
+            {
+                product.UpdateCostPrice(newMajorPrice);
+                return;
+            }
+
+            product.Update(
+                product.NameAr,
+                product.NameEn,
+                product.CategoryId,
+                newMajorPrice,
+                product.MinimumStock,
+                product.ReorderLevel,
+                product.VatRate,
+                product.Barcode,
+                product.Description,
+                product.DefaultSupplierId,
+                product.WholesalePrice,
+                product.RetailPrice,
+                product.ImagePath,
+                product.MaximumStock);
+        }
+
+        private static void SyncUnitPricesByConversion(
+            Domain.Entities.Inventory.Product product,
+            BulkPriceUpdateRequestDto request,
+            decimal newMajorPrice)
+        {
+            foreach (var unit in product.ProductUnits)
+            {
+                if (unit.ConversionFactor <= 0)
+                    continue;
+
+                var convertedPrice = Math.Round(newMajorPrice / unit.ConversionFactor, 4);
+                if (request.PriceTarget == "CostPrice")
+                    unit.UpdatePricing(unit.SalePrice, convertedPrice, unit.Barcode);
+                else
+                    unit.UpdatePricing(convertedPrice, unit.PurchasePrice, unit.Barcode);
+            }
+        }
+
+        private static void UpdateTargetUnitOnly(PricingContext context, BulkPriceUpdateRequestDto request, decimal newTargetPrice)
+        {
+            if (context.TargetUnit == null)
+                return;
+
+            if (request.PriceTarget == "CostPrice")
+                context.TargetUnit.UpdatePricing(context.TargetUnit.SalePrice, newTargetPrice, context.TargetUnit.Barcode);
+            else
+                context.TargetUnit.UpdatePricing(newTargetPrice, context.TargetUnit.PurchasePrice, context.TargetUnit.Barcode);
+        }
+
+        private sealed class PricingContext
+        {
+            public bool IsValid { get; set; }
+            public string ValidationMessage { get; set; }
+            public string UnitNameAr { get; set; }
+            public decimal MinorConversionFactor { get; set; }
+            public decimal CurrentTargetPrice { get; set; }
+            public decimal CurrentMajorPrice { get; set; }
+            public decimal CurrentMinorPrice { get; set; }
+            public Domain.Entities.Inventory.ProductUnit TargetUnit { get; set; }
         }
     }
 }

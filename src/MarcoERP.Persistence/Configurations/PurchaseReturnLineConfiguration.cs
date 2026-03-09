@@ -9,12 +9,21 @@ namespace MarcoERP.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<PurchaseReturnLine> builder)
         {
-            builder.ToTable("PurchaseReturnLines");
+            builder.ToTable("PurchaseReturnLines", t =>
+            {
+                // FIN-CK-04: Quantity must be positive
+                t.HasCheckConstraint("CK_PurchaseReturnLines_Quantity",
+                    DbProviderHelper.CheckExpr("{0} > 0", "Quantity"));
+
+                // FIN-CK-05: UnitPrice must be non-negative
+                t.HasCheckConstraint("CK_PurchaseReturnLines_UnitPrice",
+                    DbProviderHelper.CheckExpr("{0} >= 0", "UnitPrice"));
+            });
 
             builder.HasKey(l => l.Id);
             builder.Property(l => l.Id).UseIdentityColumn();
 
-            builder.Property(l => l.RowVersion).IsRowVersion().IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(l => l.PurchaseReturnId).IsRequired();
             builder.Property(l => l.ProductId).IsRequired();
@@ -32,9 +41,9 @@ namespace MarcoERP.Persistence.Configurations
             builder.Property(l => l.TotalWithVat).IsRequired().HasPrecision(18, 4);
 
             // Relationships
-            builder.HasOne<Product>().WithMany()
+            builder.HasOne(l => l.Product).WithMany()
                 .HasForeignKey(l => l.ProductId).OnDelete(DeleteBehavior.Restrict);
-            builder.HasOne<Unit>().WithMany()
+            builder.HasOne(l => l.Unit).WithMany()
                 .HasForeignKey(l => l.UnitId).OnDelete(DeleteBehavior.Restrict);
 
             // Indexes

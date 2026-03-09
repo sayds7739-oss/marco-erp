@@ -17,6 +17,7 @@ namespace MarcoERP.Application.Interfaces.Settings
         /// </summary>
         /// <param name="backupPath">Target directory for the backup file. If null, uses default path.</param>
         /// <param name="ct">Cancellation token.</param>
+        [RequiresPermission(PermissionKeys.SettingsManage)]
         Task<ServiceResult<BackupResultDto>> BackupAsync(string backupPath, CancellationToken ct = default);
 
         /// <summary>
@@ -25,6 +26,7 @@ namespace MarcoERP.Application.Interfaces.Settings
         /// </summary>
         /// <param name="backupFilePath">Full path to the .bak file.</param>
         /// <param name="ct">Cancellation token.</param>
+        [RequiresPermission(PermissionKeys.SettingsManage)]
         Task<ServiceResult> RestoreAsync(string backupFilePath, CancellationToken ct = default);
 
         /// <summary>

@@ -14,12 +14,14 @@ namespace MarcoERP.Application.Interfaces.Inventory
         /// <summary>
         /// Preview the price changes before applying.
         /// </summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<IReadOnlyList<BulkPricePreviewItemDto>>> PreviewAsync(
             BulkPriceUpdateRequestDto request, CancellationToken ct = default);
 
         /// <summary>
         /// Apply the bulk price update. Audits all changes.
         /// </summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<BulkPriceUpdateResultDto>> ApplyAsync(
             BulkPriceUpdateRequestDto request, CancellationToken ct = default);
     }

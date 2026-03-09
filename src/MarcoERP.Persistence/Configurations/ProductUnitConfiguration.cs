@@ -13,9 +13,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(pu => pu.Id);
             builder.Property(pu => pu.Id).UseIdentityColumn();
 
-            builder.Property(pu => pu.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(pu => pu.ConversionFactor)
                 .IsRequired()
@@ -49,7 +47,7 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(pu => pu.Barcode)
                 .HasDatabaseName("IX_ProductUnits_Barcode")
-                .HasFilter("[Barcode] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("Barcode"));
         }
     }
 }

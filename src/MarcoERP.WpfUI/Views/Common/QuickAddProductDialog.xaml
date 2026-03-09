@@ -157,7 +157,7 @@
                         <TextBlock Text="حفظ" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="12" />
                     </StackPanel>
                 </Button>
-                <Button Grid.Column="2"
+                <Button Grid.Column="2" IsCancel="True"
                         Style="{StaticResource MaterialDesignOutlinedButton}"
                         Click="Cancel_Click" Margin="3,0" Height="34" Padding="14,0">
                     <TextBlock Text="إلغاء" FontSize="12" />

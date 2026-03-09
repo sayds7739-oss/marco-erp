@@ -17,7 +17,7 @@ namespace MarcoERP.Persistence.Configurations
             {
                 // Ensure posted journal entries are always balanced (Debit = Credit)
                 t.HasCheckConstraint("CK_JournalEntries_Balance",
-                    "[Status] <> 1 OR [TotalDebit] = [TotalCredit]");
+                    DbProviderHelper.CheckExpr("{0} <> 1 OR {1} = {2}", "Status", "TotalDebit", "TotalCredit"));
             });
 
             // ── Primary Key ─────────────────────────────────────
@@ -26,9 +26,7 @@ namespace MarcoERP.Persistence.Configurations
                 .UseIdentityColumn();
 
             // ── Concurrency Token ───────────────────────────────
-            builder.Property(j => j.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             // ── Properties ──────────────────────────────────────
             builder.Property(j => j.JournalNumber)
@@ -106,10 +104,11 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasIndex(j => j.JournalNumber)
                 .IsUnique()
                 .HasDatabaseName("IX_JournalEntries_JournalNumber")
-                .HasFilter("[JournalNumber] IS NOT NULL"); // null while draft
+                .HasFilter(DbProviderHelper.NotNullAndSoftDeleteFilter("JournalNumber"));
 
             builder.HasIndex(j => j.DraftCode)
                 .IsUnique()
+                .HasFilter(DbProviderHelper.NotNullAndSoftDeleteFilter("DraftCode"))
                 .HasDatabaseName("IX_JournalEntries_DraftCode");
 
             builder.HasIndex(j => j.JournalDate)
@@ -126,14 +125,14 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(j => new { j.FiscalYearId, j.Status })
                 .HasDatabaseName("IX_JournalEntries_Year_Status")
-                .HasFilter("[IsDeleted] = 0");
+                .HasFilter(DbProviderHelper.SoftDeleteFilter());
 
             builder.HasIndex(j => j.SourceType)
                 .HasDatabaseName("IX_JournalEntries_SourceType");
 
             builder.HasIndex(j => new { j.SourceType, j.SourceId })
                 .HasDatabaseName("IX_JournalEntries_Source")
-                .HasFilter("[SourceId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("SourceId"));
 
             // ── Relationships ───────────────────────────────────
             // JournalEntry → FiscalYear

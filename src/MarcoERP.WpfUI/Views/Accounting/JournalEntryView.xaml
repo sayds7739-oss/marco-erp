@@ -49,6 +49,14 @@
                             Foreground="{StaticResource DangerBrush}" Margin="4,0">
                         <materialDesign:PackIcon Kind="Delete" />
                     </Button>
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding PrintCommand}" Margin="4,0" Height="28" Padding="8,0"
+                            ToolTip="طباعة القيد">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Printer" Width="14" Height="14" VerticalAlignment="Center" />
+                            <TextBlock Text="طباعة" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
+                        </StackPanel>
+                    </Button>
                     <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="8,4" />
                     <Button Style="{StaticResource MaterialDesignRaisedButton}"
                             Command="{Binding LoadCommand}" Margin="4,0">

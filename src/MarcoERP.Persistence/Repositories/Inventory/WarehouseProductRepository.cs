@@ -15,31 +15,54 @@ namespace MarcoERP.Persistence.Repositories.Inventory
         public WarehouseProductRepository(MarcoDbContext context) => _context = context;
 
         public async Task<WarehouseProduct> GetByIdAsync(int id, CancellationToken cancellationToken = default)
-            => await _context.WarehouseProducts.FirstOrDefaultAsync(wp => wp.Id == id, cancellationToken);
+            => await _context.WarehouseProducts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(wp => wp.Id == id, cancellationToken);
 
         public async Task<IReadOnlyList<WarehouseProduct>> GetAllAsync(CancellationToken cancellationToken = default)
-            => await _context.WarehouseProducts.ToListAsync(cancellationToken);
+            => await _context.WarehouseProducts
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
 
         public async Task AddAsync(WarehouseProduct entity, CancellationToken cancellationToken = default)
             => await _context.WarehouseProducts.AddAsync(entity, cancellationToken);
 
         public void Update(WarehouseProduct entity)
         {
+            if (entity == null) return;
+
             var entry = _context.Entry(entity);
+
+            // Already being added — nothing to do
             if (entry.State == EntityState.Added)
                 return;
 
+            // Detached: new entity → Add, existing → safe attach
             if (entry.State == EntityState.Detached)
             {
                 if (entity.Id == 0)
+                {
                     _context.WarehouseProducts.Add(entity);
-                else
-                    _context.WarehouseProducts.Update(entity);
+                    return;
+                }
 
+                // Check Local cache for already-tracked instance
+                var local = _context.WarehouseProducts.Local
+                    .FirstOrDefault(wp => wp.Id == entity.Id);
+                if (local != null && !ReferenceEquals(local, entity))
+                {
+                    _context.Entry(local).CurrentValues.SetValues(entity);
+                    return;
+                }
+
+                // Safe: only marks root entity as Modified without graph traversal
+                _context.Entry(entity).State = EntityState.Modified;
                 return;
             }
 
-            _context.WarehouseProducts.Update(entity);
+            // Already tracked — just ensure Modified
+            if (entry.State == EntityState.Unchanged)
+                entry.State = EntityState.Modified;
         }
         public void Remove(WarehouseProduct entity) => _context.WarehouseProducts.Remove(entity);
 
@@ -64,6 +87,7 @@ namespace MarcoERP.Persistence.Repositories.Inventory
 
         public async Task<IReadOnlyList<WarehouseProduct>> GetByProductAsync(int productId, CancellationToken ct = default)
             => await _context.WarehouseProducts
+                .AsNoTracking()
                 .Include(wp => wp.Warehouse)
                 .Include(wp => wp.Product).ThenInclude(p => p.BaseUnit)
                 .Where(wp => wp.ProductId == productId)
@@ -71,6 +95,7 @@ namespace MarcoERP.Persistence.Repositories.Inventory
 
         public async Task<IReadOnlyList<WarehouseProduct>> GetByWarehouseAsync(int warehouseId, CancellationToken ct = default)
             => await _context.WarehouseProducts
+                .AsNoTracking()
                 .Include(wp => wp.Product).ThenInclude(p => p.BaseUnit)
                 .Include(wp => wp.Warehouse)
                 .Where(wp => wp.WarehouseId == warehouseId)
@@ -79,6 +104,7 @@ namespace MarcoERP.Persistence.Repositories.Inventory
 
         public async Task<IReadOnlyList<WarehouseProduct>> GetBelowMinimumStockAsync(CancellationToken ct = default)
             => await _context.WarehouseProducts
+                .AsNoTracking()
                 .Include(wp => wp.Product).ThenInclude(p => p.BaseUnit)
                 .Include(wp => wp.Warehouse)
                 .Where(wp => wp.Quantity < wp.Product.MinimumStock)

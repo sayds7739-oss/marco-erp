@@ -13,9 +13,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(u => u.Id);
             builder.Property(u => u.Id).UseIdentityColumn();
 
-            builder.Property(u => u.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(u => u.NameAr)
                 .IsRequired()

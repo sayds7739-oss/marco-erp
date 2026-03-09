@@ -16,6 +16,18 @@ namespace MarcoERP.Application.DTOs.Purchases
         public string Address { get; set; }
         public string City { get; set; }
         public string TaxNumber { get; set; }
+        public string Email { get; set; }
+        public string CommercialRegister { get; set; }
+        public string Country { get; set; }
+        public string PostalCode { get; set; }
+        public string ContactPerson { get; set; }
+        public string Website { get; set; }
+        public decimal CreditLimit { get; set; }
+        public int? DaysAllowed { get; set; }
+        public string BankName { get; set; }
+        public string BankAccountName { get; set; }
+        public string BankAccountNumber { get; set; }
+        public string IBAN { get; set; }
         public decimal PreviousBalance { get; set; }
         public bool IsActive { get; set; }
         public string Notes { get; set; }
@@ -33,6 +45,18 @@ namespace MarcoERP.Application.DTOs.Purchases
         public string Address { get; set; }
         public string City { get; set; }
         public string TaxNumber { get; set; }
+        public string Email { get; set; }
+        public string CommercialRegister { get; set; }
+        public string Country { get; set; }
+        public string PostalCode { get; set; }
+        public string ContactPerson { get; set; }
+        public string Website { get; set; }
+        public decimal CreditLimit { get; set; }
+        public int? DaysAllowed { get; set; }
+        public string BankName { get; set; }
+        public string BankAccountName { get; set; }
+        public string BankAccountNumber { get; set; }
+        public string IBAN { get; set; }
         public decimal PreviousBalance { get; set; }
         public string Notes { get; set; }
     }
@@ -48,6 +72,18 @@ namespace MarcoERP.Application.DTOs.Purchases
         public string Address { get; set; }
         public string City { get; set; }
         public string TaxNumber { get; set; }
+        public string Email { get; set; }
+        public string CommercialRegister { get; set; }
+        public string Country { get; set; }
+        public string PostalCode { get; set; }
+        public string ContactPerson { get; set; }
+        public string Website { get; set; }
+        public decimal CreditLimit { get; set; }
+        public int? DaysAllowed { get; set; }
+        public string BankName { get; set; }
+        public string BankAccountName { get; set; }
+        public string BankAccountNumber { get; set; }
+        public string IBAN { get; set; }
         public string Notes { get; set; }
     }
 

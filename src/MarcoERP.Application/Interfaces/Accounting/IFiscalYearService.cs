@@ -29,12 +29,14 @@ namespace MarcoERP.Application.Interfaces.Accounting
         // ── Fiscal Year Commands ────────────────────────────────
 
         /// <summary>Creates a new fiscal year with 12 monthly periods (FY-INV-04).</summary>
+        [RequiresPermission(PermissionKeys.FiscalYearManage)]
         Task<ServiceResult<FiscalYearDto>> CreateAsync(CreateFiscalYearDto dto, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Activates a fiscal year (FY-INV-03: only one active at a time).
         /// Verifies no other year is currently active.
         /// </summary>
+        [RequiresPermission(PermissionKeys.FiscalYearManage)]
         Task<ServiceResult> ActivateAsync(int fiscalYearId, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -42,6 +44,7 @@ namespace MarcoERP.Application.Interfaces.Accounting
         /// Requires all 12 periods locked, no pending drafts.
         /// Closure is irreversible.
         /// </summary>
+        [RequiresPermission(PermissionKeys.FiscalYearManage)]
         Task<ServiceResult> CloseAsync(int fiscalYearId, CancellationToken cancellationToken = default);
 
         // ── Period Commands ─────────────────────────────────────
@@ -50,12 +53,14 @@ namespace MarcoERP.Application.Interfaces.Accounting
         /// Locks a fiscal period (PER-01: sequential locking).
         /// Requires all drafts in the period to be resolved (FP-INV-04).
         /// </summary>
+        [RequiresPermission(PermissionKeys.FiscalPeriodManage)]
         Task<ServiceResult> LockPeriodAsync(int fiscalPeriodId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Unlocks the most recent locked period (PER-05: admin-only).
         /// Requires mandatory justification note (PER-06).
         /// </summary>
+        [RequiresPermission(PermissionKeys.FiscalPeriodManage)]
         Task<ServiceResult> UnlockPeriodAsync(int fiscalPeriodId, string reason, CancellationToken cancellationToken = default);
     }
 }

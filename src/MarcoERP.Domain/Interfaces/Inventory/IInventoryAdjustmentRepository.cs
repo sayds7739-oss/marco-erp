@@ -11,8 +11,11 @@ namespace MarcoERP.Domain.Interfaces.Inventory
     /// </summary>
     public interface IInventoryAdjustmentRepository : IRepository<InventoryAdjustment>
     {
-        /// <summary>Gets an adjustment with all its lines loaded.</summary>
+        /// <summary>Gets an adjustment with all its lines loaded (no tracking — read-only).</summary>
         Task<InventoryAdjustment> GetWithLinesAsync(int id, CancellationToken ct = default);
+
+        /// <summary>Gets an adjustment with all its lines loaded WITH change tracking (for updates).</summary>
+        Task<InventoryAdjustment> GetWithLinesTrackedAsync(int id, CancellationToken ct = default);
 
         /// <summary>Gets an adjustment by number.</summary>
         Task<InventoryAdjustment> GetByNumberAsync(string number, CancellationToken ct = default);

@@ -128,55 +128,103 @@
 
         <!-- ══════ Row 3: Filter Bar + Bulk Actions ══════ -->
         <Border Grid.Row="3" Style="{StaticResource CardPanel}" Padding="10,6" Margin="0,0,0,4">
-            <DockPanel>
-                <!-- Bulk action buttons on the left -->
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" HorizontalAlignment="Left">
-                    <Button Style="{StaticResource MaterialDesignFlatButton}" Command="{Binding SelectAllCommand}"
-                            ToolTip="تحديد كل الأصناف المعروضة" Margin="2,0" Padding="6,2">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="CheckboxMultipleMarked" VerticalAlignment="Center" Width="18" Height="18" />
-                            <TextBlock Text="تحديد الكل" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource MaterialDesignFlatButton}" Command="{Binding DeselectAllCommand}"
-                            ToolTip="إلغاء تحديد كل الأصناف المعروضة" Margin="2,0" Padding="6,2">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="CheckboxMultipleBlankOutline" VerticalAlignment="Center" Width="18" Height="18" />
-                            <TextBlock Text="إلغاء الكل" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource MaterialDesignFlatButton}" Command="{Binding CopyDefaultPricesCommand}"
-                            ToolTip="نسخ سعر البيع الافتراضي لكل صنف محدد" Margin="2,0" Padding="6,2">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="ContentCopy" VerticalAlignment="Center" Width="18" Height="18" />
-                            <TextBlock Text="نسخ الأسعار" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                <!-- Filters on the right -->
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
-                    <!-- Search -->
+                <!-- Top row: Bulk actions + Search -->
+                <DockPanel Grid.Row="0" Margin="0,0,0,4">
+                    <!-- Bulk action buttons on the left -->
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" HorizontalAlignment="Left">
+                        <Button Style="{StaticResource MaterialDesignFlatButton}" Command="{Binding SelectAllCommand}"
+                                ToolTip="تحديد كل الأصناف المعروضة" Margin="2,0" Padding="6,2">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CheckboxMultipleMarked" VerticalAlignment="Center" Width="18" Height="18" />
+                                <TextBlock Text="تحديد الكل" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignFlatButton}" Command="{Binding DeselectAllCommand}"
+                                ToolTip="إلغاء تحديد كل الأصناف المعروضة" Margin="2,0" Padding="6,2">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CheckboxMultipleBlankOutline" VerticalAlignment="Center" Width="18" Height="18" />
+                                <TextBlock Text="إلغاء الكل" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignFlatButton}" Command="{Binding SelectVisibleCommand}"
+                                ToolTip="تحديد الأصناف المعروضة حسب الفلتر الحالي" Margin="2,0" Padding="6,2">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CheckboxMarkedCircle" VerticalAlignment="Center" Width="18" Height="18" />
+                                <TextBlock Text="تحديد المعروض" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignFlatButton}" Command="{Binding CopyDefaultPricesCommand}"
+                                ToolTip="نسخ سعر البيع الافتراضي لكل صنف محدد" Margin="2,0" Padding="6,2">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ContentCopy" VerticalAlignment="Center" Width="18" Height="18" />
+                                <TextBlock Text="نسخ الأسعار" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Search on the right -->
                     <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=300}"
                              materialDesign:HintAssist.Hint="🔍 بحث بالاسم أو الكود..."
-                             FontSize="12" Padding="6,4" MinWidth="180" Margin="0,0,8,0" />
+                             FontSize="12" Padding="6,4" MinWidth="200" HorizontalAlignment="Right"
+                             DockPanel.Dock="Right" />
+                </DockPanel>
+
+                <!-- Bottom row: Filters -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <!-- Selection Mode -->
+                    <TextBlock Text="عرض:" VerticalAlignment="Center" FontSize="11"
+                               Foreground="{StaticResource SubtitleBrush}" Margin="0,0,4,0" />
+                    <ComboBox SelectedIndex="{Binding FilterSelectionModeIndex}"
+                              FontSize="11" MinWidth="110" Margin="0,0,10,0"
+                              materialDesign:ComboBoxAssist.ShowSelectedItem="True">
+                        <ComboBoxItem Content="الكل" />
+                        <ComboBoxItem Content="المحددة فقط" />
+                        <ComboBoxItem Content="غير المحددة" />
+                    </ComboBox>
+
+                    <!-- Code Range -->
+                    <TextBlock Text="من كود:" VerticalAlignment="Center" FontSize="11"
+                               Foreground="{StaticResource SubtitleBrush}" Margin="0,0,4,0" />
+                    <TextBox Text="{Binding FilterCodeFrom, UpdateSourceTrigger=PropertyChanged, Delay=300}"
+                             FontSize="11" Padding="4,3" Width="80" Margin="0,0,8,0"
+                             materialDesign:HintAssist.Hint="بداية" />
+                    <TextBlock Text="إلى:" VerticalAlignment="Center" FontSize="11"
+                               Foreground="{StaticResource SubtitleBrush}" Margin="0,0,4,0" />
+                    <TextBox Text="{Binding FilterCodeTo, UpdateSourceTrigger=PropertyChanged, Delay=300}"
+                             FontSize="11" Padding="4,3" Width="80" Margin="0,0,10,0"
+                             materialDesign:HintAssist.Hint="نهاية" />
 
                     <!-- Supplier Filter -->
                     <ComboBox ItemsSource="{Binding Suppliers}"
                               SelectedValue="{Binding FilterSupplierId, Mode=TwoWay}"
                               SelectedValuePath="Id" DisplayMemberPath="NameAr"
                               materialDesign:HintAssist.Hint="المورد"
-                              FontSize="12" MinWidth="140" Margin="0,0,8,0"
+                              FontSize="11" MinWidth="130" Margin="0,0,8,0"
                               IsEditable="False" materialDesign:ComboBoxAssist.ShowSelectedItem="True" />
 
                     <!-- Category Filter -->
                     <ComboBox ItemsSource="{Binding Categories}"
                               SelectedItem="{Binding FilterCategoryName, Mode=TwoWay}"
                               materialDesign:HintAssist.Hint="الفئة"
-                              FontSize="12" MinWidth="120" Margin="0,0,4,0"
+                              FontSize="11" MinWidth="110" Margin="0,0,8,0"
                               IsEditable="False" materialDesign:ComboBoxAssist.ShowSelectedItem="True" />
+
+                    <!-- Clear Filters -->
+                    <Button Style="{StaticResource MaterialDesignFlatButton}" Command="{Binding ClearFiltersCommand}"
+                            ToolTip="مسح جميع الفلاتر" Padding="4,2" Margin="0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FilterRemove" VerticalAlignment="Center" Width="16" Height="16" />
+                            <TextBlock Text="مسح" Margin="3,0,0,0" VerticalAlignment="Center" FontSize="10" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
-            </DockPanel>
+            </Grid>
         </Border>
 
         <!-- ══════ Row 4: Excel-like DataGrid ══════ -->
@@ -185,14 +233,16 @@
                       AutoGenerateColumns="False" IsReadOnly="False"
                       CanUserAddRows="False" CanUserDeleteRows="False"
                       SelectionMode="Single" GridLinesVisibility="All"
-                      HeadersVisibility="Column" FontSize="12"
-                      RowHeight="32" ColumnHeaderHeight="34" BorderThickness="0"
+                      PreparingCellForEdit="PriceGrid_PreparingCellForEdit"
+                      HeadersVisibility="Column" FontSize="11"
+                      RowHeight="28" ColumnHeaderHeight="30" BorderThickness="0"
                       VirtualizingPanel.IsVirtualizing="True"
                       VirtualizingPanel.VirtualizationMode="Recycling"
+                      VirtualizingPanel.IsContainerVirtualizable="True"
                       EnableRowVirtualization="True"
                       ScrollViewer.CanContentScroll="True"
-                      materialDesign:DataGridAssist.CellPadding="8 4"
-                      materialDesign:DataGridAssist.ColumnHeaderPadding="8 6">
+                      materialDesign:DataGridAssist.CellPadding="6 2"
+                      materialDesign:DataGridAssist.ColumnHeaderPadding="6 4">
 
                 <DataGrid.Columns>
                     <!-- 1. Checkbox (IsSelected) -->
@@ -210,19 +260,19 @@
                                         IsReadOnly="True" />
 
                     <!-- 3. Product Name -->
-                    <DataGridTextColumn Header="اسم الصنف" Binding="{Binding ProductName}" Width="*"
+                    <DataGridTextColumn Header="اسم الصنف" Binding="{Binding ProductName}" Width="2*"
                                         IsReadOnly="True" />
 
                     <!-- 4. Category -->
-                    <DataGridTextColumn Header="الفئة" Binding="{Binding CategoryName}" Width="120"
+                    <DataGridTextColumn Header="الفئة" Binding="{Binding CategoryName}" Width="105"
                                         IsReadOnly="True" />
 
                     <!-- 5. Supplier -->
-                    <DataGridTextColumn Header="المورد" Binding="{Binding SupplierName}" Width="130"
+                    <DataGridTextColumn Header="المورد" Binding="{Binding SupplierName}" Width="95"
                                         IsReadOnly="True" />
 
                     <!-- 6. Default Sale Price (read-only) -->
-                    <DataGridTextColumn Header="سعر البيع" Width="100" IsReadOnly="True">
+                    <DataGridTextColumn Header="سعر افتراضي" Width="100" IsReadOnly="True">
                         <DataGridTextColumn.Binding>
                             <Binding Path="DefaultSalePrice" StringFormat="N2" />
                         </DataGridTextColumn.Binding>
@@ -234,37 +284,68 @@
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
 
-                    <!-- 7. Price List Price (EDITABLE) -->
-                    <DataGridTemplateColumn Header="سعر القائمة" Width="110" CanUserSort="True" SortMemberPath="PriceListPrice">
+                    <!-- 7. Major Unit (read-only) -->
+                    <DataGridTextColumn Header="الوحدة الكلية" Binding="{Binding MajorUnitName}" Width="95"
+                                        IsReadOnly="True" />
+
+                    <!-- 8. Minor Unit (read-only) -->
+                    <DataGridTextColumn Header="الوحدة الجزئية" Binding="{Binding MinorUnitName}" Width="95"
+                                        IsReadOnly="True" />
+
+                    <!-- 9. Major Unit Price (EDITABLE) -->
+                    <DataGridTemplateColumn Header="سعر الكلية" Width="110" CanUserSort="True" SortMemberPath="MajorUnitPrice">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding PriceListPrice, StringFormat=N2}"
+                                <TextBlock Text="{Binding MajorUnitPrice, StringFormat=N2}"
                                            FlowDirection="LeftToRight" TextAlignment="Right"
                                            VerticalAlignment="Center" Padding="4,0" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>
                             <DataTemplate>
-                                <TextBox Text="{Binding PriceListPrice, UpdateSourceTrigger=LostFocus, StringFormat=N2}"
+                                <TextBox Text="{Binding MajorUnitPrice, UpdateSourceTrigger=LostFocus, StringFormat=N2}"
                                          FlowDirection="LeftToRight" TextAlignment="Right"
                                          VerticalAlignment="Center" Padding="4,2"
-                                         BorderThickness="1" FontSize="12" />
+                                         BorderThickness="1" FontSize="12"
+                                         GotKeyboardFocus="EditablePriceTextBox_GotKeyboardFocus"
+                                         PreviewMouseLeftButtonDown="EditablePriceTextBox_PreviewMouseLeftButtonDown" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellEditingTemplate>
                     </DataGridTemplateColumn>
 
-                    <!-- 8. Min Quantity (EDITABLE) -->
-                    <DataGridTemplateColumn Header="الحد الأدنى" Width="90" CanUserSort="True" SortMemberPath="MinQuantity">
+                    <!-- 10. Minor Unit Price (EDITABLE) -->
+                    <DataGridTemplateColumn Header="سعر الجزئية" Width="110" CanUserSort="True" SortMemberPath="MinorUnitPrice">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding MinQuantity, StringFormat=N0}"
+                                <TextBlock Text="{Binding MinorUnitPrice, StringFormat=N2}"
                                            FlowDirection="LeftToRight" TextAlignment="Right"
                                            VerticalAlignment="Center" Padding="4,0" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>
                             <DataTemplate>
-                                <TextBox Text="{Binding MinQuantity, UpdateSourceTrigger=LostFocus, StringFormat=N0}"
+                                <TextBox Text="{Binding MinorUnitPrice, UpdateSourceTrigger=LostFocus, StringFormat=N2}"
+                                         FlowDirection="LeftToRight" TextAlignment="Right"
+                                         VerticalAlignment="Center" Padding="4,2"
+                                         BorderThickness="1" FontSize="12"
+                                         GotKeyboardFocus="EditablePriceTextBox_GotKeyboardFocus"
+                                         PreviewMouseLeftButtonDown="EditablePriceTextBox_PreviewMouseLeftButtonDown" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- 11. Major Activation Quantity (EDITABLE) -->
+                    <DataGridTemplateColumn Header="عدد الجزء" Width="90" CanUserSort="True" SortMemberPath="PartCount">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding PartCount, StringFormat=N0}"
+                                           FlowDirection="LeftToRight" TextAlignment="Right"
+                                           VerticalAlignment="Center" Padding="4,0" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <TextBox Text="{Binding PartCount, UpdateSourceTrigger=LostFocus, StringFormat=N0}"
                                          FlowDirection="LeftToRight" TextAlignment="Right"
                                          VerticalAlignment="Center" Padding="4,2"
                                          BorderThickness="1" FontSize="12" />

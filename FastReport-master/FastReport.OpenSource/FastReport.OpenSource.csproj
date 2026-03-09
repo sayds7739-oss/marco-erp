@@ -1,0 +1,120 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+ 
+  <PropertyGroup>
+    <TargetFrameworks>net6.0</TargetFrameworks>
+    <LangVersion>9.0</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <TargetFrameworks>$(TargetFrameworks);net462;net6.0-windows</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <SignAssembly>true</SignAssembly>
+    <PackageIcon>frlogo192.png</PackageIcon>
+    <AssemblyOriginatorKeyFile>../FastReport.OpenSource.snk</AssemblyOriginatorKeyFile>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <Copyright>Fast Reports Inc.</Copyright>
+    <Company>Fast Reports Inc.</Company>
+    <PackageLicenseUrl></PackageLicenseUrl>
+    <PackageLicenseFile>FastReport MIT license.md</PackageLicenseFile>
+    <PackageProjectUrl>https://www.fast-report.com/products/fast-report-net</PackageProjectUrl>
+    <Authors>Fast Reports Inc.</Authors>
+    <Product>FastReport</Product>
+    <PackageId>FastReport.OpenSource</PackageId>
+    <PackageIconUrl></PackageIconUrl>
+    <PackageTags>reporting, reports, pdf, html, mvc, core</PackageTags>
+    <Version>1.0.0</Version>
+    <Configurations>Debug;Release</Configurations>
+    <AssemblyName>FastReport</AssemblyName>
+    <RootNamespace>FastReport</RootNamespace>
+    <Description>
+      FastReport Open Source provides a free report generator for .NET/.NET Framework. You can use the FastReport Open Source in MVC, Web API, console applications.
+      FastReport is written in C# and it is compatible with .NET Framework 4.6.2, .NET 6 and higher. Extendable FastReport architecture allows creating your own objects, export filters, wizards, and DB engines.
+      - FastReport is a band-oriented report generator. There are 13 types of bands available: Report Title, Report Summary, Page Header, Page Footer, Column Header, Column Footer, Data Header, Data, Data Footer, Group Header, Group Footer, Child, and Overlay. In addition, sub-reports are fully supported.
+      - A wide range of band types allows creating any kind of report: list, master-detail, group, multi-column, master-detail-detail and many more.
+      - Wide range of available report objects: text, picture, line, shape, barcode, matrix, table, checkbox.
+      - Reports can consist of several design pages, which allows reports to contain a cover, the data and a back cover, all in one file.
+      - The Table object allows building a tabular report with variable number of rows and/or columns, just like in MS Excel. Aggregate functions are also available.
+      - Powerful, fully configurable Matrix object that can be used to print pivot tables.
+      - Report inheritance. For creating many reports with common elements such as titles, logos or footers you can place all the common elements in a base report and inherit all other reports from this base.
+      Data Sources:
+      - You can get data from XML, CSV, JSON, MS SQL, MySQL, Oracle, Postgres, MongoDB, Couchbase, Raven DB, SQLite.
+      - FastReport has the ability to get data from business objects of IEnumerable type.
+      - Report can contain data sources (tables, queries, DB connections).
+      - Thus, you can not only use application-defined datasets but also connect to any database and use tables and queries directly within the report.
+      FastReport Open Source can save documents in HTML, BMP, PNG, JPEG, GIF, TIFF, EMF. PDF export is available as a plugin.
+    </Description>
+    <RepositoryUrl>https://github.com/FastReports/FastReport</RepositoryUrl>
+
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!--See https://devblogs.microsoft.com/dotnet/producing-packages-with-source-link/#deterministic-builds -->
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DefineConstants>TRACE;DOTNET_4;READONLY_STRUCTS</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>$(DefineConstants);DEBUG;</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)'!='net462'">
+    <DefineConstants>$(DefineConstants);CROSSPLATFORM</DefineConstants>
+  </PropertyGroup>
+
+
+  <!--Source Link-->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!--Import version-info of referenced packages-->
+  <Import Project="..\UsedPackages.version" />
+
+  <Import Project="..\FastReport.Base\FastReport.Base.csproj" />
+
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)'=='.NETFramework'">
+    <Reference Include="Accessibility" />
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Security" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\FastReport\Resources\**" Exclude="..\FastReport\Resources\Ribbon\**;..\FastReport\Resources\RibbonNew\**;..\FastReport\Resources\MSChart\**;..\FastReport\Resources\Images\**;..\FastReport\Resources\**\*.cur;..\FastReport\Resources\**\*.frx;..\FastReport\Resources\*.png;..\FastReport\Resources\labels.dat;..\FastReport\Resources\Pdf\**;..\FastReport\Resources\SVG\**;..\FastReport\Resources\OoXML\**;">
+      <Link>Resources\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </EmbeddedResource>
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Include="..\Pack\FastReport MIT license.md">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+    <None Include="..\Pack\frlogo192.png">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+    <None Include="..\Pack\$(MSBuildProjectName)\**">
+      <Visible>false</Visible>
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <ProjectReference Include="..\FastReport.Compat\FastReport.Compat\FastReport.Compat.csproj" />
+  </ItemGroup>
+
+</Project>

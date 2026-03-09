@@ -23,6 +23,7 @@ namespace MarcoERP.Persistence.Repositories.Settings
         public async Task<SystemVersion> GetLatestVersionAsync(CancellationToken ct = default)
         {
             return await _context.SystemVersions
+                .AsNoTracking()
                 .OrderByDescending(v => v.AppliedAt)
                 .FirstOrDefaultAsync(ct);
         }
@@ -41,6 +42,7 @@ namespace MarcoERP.Persistence.Repositories.Settings
         public async Task<FeatureVersion> GetFeatureVersionAsync(string featureKey, CancellationToken ct = default)
         {
             return await _context.FeatureVersions
+                .AsNoTracking()
                 .FirstOrDefaultAsync(fv => fv.FeatureKey == featureKey, ct);
         }
     }

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Sales;
 using MarcoERP.Application.DTOs.Treasury;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Sales;
 using MarcoERP.Application.Interfaces.Treasury;
 
@@ -19,6 +20,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         private readonly ICashReceiptService _cashReceiptService;
         private readonly ICashboxService _cashboxService;
         private readonly ICustomerService _customerService;
+        private readonly IDateTimeProvider _dateTime;
 
         public ObservableCollection<CashboxDto> Cashboxes { get; } = new();
         public ObservableCollection<CustomerDto> Customers { get; } = new();
@@ -32,7 +34,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
             set => SetProperty(ref _receiptNumber, value);
         }
 
-        private DateTime _receiptDate = DateTime.Today;
+        private DateTime _receiptDate;
         public DateTime ReceiptDate
         {
             get => _receiptDate;
@@ -103,6 +105,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
             set => SetProperty(ref _notes, value);
         }
 
+        /// <summary>Optional: links this receipt to a specific sales invoice.</summary>
+        public int? SalesInvoiceId { get; set; }
+
         // ── Commands ──
 
         public ICommand LoadedCommand { get; }
@@ -118,11 +123,14 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         public QuickCashReceiptViewModel(
             ICashReceiptService cashReceiptService,
             ICashboxService cashboxService,
-            ICustomerService customerService)
+            ICustomerService customerService,
+            IDateTimeProvider dateTime)
         {
             _cashReceiptService = cashReceiptService ?? throw new ArgumentNullException(nameof(cashReceiptService));
             _cashboxService = cashboxService ?? throw new ArgumentNullException(nameof(cashboxService));
             _customerService = customerService ?? throw new ArgumentNullException(nameof(customerService));
+            _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            _receiptDate = _dateTime.Today;
 
             LoadedCommand = new AsyncRelayCommand(LoadAsync);
             SaveAndPostCommand = new AsyncRelayCommand(SaveAndPostAsync);
@@ -220,7 +228,10 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
 
         private CreateCashReceiptDto BuildDto()
         {
-            var customer = Customers.First(c => c.Id == SelectedCustomerId);
+            var customer = Customers.FirstOrDefault(c => c.Id == SelectedCustomerId);
+            if (customer == null)
+                throw new InvalidOperationException("العميل المحدد غير موجود.");
+
             return new CreateCashReceiptDto
             {
                 ReceiptDate = ReceiptDate,
@@ -228,6 +239,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
                 AccountId = customer.AccountId!.Value,
                 CustomerId = SelectedCustomerId,
                 Amount = Amount,
+                SalesInvoiceId = SalesInvoiceId,
                 Description = string.IsNullOrWhiteSpace(RecipientName)
                     ? Description
                     : $"{Description} — المستلم: {RecipientName}".Trim(' ', '—', ' '),

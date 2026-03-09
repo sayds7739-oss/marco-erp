@@ -90,7 +90,29 @@
                         <DataGridTextColumn Header="الاسم" Binding="{Binding NameAr}" Width="*" MinWidth="120" />
                         <DataGridTextColumn Header="الاسم (EN)" Binding="{Binding NameEn}" Width="110" />
                         <DataGridTextColumn Header="الحساب" Binding="{Binding AccountName}" Width="110" />
-                        <DataGridTemplateColumn Header="افتراضي" Width="50">
+                        <DataGridTextColumn Header="الرصيد" Binding="{Binding Balance, StringFormat=N2}" Width="120">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="FontWeight" Value="Bold" />
+                                    <Setter Property="FontSize" Value="13" />
+                                    <Setter Property="FlowDirection" Value="LeftToRight" />
+                                    <Setter Property="TextAlignment" Value="Right" />
+                                    <Setter Property="Foreground" Value="#1B5E20" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Balance, Converter={StaticResource IsNegativeConverter}}" Value="True">
+                                            <Setter Property="Foreground" Value="#C62828" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                            <DataGridTextColumn.HeaderStyle>
+                                <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}">
+                                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                    <Setter Property="FontWeight" Value="Bold" />
+                                </Style>
+                            </DataGridTextColumn.HeaderStyle>
+                        </DataGridTextColumn>
+                        <DataGridTemplateColumn Header="افتراضي" Width="55">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <materialDesign:PackIcon
@@ -100,7 +122,7 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTemplateColumn Header="نشط" Width="45">
+                        <DataGridTemplateColumn Header="نشط" Width="50">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <materialDesign:PackIcon
@@ -114,7 +136,7 @@
                 </DataGrid>
             </Border>
 
-            <Border Grid.Row="3" Padding="8,4" Margin="6,0,6,2">
+            <Border Grid.Row="3" Background="#ECEFF1" CornerRadius="4" Padding="10,6" Margin="6,2,6,2">
                 <DockPanel>
                     <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="{StaticResource MutedTextBrush}"
                                DockPanel.Dock="Right" VerticalAlignment="Center" />

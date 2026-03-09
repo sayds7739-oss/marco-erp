@@ -14,6 +14,9 @@ using MarcoERP.Domain.Entities.Accounting;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Accounting;
 using MarcoERP.Domain.Interfaces;
+using MarcoERP.Domain.Interfaces.Settings;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Accounting
 {
@@ -33,6 +36,9 @@ namespace MarcoERP.Application.Services.Accounting
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IValidator<CreateFiscalYearDto> _createValidator;
         private readonly IYearEndClosingService _yearEndClosing;
+        private readonly ISystemSettingRepository _systemSettingRepository;
+        private readonly ILogger<FiscalYearService> _logger;
+        private readonly IFeatureService _featureService;
 
         public FiscalYearService(
             IFiscalYearRepository fiscalYearRepository,
@@ -42,7 +48,10 @@ namespace MarcoERP.Application.Services.Accounting
             IAuditLogger auditLogger,
             IDateTimeProvider dateTimeProvider,
             IValidator<CreateFiscalYearDto> createValidator,
-            IYearEndClosingService yearEndClosing)
+            IYearEndClosingService yearEndClosing,
+            ISystemSettingRepository systemSettingRepository = null,
+            ILogger<FiscalYearService> logger = null,
+            IFeatureService featureService = null)
         {
             _fiscalYearRepository = fiscalYearRepository ?? throw new ArgumentNullException(nameof(fiscalYearRepository));
             _journalEntryRepository = journalEntryRepository ?? throw new ArgumentNullException(nameof(journalEntryRepository));
@@ -52,6 +61,9 @@ namespace MarcoERP.Application.Services.Accounting
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _yearEndClosing = yearEndClosing ?? throw new ArgumentNullException(nameof(yearEndClosing));
+            _systemSettingRepository = systemSettingRepository;
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<FiscalYearService>.Instance;
+            _featureService = featureService;
         }
 
         // ── Queries ─────────────────────────────────────────────
@@ -111,8 +123,19 @@ namespace MarcoERP.Application.Services.Accounting
         public async Task<ServiceResult<FiscalYearDto>> CreateAsync(
             CreateFiscalYearDto dto, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check<FiscalYearDto>(_currentUser, PermissionKeys.FiscalYearManage);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "FiscalYear", 0);
+            // Feature Guard — block operation if Accounting module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<FiscalYearDto>(_featureService, FeatureKeys.Accounting, cancellationToken);
+                if (guard != null) return guard;
+            }
+
+            // Defense-in-depth: auth guard
+            if (!_currentUser.IsAuthenticated)
+                return ServiceResult<FiscalYearDto>.Failure("يجب تسجيل الدخول أولاً.");
+            if (!_currentUser.HasPermission(PermissionKeys.FiscalYearManage))
+                return ServiceResult<FiscalYearDto>.Failure("لا تملك الصلاحية لتنفيذ هذه العملية.");
 
             // Step 1: Validate
             var validationResult = await _createValidator.ValidateAsync(dto, cancellationToken);
@@ -160,9 +183,7 @@ namespace MarcoERP.Application.Services.Accounting
         /// </summary>
         public async Task<ServiceResult> ActivateAsync(int fiscalYearId, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.FiscalYearManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "FiscalYear", fiscalYearId);
             var fiscalYear = await _fiscalYearRepository.GetWithPeriodsAsync(fiscalYearId, cancellationToken);
             if (fiscalYear == null)
                 return ServiceResult.Failure("السنة المالية غير موجودة.");
@@ -208,9 +229,7 @@ namespace MarcoERP.Application.Services.Accounting
         /// </summary>
         public async Task<ServiceResult> CloseAsync(int fiscalYearId, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.FiscalYearManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CloseAsync", "FiscalYear", fiscalYearId);
             var fiscalYear = await _fiscalYearRepository.GetWithPeriodsAsync(fiscalYearId, cancellationToken);
             if (fiscalYear == null)
                 return ServiceResult.Failure("السنة المالية غير موجودة.");
@@ -233,33 +252,40 @@ namespace MarcoERP.Application.Services.Accounting
                     $"إجمالي المدين: {totalDebits:N2} | إجمالي الدائن: {totalCredits:N2} | الفرق: {diff:N2}");
             }
 
-            // Generate year-end closing journal (Revenue/Expense → Retained Earnings)
-            var closingResult = await _yearEndClosing.GenerateClosingEntryAsync(fiscalYearId, cancellationToken);
-            if (!closingResult.IsSuccess)
-                return closingResult;
+            // Validate all periods are locked BEFORE generating closing entry
+            if (fiscalYear.Periods.Any(p => p.IsOpen))
+                return ServiceResult.Failure("يجب قفل جميع الفترات المحاسبية قبل إقفال السنة المالية.");
 
+            // FY-02: Closing entry generation and year close must be atomic.
+            // Both operations are wrapped in a single transaction so that if
+            // either fails, the entire operation rolls back.
             try
             {
-                fiscalYear.Close(_currentUser.Username, _dateTimeProvider.UtcNow);
+                await _unitOfWork.ExecuteInTransactionAsync(async () =>
+                {
+                    // Generate year-end closing journal (Revenue/Expense -> Retained Earnings)
+                    var closingResult = await _yearEndClosing.GenerateClosingEntryAsync(fiscalYearId, cancellationToken);
+                    if (!closingResult.IsSuccess)
+                        throw new FiscalYearDomainException(closingResult.ErrorMessage);
+
+                    fiscalYear.Close(_currentUser.Username, _dateTimeProvider.UtcNow);
+
+                    _fiscalYearRepository.Update(fiscalYear);
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                    await _auditLogger.LogAsync(
+                        "FiscalYear", fiscalYear.Id, "Closed",
+                        _currentUser.Username,
+                        $"Fiscal year {fiscalYear.Year} closed permanently. Year-end closing entry generated.",
+                        cancellationToken);
+
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                }, IsolationLevel.Serializable, cancellationToken);
             }
             catch (FiscalYearDomainException ex)
             {
                 return ServiceResult.Failure(ex.Message);
             }
-
-            await _unitOfWork.ExecuteInTransactionAsync(async () =>
-            {
-                _fiscalYearRepository.Update(fiscalYear);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-                await _auditLogger.LogAsync(
-                    "FiscalYear", fiscalYear.Id, "Closed",
-                    _currentUser.Username,
-                    $"Fiscal year {fiscalYear.Year} closed permanently. Year-end closing entry generated.",
-                    cancellationToken);
-
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-            }, IsolationLevel.Serializable, cancellationToken);
 
             return ServiceResult.Success();
         }
@@ -273,9 +299,7 @@ namespace MarcoERP.Application.Services.Accounting
         /// </summary>
         public async Task<ServiceResult> LockPeriodAsync(int fiscalPeriodId, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.FiscalPeriodManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "LockPeriodAsync", "FiscalPeriod", fiscalPeriodId);
             // Find the period by loading all years and checking their periods
             // NOTE: In a full implementation, we'd have a IFiscalPeriodRepository.
             // For now, we load via fiscal year.
@@ -287,16 +311,22 @@ namespace MarcoERP.Application.Services.Accounting
             if (fiscalYear == null)
                 return ServiceResult.Failure("السنة المالية غير موجودة.");
 
+            // FIX: Use the tracked period from fiscalYear.Periods to ensure
+            // mutations are persisted (avoids Instance A/B detachment bug).
+            var trackedPeriod = fiscalYear.Periods.FirstOrDefault(p => p.Id == fiscalPeriodId);
+            if (trackedPeriod == null)
+                return ServiceResult.Failure("الفترة المالية غير موجودة في السنة المالية.");
+
             // FP-INV-03: Sequential locking — all previous periods must be locked
             var allPeriods = fiscalYear.Periods.OrderBy(p => p.PeriodNumber).ToList();
             foreach (var priorPeriod in allPeriods)
             {
-                if (priorPeriod.PeriodNumber >= period.PeriodNumber)
+                if (priorPeriod.PeriodNumber >= trackedPeriod.PeriodNumber)
                     break;
 
                 if (priorPeriod.Status != PeriodStatus.Locked)
                     return ServiceResult.Failure(
-                        $"يجب قفل الفترة {priorPeriod.PeriodNumber} ({priorPeriod.Month}/{priorPeriod.Year}) قبل قفل الفترة {period.PeriodNumber}.");
+                        $"يجب قفل الفترة {priorPeriod.PeriodNumber} ({priorPeriod.Month}/{priorPeriod.Year}) قبل قفل الفترة {trackedPeriod.PeriodNumber}.");
             }
 
             // FP-INV-04: No pending drafts in this period
@@ -308,7 +338,7 @@ namespace MarcoERP.Application.Services.Accounting
 
             try
             {
-                period.Lock(_currentUser.Username, _dateTimeProvider.UtcNow);
+                trackedPeriod.Lock(_currentUser.Username, _dateTimeProvider.UtcNow);
             }
             catch (FiscalPeriodDomainException ex)
             {
@@ -321,9 +351,9 @@ namespace MarcoERP.Application.Services.Accounting
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 await _auditLogger.LogAsync(
-                    "FiscalPeriod", period.Id, "Locked",
+                    "FiscalPeriod", trackedPeriod.Id, "Locked",
                     _currentUser.Username,
-                    $"Period {period.PeriodNumber}/{period.Year} locked.",
+                    $"Period {trackedPeriod.PeriodNumber}/{trackedPeriod.Year} locked.",
                     cancellationToken);
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -340,11 +370,13 @@ namespace MarcoERP.Application.Services.Accounting
         public async Task<ServiceResult> UnlockPeriodAsync(
             int fiscalPeriodId, string reason, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.FiscalPeriodManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UnlockPeriodAsync", "FiscalPeriod", fiscalPeriodId);
             if (string.IsNullOrWhiteSpace(reason))
                 return ServiceResult.Failure("سبب فتح الفترة مطلوب — يتم تسجيله في سجل المراجعة.");
+
+            var isProductionMode = await ProductionHardening.IsProductionModeAsync(_systemSettingRepository, cancellationToken);
+            if (isProductionMode)
+                return ServiceResult.Failure("لا يمكن فتح الفترات المغلقة في وضع الإنتاج.");
 
             var period = await FindPeriodByIdAsync(fiscalPeriodId, cancellationToken);
             if (period == null)
@@ -353,6 +385,12 @@ namespace MarcoERP.Application.Services.Accounting
             var fiscalYear = await _fiscalYearRepository.GetWithPeriodsAsync(period.FiscalYearId, cancellationToken);
             if (fiscalYear == null)
                 return ServiceResult.Failure("السنة المالية غير موجودة.");
+
+            // FIX: Use the tracked period from fiscalYear.Periods to ensure
+            // mutations are persisted (avoids Instance A/B detachment bug).
+            var trackedPeriod = fiscalYear.Periods.FirstOrDefault(p => p.Id == fiscalPeriodId);
+            if (trackedPeriod == null)
+                return ServiceResult.Failure("الفترة المالية غير موجودة في السنة المالية.");
 
             // Cannot unlock periods in a closed year
             if (fiscalYear.Status == FiscalYearStatus.Closed)
@@ -374,7 +412,7 @@ namespace MarcoERP.Application.Services.Accounting
 
             try
             {
-                period.Unlock(reason);
+                trackedPeriod.Unlock(reason);
             }
             catch (FiscalPeriodDomainException ex)
             {
@@ -387,9 +425,9 @@ namespace MarcoERP.Application.Services.Accounting
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 await _auditLogger.LogAsync(
-                    "FiscalPeriod", period.Id, "Unlocked",
+                    "FiscalPeriod", trackedPeriod.Id, "Unlocked",
                     _currentUser.Username,
-                    $"Period {period.PeriodNumber}/{period.Year} unlocked. Reason: {reason}",
+                    $"Period {trackedPeriod.PeriodNumber}/{trackedPeriod.Year} unlocked. Reason: {reason}",
                     cancellationToken);
 
                 await _unitOfWork.SaveChangesAsync(cancellationToken);

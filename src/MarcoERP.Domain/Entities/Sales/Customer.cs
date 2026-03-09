@@ -1,6 +1,7 @@
 using System;
 using MarcoERP.Domain.Entities.Accounting;
 using MarcoERP.Domain.Entities.Common;
+using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Sales;
 
 namespace MarcoERP.Domain.Entities.Sales
@@ -42,6 +43,14 @@ namespace MarcoERP.Domain.Entities.Sales
             Address = draft.Address?.Trim();
             City = draft.City?.Trim();
             TaxNumber = draft.TaxNumber?.Trim();
+            Email = draft.Email?.Trim();
+            CustomerType = draft.CustomerType;
+            CommercialRegister = draft.CommercialRegister?.Trim();
+            Country = draft.Country?.Trim();
+            PostalCode = draft.PostalCode?.Trim();
+            ContactPerson = draft.ContactPerson?.Trim();
+            Website = draft.Website?.Trim();
+            DefaultDiscountPercent = draft.DefaultDiscountPercent;
             PreviousBalance = draft.PreviousBalance;
             CreditLimit = draft.CreditLimit;
             DaysAllowed = draft.DaysAllowed;
@@ -78,6 +87,30 @@ namespace MarcoERP.Domain.Entities.Sales
 
         /// <summary>Tax registration number (الرقم الضريبي).</summary>
         public string TaxNumber { get; private set; }
+
+        /// <summary>البريد الإلكتروني.</summary>
+        public string Email { get; private set; }
+
+        /// <summary>نوع العميل (فرد/شركة/حكومي).</summary>
+        public CustomerType CustomerType { get; private set; }
+
+        /// <summary>السجل التجاري.</summary>
+        public string CommercialRegister { get; private set; }
+
+        /// <summary>الدولة.</summary>
+        public string Country { get; private set; }
+
+        /// <summary>الرمز البريدي.</summary>
+        public string PostalCode { get; private set; }
+
+        /// <summary>اسم الشخص المسؤول (للشركات).</summary>
+        public string ContactPerson { get; private set; }
+
+        /// <summary>الموقع الإلكتروني.</summary>
+        public string Website { get; private set; }
+
+        /// <summary>نسبة الخصم الافتراضية للعميل.</summary>
+        public decimal DefaultDiscountPercent { get; private set; }
 
         /// <summary>
         /// Opening balance brought forward from a previous system.
@@ -151,6 +184,14 @@ namespace MarcoERP.Domain.Entities.Sales
             Address = update.Address?.Trim();
             City = update.City?.Trim();
             TaxNumber = update.TaxNumber?.Trim();
+            Email = update.Email?.Trim();
+            CustomerType = update.CustomerType;
+            CommercialRegister = update.CommercialRegister?.Trim();
+            Country = update.Country?.Trim();
+            PostalCode = update.PostalCode?.Trim();
+            ContactPerson = update.ContactPerson?.Trim();
+            Website = update.Website?.Trim();
+            DefaultDiscountPercent = update.DefaultDiscountPercent;
             CreditLimit = update.CreditLimit;
             DaysAllowed = update.DaysAllowed;
             BlockedOnOverdue = update.BlockedOnOverdue;
@@ -210,6 +251,14 @@ namespace MarcoERP.Domain.Entities.Sales
             public string Address { get; init; }
             public string City { get; init; }
             public string TaxNumber { get; init; }
+            public string Email { get; init; }
+            public CustomerType CustomerType { get; init; }
+            public string CommercialRegister { get; init; }
+            public string Country { get; init; }
+            public string PostalCode { get; init; }
+            public string ContactPerson { get; init; }
+            public string Website { get; init; }
+            public decimal DefaultDiscountPercent { get; init; }
             public decimal PreviousBalance { get; init; }
             public decimal CreditLimit { get; init; }
             public int? DaysAllowed { get; init; }
@@ -228,6 +277,14 @@ namespace MarcoERP.Domain.Entities.Sales
             public string Address { get; init; }
             public string City { get; init; }
             public string TaxNumber { get; init; }
+            public string Email { get; init; }
+            public CustomerType CustomerType { get; init; }
+            public string CommercialRegister { get; init; }
+            public string Country { get; init; }
+            public string PostalCode { get; init; }
+            public string ContactPerson { get; init; }
+            public string Website { get; init; }
+            public decimal DefaultDiscountPercent { get; init; }
             public decimal CreditLimit { get; init; }
             public int? DaysAllowed { get; init; }
             public bool BlockedOnOverdue { get; init; }

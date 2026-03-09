@@ -88,7 +88,13 @@
                         </DataGridTextColumn>
                         <DataGridTextColumn Header="الاسم (عربي)" Binding="{Binding NameAr}" Width="*" MinWidth="120" />
                         <DataGridTextColumn Header="الحساب" Binding="{Binding AccountName}" Width="120" />
-                        <DataGridTextColumn Header="الهاتف" Binding="{Binding Phone}" Width="100" />
+                        <DataGridTextColumn Header="الهاتف" Binding="{Binding Phone}" Width="100">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="FlowDirection" Value="LeftToRight" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                         <DataGridTemplateColumn Header="⭐" Width="40">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>

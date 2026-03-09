@@ -31,4 +31,23 @@ namespace MarcoERP.WpfUI.Views.Inventory
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
             => throw new NotSupportedException();
     }
+
+    /// <summary>
+    /// Converts bool to ✓ / ✗ symbol for status display.
+    /// </summary>
+    public sealed class BoolToSymbolConverter : IValueConverter
+    {
+        public static readonly BoolToSymbolConverter Instance = new();
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool b)
+                return b ? "✓" : "✗";
+            return "—";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotSupportedException();
+    }
+
 }

@@ -25,8 +25,13 @@ namespace MarcoERP.Persistence.Interceptors
         private readonly ICurrentUserService _currentUserService;
         private readonly IDateTimeProvider _dateTimeProvider;
 
-        // Snapshot of modified entries captured before SaveChanges (old values lost after save)
-        private List<AuditEntry> _pendingAuditEntries = new();
+        // P-01 fix: Use AsyncLocal to prevent thread-safety issues under concurrent SaveChanges
+        private static readonly AsyncLocal<List<AuditEntry>> _asyncPendingEntries = new();
+
+        private static List<AuditEntry> _pendingEntries
+        {
+            get => _asyncPendingEntries.Value ??= new List<AuditEntry>();
+        }
 
         public AuditSaveChangesInterceptor(
             ICurrentUserService currentUserService,
@@ -66,7 +71,7 @@ namespace MarcoERP.Persistence.Interceptors
             int result,
             CancellationToken cancellationToken = default)
         {
-            InsertAuditLogs(eventData.Context);
+            await InsertAuditLogsAsync(eventData.Context, cancellationToken);
             return await base.SavedChangesAsync(eventData, result, cancellationToken);
         }
 
@@ -106,6 +111,12 @@ namespace MarcoERP.Persistence.Interceptors
             }
         }
 
+        // P-07: Never log sensitive fields in audit log
+        private static readonly HashSet<string> _sensitiveFields = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "PasswordHash", "PasswordResetToken", "ApiSecret", "RefreshToken", "TwoFactorKey", "SecurityStamp"
+        };
+
         /// <summary>
         /// AUD-02: Captures OldValues/NewValues/ChangedColumns before SaveChanges commits.
         /// Must be called before save because EF replaces original values after commit.
@@ -114,7 +125,7 @@ namespace MarcoERP.Persistence.Interceptors
         {
             if (context == null) return;
 
-            _pendingAuditEntries.Clear();
+            _pendingEntries.Clear();                               // thread-local, safe
             var utcNow = _dateTimeProvider.UtcNow;
             var username = _currentUserService.IsAuthenticated
                 ? _currentUserService.Username
@@ -158,6 +169,9 @@ namespace MarcoERP.Persistence.Interceptors
                     // Skip RowVersion / concurrency tokens
                     if (prop.Metadata.IsConcurrencyToken) continue;
 
+                    // Skip sensitive fields — never log passwords, tokens, secrets
+                    if (_sensitiveFields.Contains(prop.Metadata.Name)) continue;
+
                     switch (entry.State)
                     {
                         case EntityState.Added:
@@ -179,7 +193,7 @@ namespace MarcoERP.Persistence.Interceptors
                     }
                 }
 
-                _pendingAuditEntries.Add(auditEntry);
+                _pendingEntries.Add(auditEntry);
             }
         }
 
@@ -189,9 +203,13 @@ namespace MarcoERP.Persistence.Interceptors
         /// </summary>
         private void InsertAuditLogs(DbContext context)
         {
-            if (context == null || _pendingAuditEntries.Count == 0) return;
+            if (context == null || _pendingEntries.Count == 0) return;
 
-            foreach (var auditEntry in _pendingAuditEntries)
+            // Copy then clear so retries cannot double-log
+            var entriesToSave = new List<AuditEntry>(_pendingEntries);
+            _pendingEntries.Clear();
+
+            foreach (var auditEntry in entriesToSave)
             {
                 // For added entities, get the generated PK now
                 if (auditEntry.Action == "Create" && auditEntry.EntityId == 0)
@@ -219,10 +237,51 @@ namespace MarcoERP.Persistence.Interceptors
                 context.Set<AuditLog>().Add(log);
             }
 
-            _pendingAuditEntries.Clear();
-
             // Save audit logs in the same transaction
             context.SaveChanges();
+        }
+
+        /// <summary>
+        /// Async version of InsertAuditLogs — called from SavedChangesAsync to avoid sync-over-async.
+        /// </summary>
+        private async Task InsertAuditLogsAsync(DbContext context, CancellationToken cancellationToken)
+        {
+            if (context == null || _pendingEntries.Count == 0) return;
+
+            // Copy then clear so retries cannot double-log
+            var entriesToSave = new List<AuditEntry>(_pendingEntries);
+            _pendingEntries.Clear();
+
+            foreach (var auditEntry in entriesToSave)
+            {
+                // For added entities, get the generated PK now
+                if (auditEntry.Action == "Create" && auditEntry.EntityId == 0)
+                {
+                    var pkProp = auditEntry.Entry?.Properties
+                        .FirstOrDefault(p => p.Metadata.IsPrimaryKey());
+                    if (pkProp != null)
+                        auditEntry.EntityId = Convert.ToInt32(pkProp.CurrentValue ?? 0);
+                }
+
+                var log = new AuditLog(
+                    auditEntry.EntityType,
+                    auditEntry.EntityId,
+                    auditEntry.Action,
+                    auditEntry.PerformedBy,
+                    auditEntry.Timestamp,
+                    details: null,
+                    oldValues: auditEntry.OldValues.Count > 0
+                        ? JsonSerializer.Serialize(auditEntry.OldValues) : null,
+                    newValues: auditEntry.NewValues.Count > 0
+                        ? JsonSerializer.Serialize(auditEntry.NewValues) : null,
+                    changedColumns: auditEntry.ChangedColumns.Count > 0
+                        ? JsonSerializer.Serialize(auditEntry.ChangedColumns) : null);
+
+                context.Set<AuditLog>().Add(log);
+            }
+
+            // Save audit logs asynchronously in the same transaction
+            await context.SaveChangesAsync(cancellationToken);
         }
 
         /// <summary>Detects soft delete by checking if IsDeleted changed to true.</summary>

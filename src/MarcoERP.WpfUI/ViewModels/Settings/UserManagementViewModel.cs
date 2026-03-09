@@ -20,12 +20,14 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
         private readonly IUserService _userService;
         private readonly IRoleService _roleService;
         private readonly IDateTimeProvider _dateTimeProvider;
+        private readonly IDialogService _dialog;
 
-        public UserManagementViewModel(IUserService userService, IRoleService roleService, IDateTimeProvider dateTimeProvider)
+        public UserManagementViewModel(IUserService userService, IRoleService roleService, IDateTimeProvider dateTimeProvider, IDialogService dialog)
         {
             _userService = userService ?? throw new ArgumentNullException(nameof(userService));
             _roleService = roleService ?? throw new ArgumentNullException(nameof(roleService));
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllUsers = new ObservableCollection<UserListDto>();
             Roles = new ObservableCollection<RoleListDto>();
@@ -346,10 +348,9 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
         private async Task DeactivateAsync()
         {
             if (SelectedItem == null) return;
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل أنت متأكد من تعطيل حساب «{SelectedItem.FullNameAr}»؟",
-                "تأكيد التعطيل", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد التعطيل")) return;
 
             IsBusy = true;
             ClearError();
@@ -412,12 +413,11 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
         {
             if (SelectedItem == null) return;
 
-            // Generate a compliant temporary password
-            var tempPassword = $"Marco@{_dateTimeProvider.UtcNow:HHmmss}";
-            var confirm = MessageBox.Show(
+            // H-12 fix: Generate a cryptographically random temporary password
+            var tempPassword = GenerateSecureTemporaryPassword();
+            if (!_dialog.Confirm(
                 $"هل تريد إعادة تعيين كلمة مرور «{SelectedItem.FullNameAr}»؟\nكلمة المرور المؤقتة: {tempPassword}\nسيُطلب من المستخدم تغييرها عند الدخول.",
-                "إعادة تعيين كلمة المرور", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "إعادة تعيين كلمة المرور")) return;
 
             IsBusy = true;
             ClearError();
@@ -482,6 +482,39 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
             if (_currentDetail == null) return;
             IsEditing = true;
             IsNew = false;
+        }
+
+        /// <summary>
+        /// H-12 fix: Generates a cryptographically random temporary password.
+        /// </summary>
+        private static string GenerateSecureTemporaryPassword(int length = 12)
+        {
+            const string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const string lower = "abcdefghijklmnopqrstuvwxyz";
+            const string digits = "0123456789";
+            const string special = "@#$%&*!";
+            const string all = upper + lower + digits + special;
+
+            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+            var bytes = new byte[length];
+            rng.GetBytes(bytes);
+
+            var chars = new char[length];
+            // Guarantee at least one of each category
+            chars[0] = upper[bytes[0] % upper.Length];
+            chars[1] = lower[bytes[1] % lower.Length];
+            chars[2] = digits[bytes[2] % digits.Length];
+            chars[3] = special[bytes[3] % special.Length];
+            for (int i = 4; i < length; i++)
+                chars[i] = all[bytes[i] % all.Length];
+
+            // Shuffle using Fisher-Yates
+            for (int i = length - 1; i > 0; i--)
+            {
+                int j = bytes[i] % (i + 1);
+                (chars[i], chars[j]) = (chars[j], chars[i]);
+            }
+            return new string(chars);
         }
     }
 }

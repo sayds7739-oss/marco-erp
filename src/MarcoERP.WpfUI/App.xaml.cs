@@ -3,6 +3,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
+using MaterialDesignThemes.Wpf;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +15,9 @@ using MarcoERP.Persistence.Seeds;
 using MarcoERP.Persistence.Services;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Entities.Accounting.Policies;
+using MarcoERP.Domain.Enums;
 using MarcoERP.Application.Interfaces;
+using MarcoERP.Application.Common;
 using MarcoERP.Application.Interfaces.Accounting;
 using MarcoERP.Application.Services.Accounting;
 using MarcoERP.Infrastructure.Services;
@@ -51,6 +55,8 @@ using MarcoERP.Application.Interfaces.SmartEntry;
 using MarcoERP.Application.Interfaces.Search;
 using MarcoERP.Application.Interfaces.Security;
 using MarcoERP.Application.Interfaces.Settings;
+using MarcoERP.Application.Interfaces.Printing;
+using MarcoERP.Application.Services.Printing;
 using MarcoERP.Application.Services.Security;
 using MarcoERP.Application.Services.Settings;
 using MarcoERP.Application.DTOs.Security;
@@ -69,6 +75,7 @@ using MarcoERP.Persistence.Services.Settings;
 using MarcoERP.WpfUI.ViewModels.Sales;
 using MarcoERP.WpfUI.Views.Sales;
 using Microsoft.Extensions.Logging;
+using Serilog;
 using MarcoERP.WpfUI.Navigation;
 using MarcoERP.WpfUI.Services;
 using MarcoERP.WpfUI.Views.Shell;
@@ -157,6 +164,18 @@ namespace MarcoERP.WpfUI
         {
             base.OnStartup(e);
 
+            // Global: Catch unobserved Task exceptions and log them without crashing the app
+            TaskScheduler.UnobservedTaskException += (sender, args) =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[UnobservedTask] {args.Exception}");
+                args.SetObserved();
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[UnhandledException] {args.ExceptionObject}");
+            };
+
             // Global: Select all text in TextBox on focus (improves data entry for prices/amounts)
             EventManager.RegisterClassHandler(typeof(System.Windows.Controls.TextBox),
                 System.Windows.Controls.TextBox.GotKeyboardFocusEvent,
@@ -205,8 +224,12 @@ namespace MarcoERP.WpfUI
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[Startup Error] {ex}");
+                var userMessage = ex is InvalidOperationException
+                    ? ex.Message
+                    : "حدث خطأ في تهيئة التطبيق. يرجى مراجعة سجلات النظام.";
                 MessageBox.Show(
-                    $"فشل تهيئة التطبيق:\n\n{ex.Message}\n\n{ex.StackTrace}",
+                    $"فشل تهيئة التطبيق:\n\n{userMessage}",
                     "خطأ في التهيئة",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -251,27 +274,35 @@ namespace MarcoERP.WpfUI
                     await dbContext.Database.EnsureCreatedAsync();
                 }
 
-                if (!seedData)
-                    return true;
+                if (seedData)
+                {
+                    await SystemAccountSeed.SeedAsync(dbContext);
+                    await CompanySeed.SeedAsync(dbContext);
+                    await UnitSeed.SeedAsync(dbContext);
 
-                await SystemAccountSeed.SeedAsync(dbContext);
-                await CompanySeed.SeedAsync(dbContext);
-                await UnitSeed.SeedAsync(dbContext);
+                    var hasUsers = await dbContext.Users.AnyAsync();
 
-                // Governance: CFG-01, DPR-03 — Never store passwords in source control.
-                // Priority: Environment variable > appsettings (which should be empty in production).
-                var adminSeedPassword = Environment.GetEnvironmentVariable("MARCOERP_ADMIN_PASSWORD")
-                    ?? _configuration["Security:AdminSeedPassword"];
+                    // Governance: CFG-01, DPR-03 — Never store passwords in source control.
+                    // Priority: Environment variable > appsettings (which should be empty in production).
+                    var adminSeedPassword = Environment.GetEnvironmentVariable("MARCOERP_ADMIN_PASSWORD")
+                        ?? _configuration["Security:AdminSeedPassword"];
 
-                if (string.IsNullOrWhiteSpace(adminSeedPassword))
-                    throw new InvalidOperationException("Admin seed password is required when SeedOnStartup is enabled.");
+                    if (!hasUsers && string.IsNullOrWhiteSpace(adminSeedPassword))
+                        throw new InvalidOperationException("كلمة مرور المسؤول مطلوبة عند تفعيل SeedOnStartup.");
 
-                var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-                await SecuritySeed.SeedAsync(dbContext, passwordHasher.HashPassword(adminSeedPassword));
-                await SystemSettingSeed.SeedAsync(dbContext);
-                await FeatureSeed.SeedAsync(dbContext);
-                await ProfileSeed.SeedAsync(dbContext);
-                await VersionSeed.SeedAsync(dbContext);
+                    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+                    var adminPasswordHash = string.IsNullOrWhiteSpace(adminSeedPassword)
+                        ? string.Empty
+                        : passwordHasher.HashPassword(adminSeedPassword);
+
+                    await SecuritySeed.SeedAsync(dbContext, adminPasswordHash);
+                    await SystemSettingSeed.SeedAsync(dbContext);
+                    await FeatureSeed.SeedAsync(dbContext);
+                    await ProfileSeed.SeedAsync(dbContext);
+                    await VersionSeed.SeedAsync(dbContext);
+                }
+
+                await ShowStartupIntegrityWarningsAsync(dbContext);
 
                 return true;
             }
@@ -297,6 +328,81 @@ namespace MarcoERP.WpfUI
             }
         }
 
+        private static async Task ShowStartupIntegrityWarningsAsync(MarcoDbContext dbContext)
+        {
+            var warnings = new System.Collections.Generic.List<string>();
+
+            var hasActiveFiscalYear = await dbContext.FiscalYears
+                .AsNoTracking()
+                .AnyAsync(fy => fy.Status == FiscalYearStatus.Active);
+            if (!hasActiveFiscalYear)
+                warnings.Add("لا توجد سنة مالية نشطة.");
+
+            var defaultCashboxSetting = await dbContext.SystemSettings
+                .FirstOrDefaultAsync(s => s.SettingKey == "DefaultCashboxId");
+
+            var hasValidDefaultCashbox = false;
+            if (defaultCashboxSetting != null &&
+                int.TryParse(defaultCashboxSetting.SettingValue, out var defaultCashboxId))
+            {
+                hasValidDefaultCashbox = await dbContext.Cashboxes
+                    .AsNoTracking()
+                    .AnyAsync(c => c.Id == defaultCashboxId && c.IsActive);
+            }
+
+            if (!hasValidDefaultCashbox)
+            {
+                var fallbackCashbox = await dbContext.Cashboxes
+                    .Where(c => c.IsActive)
+                    .OrderByDescending(c => c.IsDefault)
+                    .ThenBy(c => c.Id)
+                    .FirstOrDefaultAsync();
+
+                if (fallbackCashbox != null)
+                {
+                    if (defaultCashboxSetting == null)
+                    {
+                        defaultCashboxSetting = new MarcoERP.Domain.Entities.Settings.SystemSetting(
+                            "DefaultCashboxId",
+                            fallbackCashbox.Id.ToString(),
+                            "الصندوق الافتراضي",
+                            "حسابات افتراضية",
+                            "int");
+                        await dbContext.SystemSettings.AddAsync(defaultCashboxSetting);
+                    }
+                    else
+                    {
+                        defaultCashboxSetting.UpdateValue(fallbackCashbox.Id.ToString());
+                    }
+
+                    await dbContext.SaveChangesAsync();
+                }
+                else
+                {
+                    warnings.Add("لا توجد خزنة فعّالة لضبط الصندوق الافتراضي (DefaultCashboxId).");
+                }
+            }
+
+            var draftInClosedPeriodsCount = await (
+                from journal in dbContext.JournalEntries.AsNoTracking()
+                join period in dbContext.FiscalPeriods.AsNoTracking() on journal.FiscalPeriodId equals period.Id
+                where journal.Status == JournalEntryStatus.Draft && period.Status != PeriodStatus.Open
+                select journal.Id
+            ).CountAsync();
+
+            if (draftInClosedPeriodsCount > 0)
+                warnings.Add($"يوجد {draftInClosedPeriodsCount} قيود مسودة ضمن فترات مالية مغلقة.");
+
+            if (warnings.Count == 0)
+                return;
+
+            MessageBox.Show(
+                "⚠️ تحذيرات سلامة بدء التشغيل:\n\n- " + string.Join("\n- ", warnings),
+                "تحذيرات سلامة البيانات",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+
         protected override void OnExit(ExitEventArgs e)
         {
             _backgroundJobService?.StopAll();
@@ -311,18 +417,37 @@ namespace MarcoERP.WpfUI
             services.AddSingleton(_configuration);
 
             // ─── Persistence Layer ───
-            var connectionString = _configuration.GetConnectionString("DefaultConnection");
+            var dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER")
+                ?? _configuration.GetValue<string>("Database:Provider")
+                ?? "SqlServer";
+            var connectionStringName = dbProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase)
+                ? "PostgreSQLConnection"
+                : "DefaultConnection";
+            var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION")
+                ?? _configuration.GetConnectionString(connectionStringName);
 
             services.AddScoped<AuditSaveChangesInterceptor>();
             services.AddSingleton<HardDeleteProtectionInterceptor>();
 
             services.AddDbContext<MarcoDbContext>((serviceProvider, options) =>
             {
-                options.UseSqlServer(connectionString, sqlOptions =>
+                var migrationsAssembly = typeof(MarcoDbContext).Assembly.FullName;
+
+                if (dbProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
                 {
-                    sqlOptions.MigrationsAssembly(typeof(MarcoDbContext).Assembly.FullName);
-                    // Note: EnableRetryOnFailure removed - incompatible with user-initiated transactions
-                });
+                    options.UseNpgsql(connectionString, npgsqlOptions =>
+                    {
+                        npgsqlOptions.MigrationsAssembly(migrationsAssembly);
+                    });
+                }
+                else
+                {
+                    options.UseSqlServer(connectionString, sqlOptions =>
+                    {
+                        sqlOptions.MigrationsAssembly(migrationsAssembly);
+                        // Note: EnableRetryOnFailure removed - incompatible with user-initiated transactions
+                    });
+                }
 
                 // Register interceptors
                 var auditInterceptor = serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>();
@@ -354,11 +479,16 @@ namespace MarcoERP.WpfUI
             services.AddScoped<ISalesInvoiceRepository, SalesInvoiceRepository>();
             services.AddScoped<ISalesReturnRepository, SalesReturnRepository>();
             services.AddScoped<IPosSessionRepository, PosSessionRepository>();
+
+            // ─── Attachments ───
+            services.AddScoped<IAttachmentRepository, AttachmentRepository>();
+            services.AddScoped<IAttachmentService, Application.Services.AttachmentService>();
             services.AddScoped<IPosPaymentRepository, PosPaymentRepository>();
             services.AddScoped<IPriceListRepository, PriceListRepository>();
             services.AddScoped<IInventoryAdjustmentRepository, InventoryAdjustmentRepository>();
             services.AddScoped<ISalesQuotationRepository, SalesQuotationRepository>();
             services.AddScoped<IPurchaseQuotationRepository, PurchaseQuotationRepository>();
+            services.AddScoped<IOpeningBalanceRepository, OpeningBalanceRepository>();
 
             // ─── Treasury Repositories ───
             services.AddScoped<ICashboxRepository, CashboxRepository>();
@@ -378,15 +508,37 @@ namespace MarcoERP.WpfUI
             // ─── Infrastructure Layer ───
             services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
             services.AddSingleton<IAlertService, AlertService>();
+            services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IActivityTracker, ActivityTracker>();
             services.AddSingleton<IBackgroundJobService, BackgroundJobService>();
-            services.AddLogging(builder => builder.AddDebug());
+            services.AddLogging(builder =>
+            {
+                builder.ClearProviders();
+                var logger = new Serilog.LoggerConfiguration()
+                    .MinimumLevel.Information()
+                    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
+                    .Enrich.FromLogContext()
+                    .WriteTo.File(
+                        System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs", "marcoerp-.log"),
+                        rollingInterval: Serilog.RollingInterval.Day,
+                        retainedFileCountLimit: 30,
+                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+                    .WriteTo.Debug()
+                    .CreateLogger();
+                builder.AddSerilog(logger, dispose: true);
+            });
             services.AddSingleton<ICurrentUserService, CurrentUserService>();
             services.AddSingleton<ICompanyContext, DefaultCompanyContext>();
             services.AddScoped<IAuditLogger, AuditLogger>();
             services.AddScoped<IJournalNumberGenerator, JournalNumberGenerator>();
+            services.AddScoped<JournalEntryFactory>();
+            services.AddScoped<StockManager>();
+            services.AddScoped<FiscalPeriodValidator>();
             services.AddScoped<ICodeGenerator, CodeGenerator>();
             services.AddSingleton<IPasswordHasher, PasswordHasher>();
+            services.AddSingleton<IReceiptPrinterService, WindowsEscPosPrinterService>();
+            services.AddScoped<IEmailService, MarcoERP.Infrastructure.Services.EmailService>();
+            services.AddSingleton<INotificationService, MarcoERP.Application.Services.NotificationService>();
 
             // ─── FluentValidation Validators ───
             services.AddScoped<IValidator<CreateAccountDto>, CreateAccountDtoValidator>();
@@ -404,6 +556,9 @@ namespace MarcoERP.WpfUI
             services.AddScoped<IValidator<UpdateProductDto>, UpdateProductDtoValidator>();
             services.AddScoped<IValidator<CreateWarehouseDto>, CreateWarehouseDtoValidator>();
             services.AddScoped<IValidator<UpdateWarehouseDto>, UpdateWarehouseDtoValidator>();
+            services.AddScoped<IValidator<CreateInventoryAdjustmentDto>, CreateInventoryAdjustmentDtoValidator>();
+            services.AddScoped<IValidator<UpdateInventoryAdjustmentDto>, UpdateInventoryAdjustmentDtoValidator>();
+            services.AddScoped<IValidator<BulkPriceUpdateRequestDto>, BulkPriceUpdateRequestDtoValidator>();
 
             // ─── Sales & Purchases Validators ───
             services.AddScoped<IValidator<CreateCustomerDto>, CreateCustomerDtoValidator>();
@@ -422,6 +577,8 @@ namespace MarcoERP.WpfUI
             services.AddScoped<IValidator<UpdateSalesRepresentativeDto>, UpdateSalesRepresentativeDtoValidator>();
             services.AddScoped<IValidator<CreateSalesQuotationDto>, CreateSalesQuotationDtoValidator>();
             services.AddScoped<IValidator<UpdateSalesQuotationDto>, UpdateSalesQuotationDtoValidator>();
+            services.AddScoped<IValidator<CreatePriceListDto>, CreatePriceListDtoValidator>();
+            services.AddScoped<IValidator<UpdatePriceListDto>, UpdatePriceListDtoValidator>();
             services.AddScoped<IValidator<CreatePurchaseQuotationDto>, CreatePurchaseQuotationDtoValidator>();
             services.AddScoped<IValidator<UpdatePurchaseQuotationDto>, UpdatePurchaseQuotationDtoValidator>();
 
@@ -437,6 +594,7 @@ namespace MarcoERP.WpfUI
             services.AddScoped<IValidator<UpdateBankAccountDto>, UpdateBankAccountDtoValidator>();
             services.AddScoped<IValidator<CreateBankReconciliationDto>, CreateBankReconciliationDtoValidator>();
             services.AddScoped<IValidator<CreateBankReconciliationItemDto>, CreateBankReconciliationItemDtoValidator>();
+            services.AddScoped<IValidator<UpdateBankReconciliationDto>, UpdateBankReconciliationDtoValidator>();
             services.AddScoped<IValidator<CreateCashReceiptDto>, CreateCashReceiptDtoValidator>();
             services.AddScoped<IValidator<UpdateCashReceiptDto>, UpdateCashReceiptDtoValidator>();
             services.AddScoped<IValidator<CreateCashPaymentDto>, CreateCashPaymentDtoValidator>();
@@ -453,65 +611,73 @@ namespace MarcoERP.WpfUI
             services.AddScoped<IValidator<ChangePasswordDto>, ChangePasswordDtoValidator>();
             services.AddScoped<IValidator<LoginDto>, LoginDtoValidator>();
             services.AddScoped<IValidator<UpdateSystemSettingDto>, UpdateSystemSettingDtoValidator>();
+            services.AddScoped<IValidator<ToggleFeatureDto>, ToggleFeatureDtoValidator>();
 
-            // ─── Application Layer ───
-            services.AddScoped<IAccountService, AccountService>();
-            services.AddScoped<IJournalEntryService, JournalEntryService>();
-            services.AddScoped<IYearEndClosingService, YearEndClosingService>();
-            services.AddScoped<IFiscalYearService, FiscalYearService>();
+            // ─── Opening Balance Validators ───
+            services.AddScoped<IValidator<CreateOpeningBalanceDto>, CreateOpeningBalanceDtoValidator>();
+            services.AddScoped<IValidator<UpdateOpeningBalanceDto>, UpdateOpeningBalanceDtoValidator>();
+
+            // ─── Application Layer (wrapped with AuthorizationProxy — Phase 4) ───
+            services.AddAuthorizedService<IAccountService, AccountService>();
+            services.AddAuthorizedService<IJournalEntryService, JournalEntryService>();
+            services.AddAuthorizedService<IYearEndClosingService, YearEndClosingService>();
+            services.AddAuthorizedService<IFiscalYearService, FiscalYearService>();
+            services.AddAuthorizedService<IOpeningBalanceService, OpeningBalanceService>();
 
             // ─── Inventory Services ───
-            services.AddScoped<ICategoryService, CategoryService>();
-            services.AddScoped<IUnitService, UnitService>();
-            services.AddScoped<IProductService, ProductService>();
-            services.AddScoped<IWarehouseService, WarehouseService>();
-            services.AddScoped<IBulkPriceUpdateService, BulkPriceUpdateService>();
+            services.AddAuthorizedService<ICategoryService, CategoryService>();
+            services.AddAuthorizedService<IUnitService, UnitService>();
+            services.AddAuthorizedService<IProductService, ProductService>();
+            services.AddAuthorizedService<IWarehouseService, WarehouseService>();
+            services.AddAuthorizedService<IBulkPriceUpdateService, BulkPriceUpdateService>();
 
             // ─── Sales & Purchases Services ───
-            services.AddScoped<ICustomerService, CustomerService>();
-            services.AddScoped<ISupplierService, SupplierService>();
-            services.AddScoped<ISalesRepresentativeService, SalesRepresentativeService>();
-            services.AddScoped<IPurchaseInvoiceService, PurchaseInvoiceService>();
+            services.AddAuthorizedService<ICustomerService, CustomerService>();
+            services.AddAuthorizedService<ICustomerImportService, Application.Services.Sales.CustomerImportService>();
+            services.AddAuthorizedService<ISupplierService, SupplierService>();
+            services.AddAuthorizedService<ISupplierImportService, Application.Services.Purchases.SupplierImportService>();
+            services.AddAuthorizedService<ISalesRepresentativeService, SalesRepresentativeService>();
+            services.AddAuthorizedService<IPurchaseInvoiceService, PurchaseInvoiceService>();
             services.AddScoped<PurchaseInvoiceRepositories>();
             services.AddScoped<PurchaseInvoiceServices>();
             services.AddScoped<PurchaseInvoiceValidators>();
-            services.AddScoped<IPurchaseReturnService, PurchaseReturnService>();
+            services.AddAuthorizedService<IPurchaseReturnService, PurchaseReturnService>();
             services.AddScoped<PurchaseReturnRepositories>();
             services.AddScoped<PurchaseReturnServices>();
             services.AddScoped<PurchaseReturnValidators>();
-            services.AddScoped<ISalesInvoiceService, SalesInvoiceService>();
+            services.AddAuthorizedService<ISalesInvoiceService, SalesInvoiceService>();
             services.AddScoped<SalesInvoiceRepositories>();
             services.AddScoped<SalesInvoiceServices>();
             services.AddScoped<SalesInvoiceValidators>();
-            services.AddScoped<ISalesReturnService, SalesReturnService>();
+            services.AddAuthorizedService<ISalesReturnService, SalesReturnService>();
             services.AddScoped<SalesReturnRepositories>();
             services.AddScoped<SalesReturnServices>();
             services.AddScoped<SalesReturnValidators>();
-            services.AddScoped<IPosService, PosService>();
+            services.AddAuthorizedService<IPosService, PosService>();
             services.AddScoped<PosSalesRepositories>();
             services.AddScoped<PosInventoryRepositories>();
             services.AddScoped<PosAccountingRepositories>();
             services.AddScoped<PosRepositories>();
             services.AddScoped<PosServices>();
             services.AddScoped<PosValidators>();
-            services.AddScoped<IPriceListService, PriceListService>();
-            services.AddScoped<IInventoryAdjustmentService, InventoryAdjustmentService>();
-            services.AddScoped<ISalesQuotationService, SalesQuotationService>();
-            services.AddScoped<IPurchaseQuotationService, PurchaseQuotationService>();
+            services.AddAuthorizedService<IPriceListService, PriceListService>();
+            services.AddAuthorizedService<IInventoryAdjustmentService, InventoryAdjustmentService>();
+            services.AddAuthorizedService<ISalesQuotationService, SalesQuotationService>();
+            services.AddAuthorizedService<IPurchaseQuotationService, PurchaseQuotationService>();
 
             // ─── Treasury Services ───
-            services.AddScoped<ICashboxService, CashboxService>();
-            services.AddScoped<IBankAccountService, BankAccountService>();
-            services.AddScoped<IBankReconciliationService, BankReconciliationService>();
-            services.AddScoped<ICashReceiptService, CashReceiptService>();
+            services.AddAuthorizedService<ICashboxService, CashboxService>();
+            services.AddAuthorizedService<IBankAccountService, BankAccountService>();
+            services.AddAuthorizedService<IBankReconciliationService, BankReconciliationService>();
+            services.AddAuthorizedService<ICashReceiptService, CashReceiptService>();
             services.AddScoped<CashReceiptRepositories>();
             services.AddScoped<CashReceiptServices>();
             services.AddScoped<CashReceiptValidators>();
-            services.AddScoped<ICashPaymentService, CashPaymentService>();
+            services.AddAuthorizedService<ICashPaymentService, CashPaymentService>();
             services.AddScoped<CashPaymentRepositories>();
             services.AddScoped<CashPaymentServices>();
             services.AddScoped<CashPaymentValidators>();
-            services.AddScoped<ICashTransferService, CashTransferService>();
+            services.AddAuthorizedService<ICashTransferService, CashTransferService>();
             services.AddScoped<CashTransferRepositories>();
             services.AddScoped<CashTransferServices>();
             services.AddScoped<CashTransferValidators>();
@@ -520,14 +686,15 @@ namespace MarcoERP.WpfUI
 
             // ─── Security & Settings Services ───
             services.AddScoped<IAuthenticationService, AuthenticationService>();
-            services.AddScoped<IUserService, UserService>();
-            services.AddScoped<IRoleService, RoleService>();
-            services.AddScoped<ISystemSettingsService, SystemSettingsService>();
-            services.AddScoped<IFeatureService, FeatureService>();
-            services.AddScoped<IProfileService, ProfileService>();
+            services.AddAuthorizedService<IUserService, UserService>();
+            services.AddAuthorizedService<IRoleService, RoleService>();
+            services.AddAuthorizedService<ISystemSettingsService, SystemSettingsService>();
+            services.AddAuthorizedService<IDataPurgeService, DataPurgeService>();
+            services.AddAuthorizedService<IFeatureService, FeatureService>();
+            services.AddAuthorizedService<IProfileService, ProfileService>();
             services.AddScoped<IImpactAnalyzerService, ImpactAnalyzerService>();
             services.AddScoped<IVersionRepository, VersionRepository>();
-            services.AddScoped<IVersionService, VersionService>();
+            services.AddAuthorizedService<IVersionService, VersionService>();
             // Phase 8D: Module Dependency Inspector (reflection-based, report-only)
             services.AddSingleton<IModuleDependencyInspector>(sp =>
                 new MarcoERP.Persistence.Services.Settings.ModuleDependencyInspector(
@@ -538,23 +705,24 @@ namespace MarcoERP.WpfUI
                     sp.GetRequiredService<MarcoDbContext>(),
                     () => CurrentAppVersion,
                     sp.GetRequiredService<IModuleDependencyInspector>()));
-            services.AddScoped<IBackupService, BackupService>();
+            services.AddAuthorizedService<IBackupService, BackupService>();
             services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
-            services.AddScoped<IMigrationExecutionService, MigrationExecutionService>();
+            services.AddAuthorizedService<IMigrationExecutionService, MigrationExecutionService>();
             services.AddScoped<IGovernanceAuditService, GovernanceAuditService>();
-            services.AddScoped<IAuditLogService, AuditLogService>();
-            services.AddScoped<IIntegrityService, IntegrityService>();
+            services.AddAuthorizedService<IAuditLogService, AuditLogService>();
+            services.AddAuthorizedService<IIntegrityService, IntegrityService>();
+            services.AddAuthorizedService<IRecycleBinService, RecycleBinService>();
 
             // ─── Reports Service ───
-            services.AddScoped<IReportService, ReportService>();
-            services.AddScoped<IReportExportService, ReportExportService>();
+            services.AddAuthorizedService<IReportService, ReportService>();
+            services.AddAuthorizedService<IReportExportService, FastReportExportService>();
 
             // ─── Interactive Reporting Framework ───
             services.AddSingleton<IDrillDownResolver, DrillDownResolver>();
             services.AddSingleton<DrillDownEngine>();
 
             // ─── Product Import ───
-            services.AddScoped<IProductImportService, MarcoERP.Application.Services.Inventory.ProductImportService>();
+            services.AddAuthorizedService<IProductImportService, MarcoERP.Application.Services.Inventory.ProductImportService>();
 
             // ─── Common Calculations ───
             services.AddSingleton<ILineCalculationService, LineCalculationService>();
@@ -570,84 +738,115 @@ namespace MarcoERP.WpfUI
             services.AddSingleton<IQuickTreasuryDialogService, QuickTreasuryDialogService>();
             services.AddScoped<IInvoiceTreasuryIntegrationService, InvoiceTreasuryIntegrationService>();
             services.AddSingleton<IInvoicePdfPreviewService, InvoicePdfPreviewService>();
+
+            // ─── Print Center ───
+            services.AddScoped<IPrintProfileProvider, PrintProfileProvider>();
+            services.AddScoped<IDocumentHtmlBuilder, DocumentHtmlBuilder>();
+
             services.AddSingleton<IViewRegistry>(sp =>
             {
                 var registry = new ViewRegistry();
 
-                registry.Register<DashboardView, DashboardViewModel>("Dashboard", "لوحة التحكم");
-                registry.Register<ChartOfAccountsView, ChartOfAccountsViewModel>("ChartOfAccounts", "شجرة الحسابات");
-                registry.Register<JournalEntryView, JournalEntryViewModel>("JournalEntries", "القيود اليومية");
-                registry.Register<FiscalPeriodView, FiscalPeriodViewModel>("FiscalPeriods", "الفترات المالية");
-                registry.Register<OpeningBalanceWizardView, OpeningBalanceWizardViewModel>("OpeningBalance", "الأرصدة الافتتاحية");
+                // Brush shortcuts for icon colors
+                var acctBrush = new SolidColorBrush(Color.FromRgb(165, 214, 167));
+                var invBrush = new SolidColorBrush(Color.FromRgb(255, 224, 130));
+                var salesBrush = new SolidColorBrush(Color.FromRgb(239, 154, 154));
+                var purchBrush = new SolidColorBrush(Color.FromRgb(206, 147, 216));
+                var treasBrush = new SolidColorBrush(Color.FromRgb(128, 203, 196));
+                var reportBrush = new SolidColorBrush(Color.FromRgb(176, 190, 197));
+                var settBrush = new SolidColorBrush(Color.FromRgb(176, 190, 197));
 
-                registry.Register<CategoryView, CategoryViewModel>("Categories", "التصنيفات");
-                registry.Register<UnitView, UnitViewModel>("Units", "وحدات القياس");
-                registry.Register<ProductView, ProductViewModel>("Products", "الأصناف");
-                registry.Register<WarehouseView, WarehouseViewModel>("Warehouses", "المخازن");
-                registry.Register<BulkPriceUpdateView, BulkPriceUpdateViewModel>("BulkPriceUpdate", "تحديث الأسعار الجماعي");
-                registry.Register<InventoryAdjustmentListView, InventoryAdjustmentListViewModel>("InventoryAdjustments", "تسويات المخزون");
-                registry.Register<InventoryAdjustmentDetailView, InventoryAdjustmentDetailViewModel>("InventoryAdjustmentDetail", "تسوية مخزون");
-                registry.Register<ProductImportView, ProductImportViewModel>("ProductImport", "استيراد الأصناف");
+                registry.Register<DashboardView, DashboardViewModel>("Dashboard", "لوحة التحكم", PackIconKind.ViewDashboard, new SolidColorBrush(Color.FromRgb(144, 202, 249)));
 
-                registry.Register<SalesInvoiceListView, SalesInvoiceListViewModel>("SalesInvoices", "فواتير البيع");
-                registry.Register<SalesInvoiceDetailView, SalesInvoiceDetailViewModel>("SalesInvoiceDetail", "فاتورة بيع");
-                registry.Register<SalesReturnListView, SalesReturnListViewModel>("SalesReturns", "مرتجعات البيع");
-                registry.Register<SalesReturnDetailView, SalesReturnDetailViewModel>("SalesReturnDetail", "مرتجع بيع");
-                registry.Register<CustomerView, CustomerViewModel>("Customers", "العملاء");
-                registry.Register<SalesRepresentativeView, SalesRepresentativeViewModel>("SalesRepresentatives", "مندوبي المبيعات");
-                registry.Register<PriceListView, PriceListViewModel>("PriceLists", "قوائم الأسعار");
-                registry.Register<SalesQuotationListView, SalesQuotationListViewModel>("SalesQuotations", "عروض أسعار البيع");
-                registry.Register<SalesQuotationDetailView, SalesQuotationDetailViewModel>("SalesQuotationDetail", "عرض سعر بيع");
+                // Accounting
+                registry.Register<ChartOfAccountsView, ChartOfAccountsViewModel>("ChartOfAccounts", "شجرة الحسابات", PackIconKind.FileTree, acctBrush);
+                registry.Register<JournalEntryView, JournalEntryViewModel>("JournalEntries", "القيود اليومية", PackIconKind.BookOpenPageVariant, acctBrush);
+                registry.Register<FiscalPeriodView, FiscalPeriodViewModel>("FiscalPeriods", "الفترات المالية", PackIconKind.CalendarMonth, acctBrush);
+                registry.Register<OpeningBalanceWizardView, OpeningBalanceWizardViewModel>("OpeningBalance", "الأرصدة الافتتاحية", PackIconKind.ScaleBalance, acctBrush);
 
-                registry.Register<PurchaseInvoiceListView, PurchaseInvoiceListViewModel>("PurchaseInvoices", "فواتير الشراء");
-                registry.Register<PurchaseInvoiceDetailView, PurchaseInvoiceDetailViewModel>("PurchaseInvoiceDetail", "فاتورة شراء");
-                registry.Register<PurchaseReturnListView, PurchaseReturnListViewModel>("PurchaseReturns", "مرتجعات الشراء");
-                registry.Register<PurchaseReturnDetailView, PurchaseReturnDetailViewModel>("PurchaseReturnDetail", "مرتجع شراء");
-                registry.Register<SupplierView, SupplierViewModel>("Suppliers", "الموردين");
-                registry.Register<PurchaseQuotationListView, PurchaseQuotationListViewModel>("PurchaseQuotations", "طلبات الشراء");
-                registry.Register<PurchaseQuotationDetailView, PurchaseQuotationDetailViewModel>("PurchaseQuotationDetail", "طلب شراء");
+                // Inventory
+                registry.Register<CategoryView, CategoryViewModel>("Categories", "التصنيفات", PackIconKind.Shape, invBrush);
+                registry.Register<UnitView, UnitViewModel>("Units", "وحدات القياس", PackIconKind.Ruler, invBrush);
+                registry.Register<ProductView, ProductViewModel>("Products", "الأصناف", PackIconKind.PackageVariant, invBrush);
+                registry.Register<WarehouseView, WarehouseViewModel>("Warehouses", "المخازن", PackIconKind.Warehouse, invBrush);
+                registry.Register<BulkPriceUpdateView, BulkPriceUpdateViewModel>("BulkPriceUpdate", "تحديث الأسعار الجماعي", PackIconKind.TagMultiple, invBrush);
+                registry.Register<InventoryAdjustmentListView, InventoryAdjustmentListViewModel>("InventoryAdjustments", "تسويات المخزون", PackIconKind.ClipboardCheck, invBrush);
+                registry.Register<InventoryAdjustmentDetailView, InventoryAdjustmentDetailViewModel>("InventoryAdjustmentDetail", "تسوية مخزون", PackIconKind.ClipboardCheck, invBrush);
+                registry.Register<ProductImportView, ProductImportViewModel>("ProductImport", "استيراد الأصناف", PackIconKind.FileImport, invBrush);
 
-                registry.Register<CashboxView, CashboxViewModel>("Cashboxes", "الخزن");
-                registry.Register<BankAccountView, BankAccountViewModel>("BankAccounts", "الحسابات البنكية");
-                registry.Register<BankReconciliationView, BankReconciliationViewModel>("BankReconciliation", "التسوية البنكية");
-                registry.Register<CashReceiptView, CashReceiptViewModel>("CashReceipts", "سندات القبض");
-                registry.Register<CashPaymentView, CashPaymentViewModel>("CashPayments", "سندات الصرف");
-                registry.Register<CashTransferView, CashTransferViewModel>("CashTransfers", "التحويلات");
+                // Sales
+                registry.Register<SalesInvoiceListView, SalesInvoiceListViewModel>("SalesInvoices", "فواتير البيع", PackIconKind.ReceiptTextOutline, salesBrush);
+                registry.Register<SalesInvoiceDetailView, SalesInvoiceDetailViewModel>("SalesInvoiceDetail", "فاتورة بيع", PackIconKind.ReceiptTextOutline, salesBrush);
+                registry.Register<SalesReturnListView, SalesReturnListViewModel>("SalesReturns", "مرتجعات البيع", PackIconKind.ReceiptTextMinus, salesBrush);
+                registry.Register<SalesReturnDetailView, SalesReturnDetailViewModel>("SalesReturnDetail", "مرتجع بيع", PackIconKind.ReceiptTextMinus, salesBrush);
+                registry.Register<CustomerView, CustomerViewModel>("Customers", "العملاء", PackIconKind.AccountGroup, salesBrush);
+                registry.Register<CustomerImportView, CustomerImportViewModel>("CustomerImport", "استيراد العملاء", PackIconKind.FileImport, salesBrush);
+                registry.Register<SalesRepresentativeView, SalesRepresentativeViewModel>("SalesRepresentatives", "مندوبي المبيعات", PackIconKind.BadgeAccount, salesBrush);
+                registry.Register<PriceListView, PriceListViewModel>("PriceLists", "قوائم الأسعار", PackIconKind.CurrencyUsd, salesBrush);
+                registry.Register<SalesQuotationListView, SalesQuotationListViewModel>("SalesQuotations", "عروض أسعار البيع", PackIconKind.FileDocumentEdit, salesBrush);
+                registry.Register<SalesQuotationDetailView, SalesQuotationDetailViewModel>("SalesQuotationDetail", "عرض سعر بيع", PackIconKind.FileDocumentEdit, salesBrush);
 
-                registry.Register<ReportHubView, ReportHubViewModel>("Reports", "التقارير");
-                registry.Register<TrialBalanceView, TrialBalanceViewModel>("TrialBalance", "ميزان المراجعة");
-                registry.Register<AccountStatementView, AccountStatementViewModel>("AccountStatement", "كشف حساب");
-                registry.Register<IncomeStatementView, IncomeStatementViewModel>("IncomeStatement", "قائمة الدخل");
-                registry.Register<BalanceSheetView, BalanceSheetViewModel>("BalanceSheet", "الميزانية العمومية");
-                registry.Register<SalesReportView, SalesReportViewModel>("SalesReport", "تقرير المبيعات");
-                registry.Register<PurchaseReportView, PurchaseReportViewModel>("PurchaseReport", "تقرير المشتريات");
-                registry.Register<ProfitReportView, ProfitReportViewModel>("ProfitReport", "تقرير الأرباح");
-                registry.Register<VatReportView, VatReportViewModel>("VatReport", "تقرير الضريبة");
-                registry.Register<InventoryReportView, InventoryReportViewModel>("InventoryReport", "تقرير المخزون");
-                registry.Register<StockCardView, StockCardViewModel>("StockCard", "بطاقة الصنف");
-                registry.Register<CashboxMovementView, CashboxMovementViewModel>("CashboxMovement", "حركة الخزنة");
-                registry.Register<AgingReportView, AgingReportViewModel>("AgingReport", "أعمار الديون");
+                // Purchases
+                registry.Register<PurchaseInvoiceListView, PurchaseInvoiceListViewModel>("PurchaseInvoices", "فواتير الشراء", PackIconKind.CartOutline, purchBrush);
+                registry.Register<PurchaseInvoiceDetailView, PurchaseInvoiceDetailViewModel>("PurchaseInvoiceDetail", "فاتورة شراء", PackIconKind.CartOutline, purchBrush);
+                registry.Register<PurchaseReturnListView, PurchaseReturnListViewModel>("PurchaseReturns", "مرتجعات الشراء", PackIconKind.CartMinus, purchBrush);
+                registry.Register<PurchaseReturnDetailView, PurchaseReturnDetailViewModel>("PurchaseReturnDetail", "مرتجع شراء", PackIconKind.CartMinus, purchBrush);
+                registry.Register<SupplierView, SupplierViewModel>("Suppliers", "الموردين", PackIconKind.TruckDelivery, purchBrush);
+                registry.Register<SupplierImportView, SupplierImportViewModel>("SupplierImport", "استيراد الموردين", PackIconKind.FileImport, purchBrush);
+                registry.Register<PurchaseQuotationListView, PurchaseQuotationListViewModel>("PurchaseQuotations", "طلبات الشراء", PackIconKind.ClipboardTextSearch, purchBrush);
+                registry.Register<PurchaseQuotationDetailView, PurchaseQuotationDetailViewModel>("PurchaseQuotationDetail", "طلب شراء", PackIconKind.ClipboardTextSearch, purchBrush);
 
-                registry.Register<FiscalYearView, FiscalYearViewModel>("FiscalYear", "السنة المالية");
-                registry.Register<SystemSettingsView, SystemSettingsViewModel>("SystemSettings", "إعدادات النظام");
-                registry.Register<UserManagementView, UserManagementViewModel>("UserManagement", "إدارة المستخدمين");
-                registry.Register<RoleManagementView, RoleManagementViewModel>("RoleManagement", "إدارة الأدوار");
-                registry.Register<AuditLogView, AuditLogViewModel>("AuditLog", "سجل المراجعة");
-                registry.Register<BackupSettingsView, BackupSettingsViewModel>("BackupSettings", "النسخ الاحتياطي");
-                registry.Register<IntegrityCheckView, IntegrityCheckViewModel>("IntegrityCheck", "فحص السلامة");
-                registry.Register<GovernanceConsoleView, GovernanceConsoleViewModel>("GovernanceConsole", "وحدة التحكم");
-                registry.Register<GovernanceIntegrityView, GovernanceIntegrityViewModel>("GovernanceIntegrity", "فحص سلامة الحوكمة");
-                registry.Register<MigrationCenterView, MigrationCenterViewModel>("MigrationCenter", "مركز التحديثات");
+                // Treasury
+                registry.Register<CashboxView, CashboxViewModel>("Cashboxes", "الخزن", PackIconKind.Safe, treasBrush);
+                registry.Register<BankAccountView, BankAccountViewModel>("BankAccounts", "الحسابات البنكية", PackIconKind.Bank, treasBrush);
+                registry.Register<BankReconciliationView, BankReconciliationViewModel>("BankReconciliation", "التسوية البنكية", PackIconKind.ScaleBalance, treasBrush);
+                registry.Register<CashReceiptView, CashReceiptViewModel>("CashReceipts", "سندات القبض", PackIconKind.CashPlus, treasBrush);
+                registry.Register<CashPaymentView, CashPaymentViewModel>("CashPayments", "سندات الصرف", PackIconKind.CashMinus, treasBrush);
+                registry.Register<CashTransferView, CashTransferViewModel>("CashTransfers", "التحويلات", PackIconKind.SwapHorizontal, treasBrush);
+
+                // Reports
+                registry.Register<ReportHubView, ReportHubViewModel>("Reports", "التقارير", PackIconKind.ChartBar, reportBrush);
+                registry.Register<TrialBalanceView, TrialBalanceViewModel>("TrialBalance", "ميزان المراجعة", PackIconKind.ChartBar, reportBrush);
+                registry.Register<AccountStatementView, AccountStatementViewModel>("AccountStatement", "كشف حساب", PackIconKind.ChartBar, reportBrush);
+                registry.Register<IncomeStatementView, IncomeStatementViewModel>("IncomeStatement", "قائمة الدخل", PackIconKind.ChartBar, reportBrush);
+                registry.Register<BalanceSheetView, BalanceSheetViewModel>("BalanceSheet", "الميزانية العمومية", PackIconKind.ChartBar, reportBrush);
+                registry.Register<SalesReportView, SalesReportViewModel>("SalesReport", "تقرير المبيعات", PackIconKind.ChartBar, reportBrush);
+                registry.Register<PurchaseReportView, PurchaseReportViewModel>("PurchaseReport", "تقرير المشتريات", PackIconKind.ChartBar, reportBrush);
+                registry.Register<ProfitReportView, ProfitReportViewModel>("ProfitReport", "تقرير الأرباح", PackIconKind.ChartBar, reportBrush);
+                registry.Register<VatReportView, VatReportViewModel>("VatReport", "تقرير الضريبة", PackIconKind.ChartBar, reportBrush);
+                registry.Register<InventoryReportView, InventoryReportViewModel>("InventoryReport", "تقرير المخزون", PackIconKind.ChartBar, reportBrush);
+                registry.Register<StockCardView, StockCardViewModel>("StockCard", "بطاقة الصنف", PackIconKind.ChartBar, reportBrush);
+                registry.Register<CashboxMovementView, CashboxMovementViewModel>("CashboxMovement", "حركة الخزنة", PackIconKind.ChartBar, reportBrush);
+                registry.Register<AgingReportView, AgingReportViewModel>("AgingReport", "أعمار الديون", PackIconKind.ChartBar, reportBrush);
+
+                // Settings
+                registry.Register<FiscalYearView, FiscalYearViewModel>("FiscalYear", "السنة المالية", PackIconKind.Calendar, settBrush);
+                registry.Register<SystemSettingsView, SystemSettingsViewModel>("SystemSettings", "إعدادات النظام", PackIconKind.Cog, settBrush);
+                registry.Register<UserManagementView, UserManagementViewModel>("UserManagement", "إدارة المستخدمين", PackIconKind.AccountMultiple, settBrush);
+                registry.Register<RoleManagementView, RoleManagementViewModel>("RoleManagement", "إدارة الأدوار", PackIconKind.ShieldAccount, settBrush);
+                registry.Register<AuditLogView, AuditLogViewModel>("AuditLog", "سجل المراجعة", PackIconKind.ClipboardTextClock, settBrush);
+                registry.Register<BackupSettingsView, BackupSettingsViewModel>("BackupSettings", "النسخ الاحتياطي", PackIconKind.DatabaseExport, settBrush);
+                registry.Register<IntegrityCheckView, IntegrityCheckViewModel>("IntegrityCheck", "فحص السلامة", PackIconKind.ShieldCheck, settBrush);
+                registry.Register<GovernanceConsoleView, GovernanceConsoleViewModel>("GovernanceConsole", "وحدة التحكم", PackIconKind.ShieldOutline, settBrush);
+                registry.Register<GovernanceIntegrityView, GovernanceIntegrityViewModel>("GovernanceIntegrity", "فحص سلامة الحوكمة", PackIconKind.ShieldCheck, settBrush);
+                registry.Register<MigrationCenterView, MigrationCenterViewModel>("MigrationCenter", "مركز التحديثات", PackIconKind.Update, settBrush);
+                registry.Register<PrintCenterView, PrintCenterViewModel>("PrintCenter", "مركز الطباعة", PackIconKind.Printer, settBrush);
+                registry.Register<RecycleBinView, RecycleBinViewModel>("RecycleBin", "سلة المحذوفات", PackIconKind.DeleteRestore, settBrush);
 
                 return registry;
             });
-            services.AddSingleton<INavigationService, NavigationService>();
+            services.AddSingleton<TabNavigationService>();
+            services.AddSingleton<INavigationService>(sp => sp.GetRequiredService<TabNavigationService>());
 
             // ─── WPF Views & ViewModels ───
             services.AddSingleton<MainWindowViewModel>();
             services.AddTransient<MainWindow>();
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();
+
+            // ── Onboarding Wizard ──
+            services.AddTransient<Views.Setup.OnboardingWizardWindow>();
+            services.AddTransient<ViewModels.Setup.OnboardingWizardViewModel>();
 
             services.AddTransient<DashboardView>();
             services.AddTransient<DashboardViewModel>();
@@ -667,6 +866,8 @@ namespace MarcoERP.WpfUI
             services.AddTransient<UnitViewModel>();
             services.AddTransient<ProductView>();
             services.AddTransient<ProductViewModel>();
+            services.AddTransient<ProductImportView>();
+            services.AddTransient<ProductImportViewModel>();
             services.AddTransient<WarehouseView>();
             services.AddTransient<WarehouseViewModel>();
             services.AddTransient<BulkPriceUpdateView>();
@@ -690,6 +891,8 @@ namespace MarcoERP.WpfUI
             services.AddTransient<SalesReturnDetailViewModel>();
             services.AddTransient<CustomerView>();
             services.AddTransient<CustomerViewModel>();
+            services.AddTransient<CustomerImportView>();
+            services.AddTransient<CustomerImportViewModel>();
             services.AddTransient<SalesRepresentativeView>();
             services.AddTransient<SalesRepresentativeViewModel>();
             services.AddTransient<PriceListView>();
@@ -715,6 +918,8 @@ namespace MarcoERP.WpfUI
             services.AddTransient<PurchaseReturnDetailViewModel>();
             services.AddTransient<SupplierView>();
             services.AddTransient<SupplierViewModel>();
+            services.AddTransient<SupplierImportView>();
+            services.AddTransient<SupplierImportViewModel>();
             services.AddTransient<PurchaseQuotationListView>();
             services.AddTransient<PurchaseQuotationListViewModel>();
             services.AddTransient<PurchaseQuotationDetailView>();
@@ -780,6 +985,10 @@ namespace MarcoERP.WpfUI
             services.AddTransient<BackupSettingsViewModel>();
             services.AddTransient<IntegrityCheckView>();
             services.AddTransient<IntegrityCheckViewModel>();
+            services.AddTransient<PrintCenterView>();
+            services.AddTransient<PrintCenterViewModel>();
+            services.AddTransient<RecycleBinView>();
+            services.AddTransient<RecycleBinViewModel>();
 
             services.AddTransient<QuickCashReceiptViewModel>();
             services.AddTransient<QuickCashReceiptWindow>();

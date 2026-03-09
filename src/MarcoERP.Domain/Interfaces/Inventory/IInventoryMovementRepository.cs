@@ -32,5 +32,12 @@ namespace MarcoERP.Domain.Interfaces.Inventory
             SourceType sourceType,
             int sourceId,
             CancellationToken ct = default);
+
+        /// <summary>Gets movements by date range and movement type (e.g., SalesOut for COGS).</summary>
+        Task<IReadOnlyList<InventoryMovement>> GetByDateRangeAndTypeAsync(
+            DateTime fromDate,
+            DateTime toDate,
+            MovementType movementType,
+            CancellationToken ct = default);
     }
 }

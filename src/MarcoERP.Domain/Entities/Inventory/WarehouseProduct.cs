@@ -8,8 +8,9 @@ namespace MarcoERP.Domain.Entities.Inventory
     /// Tracks the stock balance of a specific product in a specific warehouse.
     /// Quantity is always in the product's base unit.
     /// Updated by InventoryMovement operations.
+    /// Immutable financial record — cannot be hard-deleted (RECORD_PROTECTION_POLICY).
     /// </summary>
-    public sealed class WarehouseProduct : BaseEntity
+    public sealed class WarehouseProduct : BaseEntity, IImmutableFinancialRecord
     {
         // ── Constructors ─────────────────────────────────────────
 
@@ -83,6 +84,18 @@ namespace MarcoERP.Domain.Entities.Inventory
             if (Quantity < quantity)
                 throw new InventoryDomainException(
                     $"الرصيد غير كافي. المتاح: {Quantity:N2}، المطلوب: {quantity:N2}");
+
+            Quantity -= quantity;
+        }
+
+        /// <summary>
+        /// Decreases stock without enforcing non-negative balance.
+        /// Used only when negative stock is explicitly allowed by system settings.
+        /// </summary>
+        public void DecreaseStockAllowNegative(decimal quantity)
+        {
+            if (quantity <= 0)
+                throw new InventoryDomainException("كمية الخصم يجب أن تكون أكبر من صفر.");
 
             Quantity -= quantity;
         }

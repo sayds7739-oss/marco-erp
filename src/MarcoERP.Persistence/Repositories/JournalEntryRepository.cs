@@ -28,12 +28,14 @@ namespace MarcoERP.Persistence.Repositories
         public async Task<JournalEntry> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.JournalEntries
+                .AsNoTracking()
                 .FirstOrDefaultAsync(j => j.Id == id, cancellationToken);
         }
 
         public async Task<IReadOnlyList<JournalEntry>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _context.JournalEntries
+                .AsNoTracking()
                 .OrderByDescending(j => j.JournalDate)
                 .ThenByDescending(j => j.Id)
                 .ToListAsync(cancellationToken);
@@ -46,12 +48,29 @@ namespace MarcoERP.Persistence.Repositories
 
         public void Update(JournalEntry entity)
         {
-            _context.JournalEntries.Update(entity);
+            if (entity == null) return;
+
+            var local = _context.JournalEntries.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && !ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+                return;
+            }
+            if (local != null)
+            {
+                if (_context.Entry(local).State == EntityState.Unchanged)
+                    _context.Entry(local).State = EntityState.Modified;
+                return;
+            }
+
+            // Safe: only marks root entity as Modified without graph traversal
+            _context.Entry(entity).State = EntityState.Modified;
         }
 
         public void Remove(JournalEntry entity)
         {
-            _context.JournalEntries.Remove(entity);
+            throw new NotSupportedException(
+                "Hard delete is not supported for financial aggregate 'JournalEntry'. Use reversal/adjustment lifecycle operations instead.");
         }
 
         // ── IJournalEntryRepository ─────────────────────────────
@@ -66,6 +85,7 @@ namespace MarcoERP.Persistence.Repositories
         public async Task<IReadOnlyList<JournalEntry>> GetByPeriodAsync(int fiscalPeriodId, CancellationToken cancellationToken = default)
         {
             return await _context.JournalEntries
+                .AsNoTracking()
                 .Where(j => j.FiscalPeriodId == fiscalPeriodId)
                 .OrderBy(j => j.JournalDate)
                 .ThenBy(j => j.Id)
@@ -75,6 +95,7 @@ namespace MarcoERP.Persistence.Repositories
         public async Task<IReadOnlyList<JournalEntry>> GetByStatusAsync(JournalEntryStatus status, CancellationToken cancellationToken = default)
         {
             return await _context.JournalEntries
+                .AsNoTracking()
                 .Where(j => j.Status == status)
                 .OrderByDescending(j => j.JournalDate)
                 .ToListAsync(cancellationToken);
@@ -83,6 +104,7 @@ namespace MarcoERP.Persistence.Repositories
         public async Task<IReadOnlyList<JournalEntry>> GetDraftsByYearAsync(int fiscalYearId, CancellationToken cancellationToken = default)
         {
             return await _context.JournalEntries
+                .AsNoTracking()
                 .Where(j => j.FiscalYearId == fiscalYearId && j.Status == JournalEntryStatus.Draft)
                 .OrderBy(j => j.JournalDate)
                 .ToListAsync(cancellationToken);
@@ -97,6 +119,7 @@ namespace MarcoERP.Persistence.Repositories
         public async Task<IReadOnlyList<JournalEntry>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
             return await _context.JournalEntries
+                .AsNoTracking()
                 .Where(j => j.JournalDate >= startDate && j.JournalDate <= endDate)
                 .OrderBy(j => j.JournalDate)
                 .ThenBy(j => j.Id)

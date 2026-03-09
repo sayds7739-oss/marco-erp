@@ -40,21 +40,24 @@ namespace MarcoERP.WpfUI.ViewModels
     /// <summary>
     /// Async relay command for MVVM binding with async operations.
     /// Prevents double-execution while running.
+    /// Surfaces exceptions via optional onError callback instead of silently swallowing them.
     /// </summary>
     public sealed class AsyncRelayCommand : ICommand
     {
         private readonly Func<object, Task> _execute;
         private readonly Func<object, bool> _canExecute;
+        private readonly Action<Exception> _onError;
         private bool _isExecuting;
 
-        public AsyncRelayCommand(Func<object, Task> execute, Func<object, bool> canExecute = null)
+        public AsyncRelayCommand(Func<object, Task> execute, Func<object, bool> canExecute = null, Action<Exception> onError = null)
         {
             _execute = execute ?? throw new ArgumentNullException(nameof(execute));
             _canExecute = canExecute;
+            _onError = onError;
         }
 
-        public AsyncRelayCommand(Func<Task> execute, Func<bool> canExecute = null)
-            : this(_ => execute(), canExecute != null ? _ => canExecute() : null)
+        public AsyncRelayCommand(Func<Task> execute, Func<bool> canExecute = null, Action<Exception> onError = null)
+            : this(_ => execute(), canExecute != null ? _ => canExecute() : null, onError)
         {
         }
 
@@ -79,7 +82,23 @@ namespace MarcoERP.WpfUI.ViewModels
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[AsyncRelayCommand] Unhandled exception: {ex}");
+                if (_onError != null)
+                {
+                    _onError(ex);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[AsyncRelayCommand] Unhandled exception: {ex}");
+                    // Re-dispatch to ensure the error is visible
+                    System.Windows.Application.Current?.Dispatcher?.BeginInvoke(() =>
+                    {
+                        System.Windows.MessageBox.Show(
+                            ex.Message,
+                            "خطأ غير متوقع",
+                            System.Windows.MessageBoxButton.OK,
+                            System.Windows.MessageBoxImage.Error);
+                    });
+                }
             }
             finally
             {

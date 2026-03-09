@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using MarcoERP.Application.Common;
 using MarcoERP.Application.DTOs.Inventory;
 using MarcoERP.Application.Interfaces.Inventory;
 using MarcoERP.WpfUI.Common;
@@ -147,7 +148,7 @@ namespace MarcoERP.WpfUI.Views.Common
                 if (unitResult.IsSuccess)
                     foreach (var u in unitResult.Data) Units.Add(u);
             }
-            catch (Exception ex) { ErrorMessage = $"خطأ في تحميل البيانات: {ex.Message}"; }
+            catch (Exception ex) { ErrorMessage = ErrorSanitizer.SanitizeGeneric(ex, "تحميل البيانات"); }
             finally { IsBusy = false; }
         }
 
@@ -162,6 +163,7 @@ namespace MarcoERP.WpfUI.Views.Common
 
                 // Auto-generate code
                 var codeResult = await productService.GetNextCodeAsync();
+                // TODO: Replace with IDateTimeProvider when refactored — code-behind uses service locator
                 var code = codeResult.IsSuccess ? codeResult.Data : $"P-{DateTime.Now:yyMMddHHmmss}";
 
                 var dto = new CreateProductDto
@@ -187,7 +189,7 @@ namespace MarcoERP.WpfUI.Views.Common
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"خطأ في الحفظ: {ex.Message}";
+                ErrorMessage = ErrorSanitizer.SanitizeGeneric(ex, "الحفظ");
                 return null;
             }
             finally { IsBusy = false; }

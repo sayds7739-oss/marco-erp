@@ -15,10 +15,12 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
+            <!-- ═══ Header / Toolbar ═══ -->
             <Border Grid.Row="0" Background="White" CornerRadius="6" Padding="10,6" Margin="4,4,4,2">
                 <DockPanel>
                     <TextBlock Text="شجرة الحسابات" FontSize="18" FontWeight="SemiBold"
@@ -51,10 +53,49 @@
                                 Command="{Binding LoadCommand}" Height="30" Padding="8,0" Margin="4,0,0,0" ToolTip="تحديث">
                             <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16" />
                         </Button>
+
+                        <!-- Separator -->
+                        <Border Width="1" Background="{StaticResource BackgroundBrush}" Margin="6,4" />
+
+                        <!-- View Toggle -->
+                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                Command="{Binding ToggleViewCommand}" Height="30" Padding="8,0" Margin="2,0,0,0"
+                                ToolTip="تبديل عرض الشجرة / الجدول">
+                            <StackPanel Orientation="Horizontal">
+                                <!-- Show tree icon when in grid mode, grid icon when in tree mode -->
+                                <materialDesign:PackIcon Width="16" Height="16" VerticalAlignment="Center">
+                                    <materialDesign:PackIcon.Style>
+                                        <Style TargetType="materialDesign:PackIcon">
+                                            <Setter Property="Kind" Value="ViewList" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsTreeView}" Value="False">
+                                                    <Setter Property="Kind" Value="FileTree" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </materialDesign:PackIcon.Style>
+                                </materialDesign:PackIcon>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Expand/Collapse (only visible in tree mode) -->
+                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                Command="{Binding ExpandAllCommand}" Height="30" Padding="8,0" Margin="2,0,0,0"
+                                ToolTip="توسيع الكل"
+                                Visibility="{Binding IsTreeView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <materialDesign:PackIcon Kind="UnfoldMoreHorizontal" Width="16" Height="16" />
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                Command="{Binding CollapseAllCommand}" Height="30" Padding="8,0" Margin="0,0,0,0"
+                                ToolTip="طي الكل"
+                                Visibility="{Binding IsTreeView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <materialDesign:PackIcon Kind="UnfoldLessHorizontal" Width="16" Height="16" />
+                        </Button>
                     </StackPanel>
                 </DockPanel>
             </Border>
 
+            <!-- ═══ Error Banner ═══ -->
             <Border Grid.Row="1" Background="{StaticResource ErrorBackgroundBrush}" CornerRadius="4" Padding="8,4" Margin="6,2"
                     Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel Orientation="Horizontal">
@@ -64,13 +105,156 @@
                 </StackPanel>
             </Border>
 
-            <Grid Grid.Row="2">
+            <!-- ═══ Search Bar (tree mode only) ═══ -->
+            <Border Grid.Row="2" Background="White" CornerRadius="4" Padding="8,4" Margin="4,2,4,2"
+                    Visibility="{Binding IsTreeView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <materialDesign:PackIcon Grid.Column="0" Kind="Magnify" Width="18" Height="18"
+                                             Foreground="{StaticResource MutedTextBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged, Delay=250}"
+                             materialDesign:HintAssist.Hint="بحث بالكود أو الاسم..."
+                             materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                             BorderThickness="0" FontSize="12" Padding="4,4"
+                             VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <!-- ═══ Main Content Area ═══ -->
+            <Grid Grid.Row="3">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="0" Margin="4,2,2,2">
+                <!-- ── TreeView (visible when IsTreeView = true) ── -->
+                <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="4" Margin="4,2,2,2"
+                        Visibility="{Binding IsTreeView, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TreeView x:Name="AccountTreeView"
+                              ItemsSource="{Binding FilteredAccountTree}"
+                              VirtualizingStackPanel.IsVirtualizing="True"
+                              VirtualizingStackPanel.VirtualizationMode="Recycling"
+                              BorderThickness="0"
+                              Padding="0"
+                              FontSize="13"
+                              SelectedItemChanged="AccountTreeView_SelectedItemChanged">
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                                <Setter Property="IsExpanded" Value="True" />
+                                <Setter Property="Padding" Value="2,3" />
+                                <Setter Property="Margin" Value="0,1,0,0" />
+                                <Style.Triggers>
+                                    <!-- Inactive accounts shown with reduced opacity -->
+                                    <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                        <Setter Property="Opacity" Value="0.5" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                <Grid MinHeight="24">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Account Code -->
+                                    <Border Grid.Column="0" Background="{StaticResource BackgroundBrush}"
+                                            CornerRadius="3" Padding="6,2" Margin="0,0,6,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding AccountCode}"
+                                                   FontWeight="Bold" FontSize="12"
+                                                   Foreground="{StaticResource PrimaryDarkBrush}"
+                                                   FlowDirection="LeftToRight"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+
+                                    <!-- Folder/Leaf icon -->
+                                    <materialDesign:PackIcon Grid.Column="1"
+                                                             VerticalAlignment="Center" Margin="0,0,4,0"
+                                                             Width="15" Height="15">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="FolderOutline" />
+                                                <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsLeaf}" Value="True">
+                                                        <Setter Property="Kind" Value="FileDocumentOutline" />
+                                                        <Setter Property="Foreground" Value="{StaticResource StatusTextBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+
+                                    <!-- Account Name (Arabic) -->
+                                    <TextBlock Grid.Column="2" Text="{Binding AccountNameAr}"
+                                               FontSize="13" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                                    <!-- Account Name (English) - smaller, muted -->
+                                    <TextBlock Grid.Column="3" Text="{Binding AccountNameEn}"
+                                               FontSize="11" Foreground="{StaticResource MutedTextBrush}"
+                                               VerticalAlignment="Center" FlowDirection="LeftToRight"
+                                               TextTrimming="CharacterEllipsis" />
+
+                                    <!-- Account Type badge -->
+                                    <Border Grid.Column="4" CornerRadius="3" Padding="5,1" Margin="8,0,0,0"
+                                            VerticalAlignment="Center">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#E8EAF6" />
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding AccountTypeName}"
+                                                   FontSize="10" Foreground="{StaticResource PrimaryBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+
+                                    <!-- Posting indicator -->
+                                    <materialDesign:PackIcon Grid.Column="5"
+                                                             Kind="{Binding AllowPosting, Converter={StaticResource BoolToCheckIconConverter}}"
+                                                             Foreground="{Binding AllowPosting, Converter={StaticResource BoolToColorConverter}}"
+                                                             Width="14" Height="14"
+                                                             VerticalAlignment="Center" Margin="8,0,0,0"
+                                                             ToolTip="ترحيل" />
+
+                                    <!-- System account lock icon -->
+                                    <materialDesign:PackIcon Grid.Column="6"
+                                                             Kind="Lock" Width="13" Height="13"
+                                                             Foreground="{StaticResource MutedTextBrush}"
+                                                             VerticalAlignment="Center" Margin="4,0,0,0"
+                                                             ToolTip="حساب نظام">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSystemAccount}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                </Grid>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </Border>
+
+                <!-- ── DataGrid (visible when IsTreeView = false) ── -->
+                <Border Grid.Column="0" Background="White" CornerRadius="6" Padding="0" Margin="4,2,2,2"
+                        Visibility="{Binding IsTreeView, Converter={StaticResource InverseBoolToVisConverter}}">
                     <DataGrid ItemsSource="{Binding AllAccounts}"
                               SelectedItem="{Binding SelectedAccount, Mode=TwoWay}"
                               AutoGenerateColumns="False" IsReadOnly="True"
@@ -84,15 +268,17 @@
                             <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding EditSelectedAccountCommand}" />
                         </DataGrid.InputBindings>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="الكود" Binding="{Binding AccountCode}" Width="65">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="FontWeight" Value="SemiBold" />
-                                        <Setter Property="FlowDirection" Value="LeftToRight" />
-                                        <Setter Property="Foreground" Value="{StaticResource StatusTextBrush}" />
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
+                            <DataGridTemplateColumn Header="الكود" Width="100" SortMemberPath="AccountCode">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding AccountCode}"
+                                                   FontWeight="SemiBold"
+                                                   FlowDirection="LeftToRight"
+                                                   Foreground="{StaticResource StatusTextBrush}"
+                                                   Margin="{Binding Level, Converter={StaticResource LevelToIndentConverter}}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="اسم الحساب" Binding="{Binding AccountNameAr}" Width="*" MinWidth="120" />
                             <DataGridTextColumn Header="Account Name" Binding="{Binding AccountNameEn}" Width="120" />
                             <DataGridTextColumn Header="النوع" Binding="{Binding AccountType}" Width="70" />
@@ -144,11 +330,20 @@
                             <TextBlock Text="العملة:" FontSize="11" FontWeight="SemiBold" Width="80" Foreground="{StaticResource StatusTextBrush}" />
                             <TextBlock Text="{Binding SelectedAccount.CurrencyCode}" FontSize="11" />
                         </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,3">
+                            <TextBlock Text="الحساب الأب:" FontSize="11" FontWeight="SemiBold" Width="80" Foreground="{StaticResource StatusTextBrush}" />
+                            <TextBlock Text="{Binding SelectedAccount.ParentAccountNameAr}" FontSize="11" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,3">
+                            <TextBlock Text="المستوى:" FontSize="11" FontWeight="SemiBold" Width="80" Foreground="{StaticResource StatusTextBrush}" />
+                            <TextBlock Text="{Binding SelectedAccount.Level}" FontSize="11" />
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </Grid>
 
-            <Border Grid.Row="3" Padding="8,4" Margin="6,0,6,2">
+            <!-- ═══ Status Bar ═══ -->
+            <Border Grid.Row="4" Padding="8,4" Margin="6,0,6,2">
                 <DockPanel>
                     <TextBlock Text="{Binding StatusMessage}" FontSize="11" Foreground="{StaticResource MutedTextBrush}"
                                DockPanel.Dock="Right" VerticalAlignment="Center" />

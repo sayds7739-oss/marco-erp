@@ -32,6 +32,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<SalesQuotation> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.SalesQuotations
+                .AsNoTracking()
                 .Include(q => q.Customer)
                 .FirstOrDefaultAsync(q => q.Id == id, cancellationToken);
         }
@@ -39,6 +40,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<SalesQuotation>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _context.SalesQuotations
+                .AsNoTracking()
                 .Include(q => q.Customer)
                 .OrderByDescending(q => q.QuotationDate)
                 .ThenByDescending(q => q.QuotationNumber)
@@ -52,7 +54,22 @@ namespace MarcoERP.Persistence.Repositories.Sales
 
         public void Update(SalesQuotation entity)
         {
-            _context.SalesQuotations.Update(entity);
+            if (entity == null) return;
+
+            var local = _context.SalesQuotations.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && !ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+                return;
+            }
+            if (local != null)
+            {
+                if (_context.Entry(local).State == EntityState.Unchanged)
+                    _context.Entry(local).State = EntityState.Modified;
+                return;
+            }
+
+            _context.Entry(entity).State = EntityState.Modified;
         }
 
         public void Remove(SalesQuotation entity)
@@ -65,14 +82,30 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<SalesQuotation> GetWithLinesAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.SalesQuotations
+                .AsNoTracking()
                 .Include(q => q.Customer)
                 .Include(q => q.Lines)
+                    .ThenInclude(l => l.Product)
+                .Include(q => q.Lines)
+                    .ThenInclude(l => l.Unit)
+                .FirstOrDefaultAsync(q => q.Id == id, cancellationToken);
+        }
+
+        public async Task<SalesQuotation> GetWithLinesTrackedAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return await _context.SalesQuotations
+                .Include(q => q.Customer)
+                .Include(q => q.Lines)
+                    .ThenInclude(l => l.Product)
+                .Include(q => q.Lines)
+                    .ThenInclude(l => l.Unit)
                 .FirstOrDefaultAsync(q => q.Id == id, cancellationToken);
         }
 
         public async Task<SalesQuotation> GetByNumberAsync(string quotationNumber, CancellationToken cancellationToken = default)
         {
             return await _context.SalesQuotations
+                .AsNoTracking()
                 .Include(q => q.Customer)
                 .FirstOrDefaultAsync(q => q.QuotationNumber == quotationNumber, cancellationToken);
         }
@@ -86,6 +119,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<SalesQuotation>> GetByStatusAsync(QuotationStatus status, CancellationToken cancellationToken = default)
         {
             return await _context.SalesQuotations
+                .AsNoTracking()
                 .Include(q => q.Customer)
                 .Where(q => q.Status == status)
                 .OrderByDescending(q => q.QuotationDate)
@@ -95,6 +129,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<SalesQuotation>> GetByCustomerAsync(int customerId, CancellationToken cancellationToken = default)
         {
             return await _context.SalesQuotations
+                .AsNoTracking()
                 .Include(q => q.Customer)
                 .Where(q => q.CustomerId == customerId)
                 .OrderByDescending(q => q.QuotationDate)
@@ -110,6 +145,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
             var prefix = $"SQ-{_dateTime.UtcNow:yyyyMM}-";
 
             var lastNumber = await _context.SalesQuotations
+                .AsNoTracking()
                 .Where(q => q.QuotationNumber.StartsWith(prefix))
                 .OrderByDescending(q => q.QuotationNumber)
                 .Select(q => q.QuotationNumber)

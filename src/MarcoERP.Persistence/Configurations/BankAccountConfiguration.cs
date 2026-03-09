@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using MarcoERP.Domain.Entities.Accounting;
 using MarcoERP.Domain.Entities.Treasury;
 
 namespace MarcoERP.Persistence.Configurations
@@ -13,9 +14,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(b => b.Id);
             builder.Property(b => b.Id).UseIdentityColumn();
 
-            builder.Property(b => b.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(b => b.Code)
                 .IsRequired()
@@ -65,6 +64,12 @@ namespace MarcoERP.Persistence.Configurations
 
             // ── Optional relationship to GL Account ─────────────
             builder.Property(b => b.AccountId);
+
+            builder.HasOne(b => b.Account)
+                .WithMany()
+                .HasForeignKey(b => b.AccountId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
 
             // ── Indexes ─────────────────────────────────────────
             builder.HasIndex(b => b.Code)

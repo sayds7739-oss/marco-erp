@@ -15,6 +15,12 @@ namespace MarcoERP.WpfUI.Views.Sales
             InitializeComponent();
             _viewModel = viewModel;
             DataContext = _viewModel;
+            _viewModel.RequestBarcodeFocus += OnRequestBarcodeFocus;
+        }
+
+        private void OnRequestBarcodeFocus()
+        {
+            BarcodeInput?.Focus();
         }
 
     }

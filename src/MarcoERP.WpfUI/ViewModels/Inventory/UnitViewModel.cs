@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Inventory;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Inventory;
 
 namespace MarcoERP.WpfUI.ViewModels.Inventory
@@ -14,10 +15,12 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
     public sealed class UnitViewModel : BaseViewModel
     {
         private readonly IUnitService _unitService;
+        private readonly IDialogService _dialog;
 
-        public UnitViewModel(IUnitService unitService)
+        public UnitViewModel(IUnitService unitService, IDialogService dialog)
         {
             _unitService = unitService ?? throw new ArgumentNullException(nameof(unitService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllUnits = new ObservableCollection<UnitDto>();
 
@@ -227,11 +230,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         {
             if (SelectedItem == null) return;
 
-            var confirm = MessageBox.Show(
-                $"هل أنت متأكد من تعطيل الوحدة «{SelectedItem.NameAr}»؟",
-                "تأكيد التعطيل",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"هل أنت متأكد من تعطيل الوحدة «{SelectedItem.NameAr}»؟", "تأكيد التعطيل")) return;
 
             IsBusy = true;
             ClearError();

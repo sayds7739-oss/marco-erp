@@ -1,17 +1,28 @@
-MarcoERP – Unified UI Governance Document
+** SUPERSEDED -- See UI_GUIDELINES.md v3.0 **
 
-Version 2.0 – Commercial Enterprise Standard
+This document has been merged into `governance/UI_GUIDELINES.md` (Version 3.0, dated 2026-03-06).
+All rules from this document are preserved in the merged file. This file is retained for historical reference only.
+
+---
+
+(Original content below for reference)
+
+---
+
+MarcoERP -- Unified UI Governance Document
+
+Version 2.0 -- Commercial Enterprise Standard
 Date: 2026-02-11
 
-1️⃣ UI Platform
+1. UI Platform
 Property	Value
 Framework	WPF (.NET 8)
 Target OS	Windows 10/11
-Resolution	1366×768 min – 1920×1080 optimal
+Resolution	1366x768 min -- 1920x1080 optimal
 DPI	Per-Monitor DPI Aware
 Theme	Default (future theming supported)
 RTL	Fully supported
-2️⃣ Core UI Philosophy
+2. Core UI Philosophy
 ID	Principle
 UI-P1	Strict separation of concerns (No business logic in UI).
 UI-P2	Module-based consistency across entire system.
@@ -21,7 +32,7 @@ UI-P5	Keyboard-first usability.
 UI-P6	No destructive action without confirmation.
 UI-P7	Commercial-grade performance required.
 UI-P8	Scalable navigation architecture.
-3️⃣ Module-Based Navigation Architecture
+3. Module-Based Navigation Architecture
 3.1 Mandatory Modules
 
 Every screen MUST belong to one of:
@@ -52,7 +63,7 @@ MN-05	Sidebar supports collapse animation.
 MN-06	Tabbed document hosting inside MainWindow only.
 MN-07	Sidebar items use clear active-state highlight and minimum hit height 44px.
 MN-08	Sidebar expanded width target 300px; collapsed width target 72px.
-4️⃣ Window Architecture
+4. Window Architecture
 4.1 Main Window
 
 MainWindow = Navigation shell
@@ -87,7 +98,7 @@ AccountListWindow
 
 SalesQuotationWindow
 
-4.4 One Window – One Responsibility
+4.4 One Window -- One Responsibility
 Rule ID	Description
 UIF-01	One functional area per window
 UIF-02	Complex windows must use UserControls
@@ -95,14 +106,14 @@ UIF-03	No business calculations in code-behind
 UIF-04	No direct DbContext access
 UIF-05	No static/global state passing
 UIF-06	Max logical complexity controlled (group large forms)
-5️⃣ Data Binding Rules
+5. Data Binding Rules
 Rule ID	Description
 UDB-01	Bind only to Application DTOs
 UDB-02	Use ObservableCollection
 UDB-03	Use CollectionViewSource
 UDB-04	No manual control population loops
 UDB-05	ComboBox uses DisplayMemberPath & SelectedValuePath
-6️⃣ Layout Standards
+6. Layout Standards
 Standard Layout
 
 Title
@@ -126,7 +137,7 @@ Includes a quick dropdown menu that lists all accessible modules/screens.
 
 Displays global search and system status icons.
 
-7️⃣ Full-Screen Transaction Standard
+7. Full-Screen Transaction Standard
 
 Applies to Sales & Purchase transactions.
 
@@ -146,16 +157,16 @@ Quick payment dialog (if applicable)
 
 Balance mismatch highlight (real-time)
 
-Posted → Read-only
+Posted -> Read-only
 Delete allowed only in Draft
 
-8️⃣ Dirty State Protection (MANDATORY)
+8. Dirty State Protection (MANDATORY)
 Rule ID	Description
 DSP-01	All transaction windows implement UnsavedChangesGuard
 DSP-02	Close requires confirmation if dirty
 DSP-03	Navigation blocked if unsaved
 DSP-04	Warning dialog used
-9️⃣ Smart Entry UX Rules
+9. Smart Entry UX Rules
 ID	Description
 UX-01	Enter moves to next field
 UX-02	Enter on last column adds line
@@ -166,7 +177,7 @@ UX-06	Barcode auto-detection
 UX-07	Last customer price shown
 UX-08	Live profit margin highlight
 
-12️⃣ Keyboard Shortcuts (Global)
+12. Keyboard Shortcuts (Global)
 
 Ctrl+K: Command palette / quick search
 
@@ -189,7 +200,7 @@ Alt+Right/Alt+Left: Next/Previous record (when supported)
 Ctrl+Tab / Ctrl+Shift+Tab: Next/Previous tab
 
 Ctrl+W: Close active tab
-🔟 Pricing UI Standards
+10. Pricing UI Standards
 
 Customer Price List must support:
 
@@ -209,7 +220,7 @@ Export PDF
 
 Visual pricing priority clarity
 
-11️⃣ Quotation UI Standards
+11. Quotation UI Standards
 
 SalesQuotationWindow & PurchaseQuotationWindow:
 
@@ -231,7 +242,7 @@ Journal
 
 Accounting balances
 
-12️⃣ POS Session UI Standard
+12. POS Session UI Standard
 
 Session must open before sale
 
@@ -241,14 +252,14 @@ Mismatch highlighted red
 
 Printable session summary
 
-13️⃣ Validation Rules
+13. Validation Rules
 Rule ID	Description
 UVL-01	Required fields marked *
 UVL-02	Errors shown in summary panel
 UVL-03	Field validation on exit
 UVL-04	Business errors shown in error panel
 UVL-05	No raw exception messages
-14️⃣ Performance Standards
+14. Performance Standards
 Rule ID	Description
 PERF-01	Async/await mandatory
 PERF-02	No blocking UI thread
@@ -256,7 +267,7 @@ PERF-03	Paging required if > 500 rows
 PERF-04	Lazy loading tabs
 PERF-05	Debounced calculations
 PERF-06	CollectionViewSource standard
-15️⃣ Global Search & Command Palette
+15. Global Search & Command Palette
 
 Ctrl+K opens command palette.
 
@@ -272,14 +283,14 @@ Journal entries
 
 Grouped by module.
 
-16️⃣ Message & Dialog Standards
+16. Message & Dialog Standards
 Type	Usage
 Info	Success operations
 Warning	Unsaved changes
 Confirm	Post/Delete
 Error	Business rule failures
 Fatal	Unrecoverable exception with log reference
-17️⃣ Forbidden UI Practices
+17. Forbidden UI Practices
 
 Business logic in UI
 
@@ -301,7 +312,7 @@ Raw exception exposure
 
 Ignoring IDisposable
 
-18️⃣ Governance Enforcement
+18. Governance Enforcement
 
 Any new screen MUST:
 
@@ -317,7 +328,7 @@ Respect Clean Architecture
 
 Pass governance review before merge
 
-19️⃣ Commercial UX Enhancements
+19. Commercial UX Enhancements
 
 Sidebar collapse animation
 

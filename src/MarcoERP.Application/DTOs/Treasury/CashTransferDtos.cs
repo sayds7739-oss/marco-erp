@@ -21,6 +21,7 @@ namespace MarcoERP.Application.DTOs.Treasury
         public string Notes { get; set; }
         public string Status { get; set; }
         public int? JournalEntryId { get; set; }
+        public string WarningMessage { get; set; }
     }
 
     /// <summary>DTO for creating a new cash transfer.</summary>

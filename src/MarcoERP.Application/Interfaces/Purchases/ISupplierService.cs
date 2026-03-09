@@ -24,18 +24,23 @@ namespace MarcoERP.Application.Interfaces.Purchases
         Task<ServiceResult<string>> GetNextCodeAsync(CancellationToken cancellationToken = default);
 
         /// <summary>Creates a new supplier.</summary>
+        [RequiresPermission(PermissionKeys.PurchasesCreate)]
         Task<ServiceResult<SupplierDto>> CreateAsync(CreateSupplierDto dto, CancellationToken cancellationToken = default);
 
         /// <summary>Updates an existing supplier.</summary>
+        [RequiresPermission(PermissionKeys.PurchasesCreate)]
         Task<ServiceResult<SupplierDto>> UpdateAsync(UpdateSupplierDto dto, CancellationToken cancellationToken = default);
 
         /// <summary>Activates a supplier.</summary>
+        [RequiresPermission(PermissionKeys.PurchasesCreate)]
         Task<ServiceResult> ActivateAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>Deactivates a supplier.</summary>
+        [RequiresPermission(PermissionKeys.PurchasesCreate)]
         Task<ServiceResult> DeactivateAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>Soft-deletes a supplier.</summary>
+        [RequiresPermission(PermissionKeys.PurchasesCreate)]
         Task<ServiceResult> DeleteAsync(int id, CancellationToken cancellationToken = default);
     }
 }

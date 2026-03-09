@@ -19,20 +19,22 @@ namespace MarcoERP.Application.Services.Common
     {
         private const int Precision = 4;
 
+        private static decimal R(decimal value) => Math.Round(value, Precision, MidpointRounding.ToEven);
+
         public LineCalculationResult CalculateLine(LineCalculationRequest request)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
 
-            var qty = request.Quantity;
-            var unitPrice = request.UnitPrice;
-            var discountPercent = request.DiscountPercent;
+            var qty = Math.Max(request.Quantity, 0m);
+            var unitPrice = Math.Max(request.UnitPrice, 0m);
+            var discountPercent = Math.Clamp(request.DiscountPercent, 0m, 100m);
             var vatRate = request.VatRate;
             var conversionFactor = request.ConversionFactor <= 0 ? 1m : request.ConversionFactor;
 
-            var baseQty = Math.Round(qty * conversionFactor, Precision);
-            var subTotal = Math.Round(qty * unitPrice, Precision);
-            var discountAmount = Math.Round(subTotal * discountPercent / 100m, Precision);
+            var baseQty = R(qty * conversionFactor);
+            var subTotal = R(qty * unitPrice);
+            var discountAmount = R(subTotal * discountPercent / 100m);
 
             decimal netTotal;
             decimal vatAmount;
@@ -43,7 +45,7 @@ namespace MarcoERP.Application.Services.Common
                 // VAT-inclusive: UnitPrice already contains VAT.
                 // Governance formula: LineVAT = LineTotal × (VATRate / (100 + VATRate))
                 var inclusiveTotal = subTotal - discountAmount;
-                vatAmount = Math.Round(inclusiveTotal * vatRate / (100m + vatRate), Precision);
+                vatAmount = R(inclusiveTotal * vatRate / (100m + vatRate));
                 netTotal = inclusiveTotal - vatAmount;
                 totalWithVat = inclusiveTotal;
             }
@@ -51,22 +53,26 @@ namespace MarcoERP.Application.Services.Common
             {
                 // VAT-exclusive (default): VAT added on top
                 netTotal = subTotal - discountAmount;
-                vatAmount = Math.Round(netTotal * vatRate / 100m, Precision);
+                vatAmount = R(netTotal * vatRate / 100m);
                 totalWithVat = netTotal + vatAmount;
             }
 
             // Phase 9B: Profit calculations
-            var costPerUnit = Math.Round(request.CostPrice * conversionFactor, Precision);
-            var costTotal = Math.Round(baseQty * request.CostPrice, Precision);
+            var costPerUnit = R(request.CostPrice * conversionFactor);
+            var costTotal = R(baseQty * request.CostPrice);
 
             var discountFactor = 1m - discountPercent / 100m;
             if (discountFactor < 0m) discountFactor = 0m;
-            var netUnitPrice = Math.Round(unitPrice * discountFactor, Precision);
+            decimal netUnitPrice;
+            if (request.IsVatInclusive && vatRate > 0)
+                netUnitPrice = R(unitPrice * discountFactor * 100m / (100m + vatRate));
+            else
+                netUnitPrice = R(unitPrice * discountFactor);
 
-            var unitProfit = Math.Round(netUnitPrice - costPerUnit, Precision);
-            var totalProfit = Math.Round(unitProfit * qty, Precision);
+            var unitProfit = R(netUnitPrice - costPerUnit);
+            var totalProfit = R(unitProfit * qty);
             var profitMarginPercent = netTotal != 0
-                ? Math.Round(totalProfit / netTotal * 100m, 2)
+                ? Math.Round(totalProfit / netTotal * 100m, 2, MidpointRounding.ToEven)
                 : 0m;
 
             return new LineCalculationResult
@@ -105,14 +111,79 @@ namespace MarcoERP.Application.Services.Common
         public decimal ConvertQuantity(decimal quantity, decimal factor)
         {
             if (factor <= 0) return quantity;
-            return Math.Round(quantity * factor, Precision);
+            return R(quantity * factor);
         }
 
         /// <inheritdoc />
         public decimal ConvertPrice(decimal price, decimal factor)
         {
             if (factor <= 0) return price;
-            return Math.Round(price / factor, Precision);
+            return R(price / factor);
+        }
+
+        // ── Phase 9C: Business-logic methods extracted from ViewModels ──
+
+        /// <inheritdoc />
+        public HeaderDiscountResult ApplyHeaderDiscount(
+            InvoiceTotalsResult lineTotals,
+            decimal headerDiscountPercent,
+            decimal headerDiscountAmount,
+            decimal deliveryFee)
+        {
+            if (lineTotals == null)
+                throw new ArgumentNullException(nameof(lineTotals));
+
+            var subAfterLineDiscount = lineTotals.Subtotal - lineTotals.DiscountTotal;
+            var headerPercentValue = R(subAfterLineDiscount * headerDiscountPercent / 100m);
+            var totalHeaderDiscount = headerPercentValue + headerDiscountAmount;
+
+            // LC-05: Clamp header discount so it cannot exceed the line subtotal after line discounts.
+            totalHeaderDiscount = Math.Min(totalHeaderDiscount, subAfterLineDiscount);
+
+            // ZATCA fix: reduce VatTotal proportionally when header discount is applied.
+            // Mirrors domain entity RecalculateTotals logic.
+            decimal vatAdjustment = 0m;
+            if (subAfterLineDiscount > 0 && totalHeaderDiscount > 0 && lineTotals.VatTotal > 0)
+            {
+                var effectiveVatRate = lineTotals.VatTotal / subAfterLineDiscount;
+                vatAdjustment = R(totalHeaderDiscount * effectiveVatRate);
+            }
+            var adjustedVatTotal = lineTotals.VatTotal - vatAdjustment;
+
+            return new HeaderDiscountResult
+            {
+                TotalDiscount = lineTotals.DiscountTotal + totalHeaderDiscount,
+                VatTotal = adjustedVatTotal,
+                NetTotal = (subAfterLineDiscount - totalHeaderDiscount) + adjustedVatTotal + deliveryFee
+            };
+        }
+
+        /// <inheritdoc />
+        public decimal CalculatePartCount(decimal majorFactor, decimal minorFactor)
+        {
+            if (majorFactor <= 0 || minorFactor <= 0) return 1m;
+            var result = R(majorFactor / minorFactor);
+            return result <= 0 ? 1m : result;
+        }
+
+        /// <inheritdoc />
+        public decimal ConvertBaseToUnitQuantity(decimal baseQuantity, decimal conversionFactor)
+        {
+            if (conversionFactor <= 0) return baseQuantity;
+            return R(baseQuantity / conversionFactor);
+        }
+
+        /// <inheritdoc />
+        public decimal CalculateCostDifference(decimal differenceQty, decimal conversionFactor, decimal unitCost)
+        {
+            var baseQty = ConvertQuantity(differenceQty, conversionFactor);
+            return R(baseQty * unitCost);
+        }
+
+        /// <inheritdoc />
+        public decimal CalculateNetCash(decimal cashAmount, decimal netTotal, decimal cardAmount, decimal onAccountAmount)
+        {
+            return Math.Min(cashAmount, netTotal - cardAmount - onAccountAmount);
         }
     }
 }

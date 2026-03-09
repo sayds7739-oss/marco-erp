@@ -135,7 +135,7 @@
             </Border>
 
             <Border Background="White" CornerRadius="8,0,0,8"
-                    HorizontalAlignment="Left" Width="400">
+                    HorizontalAlignment="Left" Width="450">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.2" Color="Black" Direction="180" />
                 </Border.Effect>
@@ -247,6 +247,27 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="6" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Text="{Binding FormEmail, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="البريد الإلكتروني"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
+                                                 FlowDirection="LeftToRight" />
+                                        <TextBox Grid.Column="2" Text="{Binding FormContactPerson, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="الشخص المسؤول"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" />
+                                    </Grid>
+                                    <TextBox Text="{Binding FormWebsite, UpdateSourceTrigger=PropertyChanged}"
+                                             materialDesign:HintAssist.Hint="الموقع الإلكتروني"
+                                             materialDesign:HintAssist.IsFloating="True"
+                                             IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" Margin="0,6,0,0"
+                                             FlowDirection="LeftToRight" />
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="6" />
                                             <ColumnDefinition Width="100" />
                                         </Grid.ColumnDefinitions>
                                         <TextBox Grid.Column="0" Text="{Binding FormAddress, UpdateSourceTrigger=PropertyChanged}"
@@ -258,30 +279,122 @@
                                                  materialDesign:HintAssist.IsFloating="True"
                                                  IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" />
                                     </Grid>
-                                    <TextBox Text="{Binding FormTaxNumber, UpdateSourceTrigger=PropertyChanged}"
-                                             materialDesign:HintAssist.Hint="الرقم الضريبي"
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="6" />
+                                            <ColumnDefinition Width="100" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Text="{Binding FormCountry, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="الدولة"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" />
+                                        <TextBox Grid.Column="2" Text="{Binding FormPostalCode, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="الرمز البريدي"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
+                                                 FlowDirection="LeftToRight" MaxLength="10" />
+                                    </Grid>
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="6" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Text="{Binding FormTaxNumber, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="الرقم الضريبي"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
+                                                 FlowDirection="LeftToRight" MaxLength="30" />
+                                        <TextBox Grid.Column="2" Text="{Binding FormCommercialRegister, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="السجل التجاري"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
+                                                 FlowDirection="LeftToRight" MaxLength="30" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <Border BorderBrush="#ECEFF1" BorderThickness="0,0,0,1" Padding="0,0,0,10" Margin="0,0,0,6">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <materialDesign:PackIcon Kind="CurrencyUsd" Foreground="#2E7D32"
+                                                                 Width="16" Height="16" VerticalAlignment="Center" />
+                                        <TextBlock Text="البيانات المالية" FontSize="12" FontWeight="SemiBold"
+                                                   Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="6" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Text="{Binding FormCreditLimit, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
+                                                 materialDesign:HintAssist.Hint="حد الائتمان"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
+                                                 FlowDirection="LeftToRight" />
+                                        <TextBox Grid.Column="2" Text="{Binding FormDaysAllowed, UpdateSourceTrigger=LostFocus}"
+                                                 materialDesign:HintAssist.Hint="أيام السداد"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
+                                                 FlowDirection="LeftToRight" />
+                                    </Grid>
+                                    <TextBox Text="{Binding FormPreviousBalance, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
+                                             materialDesign:HintAssist.Hint="الرصيد السابق"
+                                             materialDesign:HintAssist.IsFloating="True"
+                                             IsEnabled="{Binding IsNew}" FontSize="12" Padding="6,4" Margin="0,6,0,0"
+                                             FlowDirection="LeftToRight" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border BorderBrush="#ECEFF1" BorderThickness="0,0,0,1" Padding="0,0,0,10" Margin="0,0,0,6">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <materialDesign:PackIcon Kind="Bank" Foreground="#4527A0"
+                                                                 Width="16" Height="16" VerticalAlignment="Center" />
+                                        <TextBlock Text="البيانات البنكية" FontSize="12" FontWeight="SemiBold"
+                                                   Margin="6,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="6" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Text="{Binding FormBankName, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="اسم البنك"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" />
+                                        <TextBox Grid.Column="2" Text="{Binding FormBankAccountName, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="اسم صاحب الحساب"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" />
+                                    </Grid>
+                                    <TextBox Text="{Binding FormBankAccountNumber, UpdateSourceTrigger=PropertyChanged}"
+                                             materialDesign:HintAssist.Hint="رقم الحساب البنكي"
                                              materialDesign:HintAssist.IsFloating="True"
                                              IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" Margin="0,6,0,0"
-                                             FlowDirection="LeftToRight" MaxLength="30" />
+                                             FlowDirection="LeftToRight" />
+                                    <TextBox Text="{Binding FormIBAN, UpdateSourceTrigger=PropertyChanged}"
+                                             materialDesign:HintAssist.Hint="رقم IBAN"
+                                             materialDesign:HintAssist.IsFloating="True"
+                                             IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" Margin="0,6,0,0"
+                                             FlowDirection="LeftToRight" MaxLength="34" />
                                 </StackPanel>
                             </Border>
 
                             <StackPanel Margin="0,0,0,6">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <materialDesign:PackIcon Kind="CurrencyUsd" Foreground="#2E7D32"
+                                    <materialDesign:PackIcon Kind="NoteText" Foreground="#546E7A"
                                                              Width="16" Height="16" VerticalAlignment="Center" />
-                                    <TextBlock Text="البيانات المالية" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Text="ملاحظات" FontSize="12" FontWeight="SemiBold"
                                                Margin="6,0,0,0" VerticalAlignment="Center" />
                                 </StackPanel>
-                                <TextBox Text="{Binding FormPreviousBalance, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
-                                         materialDesign:HintAssist.Hint="الرصيد السابق"
-                                         materialDesign:HintAssist.IsFloating="True"
-                                         IsEnabled="{Binding IsNew}" FontSize="12" Padding="6,4"
-                                         FlowDirection="LeftToRight" />
                                 <TextBox Text="{Binding FormNotes, UpdateSourceTrigger=PropertyChanged}"
                                          materialDesign:HintAssist.Hint="ملاحظات"
                                          materialDesign:HintAssist.IsFloating="True"
-                                         IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" Margin="0,6,0,0"
+                                         IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
                                          TextWrapping="Wrap" MinHeight="40" AcceptsReturn="True" />
                             </StackPanel>
                         </StackPanel>

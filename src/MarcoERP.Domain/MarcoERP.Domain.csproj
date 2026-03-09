@@ -12,4 +12,12 @@
     <Description>MarcoERP Domain Layer - Core business entities, rules, and interfaces. Zero external dependencies.</Description>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="MarcoERP.Persistence" />
+    <InternalsVisibleTo Include="MarcoERP.Domain.Tests" />
+    <InternalsVisibleTo Include="MarcoERP.Integration.Tests" />
+    <InternalsVisibleTo Include="MarcoERP.Application.Tests" />
+    <InternalsVisibleTo Include="MarcoERP.Persistence.Tests" />
+  </ItemGroup>
+
 </Project>

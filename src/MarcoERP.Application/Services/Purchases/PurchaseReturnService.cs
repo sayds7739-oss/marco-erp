@@ -15,10 +15,13 @@ using MarcoERP.Domain.Entities.Accounting.Policies;
 using MarcoERP.Domain.Entities.Inventory;
 using MarcoERP.Domain.Entities.Purchases;
 using MarcoERP.Domain.Enums;
+using MarcoERP.Application.Interfaces.Settings;
+using MarcoERP.Domain.Exceptions;
 using MarcoERP.Domain.Exceptions.Purchases;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Purchases;
+using MarcoERP.Domain.Interfaces.Settings;
 using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Purchases
@@ -33,11 +36,8 @@ namespace MarcoERP.Application.Services.Purchases
         private readonly IPurchaseReturnRepository _returnRepo;
         private readonly IPurchaseInvoiceRepository _invoiceRepo;
         private readonly IProductRepository _productRepo;
-        private readonly IWarehouseProductRepository _whProductRepo;
-        private readonly IInventoryMovementRepository _movementRepo;
         private readonly IJournalEntryRepository _journalRepo;
         private readonly IAccountRepository _accountRepo;
-        private readonly IFiscalYearRepository _fiscalYearRepo;
         private readonly IJournalNumberGenerator _journalNumberGen;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
@@ -45,6 +45,11 @@ namespace MarcoERP.Application.Services.Purchases
         private readonly IValidator<CreatePurchaseReturnDto> _createValidator;
         private readonly IValidator<UpdatePurchaseReturnDto> _updateValidator;
         private readonly ILogger<PurchaseReturnService> _logger;
+        private readonly JournalEntryFactory _journalFactory;
+        private readonly FiscalPeriodValidator _fiscalValidator;
+        private readonly IFeatureService _featureService;
+        private readonly ISystemSettingRepository _systemSettingRepository;
+        private readonly StockManager _stockManager;
 
         // ── GL Account Codes (from SystemAccountSeed) ───────────
         private const string InventoryAccountCode = "1131";
@@ -56,22 +61,22 @@ namespace MarcoERP.Application.Services.Purchases
             PurchaseReturnRepositories repos,
             PurchaseReturnServices services,
             PurchaseReturnValidators validators,
-            ILogger<PurchaseReturnService> logger)
+            JournalEntryFactory journalFactory,
+            FiscalPeriodValidator fiscalValidator,
+            StockManager stockManager,
+            ILogger<PurchaseReturnService> logger = null,
+            IFeatureService featureService = null)
         {
             if (repos == null) throw new ArgumentNullException(nameof(repos));
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (validators == null) throw new ArgumentNullException(nameof(validators));
-            if (logger == null) throw new ArgumentNullException(nameof(logger));
 
             _returnRepo = repos.ReturnRepo;
             _invoiceRepo = repos.InvoiceRepo;
             _productRepo = repos.ProductRepo;
-            _whProductRepo = repos.WhProductRepo;
-            _movementRepo = repos.MovementRepo;
             _journalRepo = repos.JournalRepo;
             _accountRepo = repos.AccountRepo;
 
-            _fiscalYearRepo = services.FiscalYearRepo;
             _journalNumberGen = services.JournalNumberGen;
             _unitOfWork = services.UnitOfWork;
             _currentUser = services.CurrentUser;
@@ -79,7 +84,12 @@ namespace MarcoERP.Application.Services.Purchases
 
             _createValidator = validators.CreateValidator;
             _updateValidator = validators.UpdateValidator;
-            _logger = logger;
+            _journalFactory = journalFactory ?? throw new ArgumentNullException(nameof(journalFactory));
+            _fiscalValidator = fiscalValidator ?? throw new ArgumentNullException(nameof(fiscalValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PurchaseReturnService>.Instance;
+            _featureService = featureService;
+            _systemSettingRepository = services.SystemSettingRepo;
+            _stockManager = stockManager ?? throw new ArgumentNullException(nameof(stockManager));
         }
 
         public async Task<ServiceResult<IReadOnlyList<PurchaseReturnListDto>>> GetAllAsync(CancellationToken ct = default)
@@ -106,110 +116,147 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult<PurchaseReturnDto>> CreateAsync(CreatePurchaseReturnDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<PurchaseReturnDto>(_currentUser, PermissionKeys.PurchasesCreate);
-            if (authCheck != null) return authCheck;
+            // Feature Guard — block operation if Purchases module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<PurchaseReturnDto>(_featureService, FeatureKeys.Purchases, ct);
+                if (guard != null) return guard;
+            }
+
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "PurchaseReturn", 0);
 
             var vr = await _createValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<PurchaseReturnDto>.Failure(
                     string.Join(" | ", vr.Errors.Select(e => e.ErrorMessage)));
 
-            try
+            const int maxRetries = 3;
+            var attempt = 0;
+
+            while (attempt < maxRetries)
             {
-                // ── Validate return quantities against original invoice ──
-                if (dto.OriginalInvoiceId.HasValue)
+                attempt++;
+
+                try
                 {
-                    var originalInvoice = await _invoiceRepo.GetWithLinesAsync(dto.OriginalInvoiceId.Value, ct);
-                    if (originalInvoice == null)
-                        return ServiceResult<PurchaseReturnDto>.Failure("فاتورة الشراء الأصلية غير موجودة.");
+                    PurchaseReturn purchaseReturn = null;
 
-                    // Get all previous non-cancelled returns for this invoice
-                    var previousReturns = await _returnRepo.GetByOriginalInvoiceAsync(dto.OriginalInvoiceId.Value, ct);
-                    var previouslyReturnedQty = previousReturns
-                        .Where(r => r.Status != InvoiceStatus.Cancelled)
-                        .SelectMany(r => r.Lines)
-                        .GroupBy(l => new { l.ProductId, l.UnitId })
-                        .ToDictionary(
-                            g => g.Key,
-                            g => g.Sum(l => l.Quantity));
-
-                    foreach (var lineDto in dto.Lines)
+                    await _unitOfWork.ExecuteInTransactionAsync(async () =>
                     {
-                        var invoiceLine = originalInvoice.Lines
-                            .FirstOrDefault(l => l.ProductId == lineDto.ProductId && l.UnitId == lineDto.UnitId);
+                        // ── Validate return quantities against original invoice ──
+                        if (dto.OriginalInvoiceId.HasValue)
+                        {
+                            var originalInvoice = await _invoiceRepo.GetWithLinesAsync(dto.OriginalInvoiceId.Value, ct);
+                            if (originalInvoice == null)
+                                throw new PurchaseReturnDomainException("فاتورة الشراء الأصلية غير موجودة.");
 
-                        if (invoiceLine == null)
-                            return ServiceResult<PurchaseReturnDto>.Failure(
-                                $"الصنف {lineDto.ProductId} بالوحدة {lineDto.UnitId} غير موجود في فاتورة الشراء الأصلية.");
+                            // Get all previous non-cancelled returns for this invoice
+                            var previousReturns = await _returnRepo.GetByOriginalInvoiceAsync(dto.OriginalInvoiceId.Value, ct);
+                            var previouslyReturnedQty = previousReturns
+                                .Where(r => r.Status != InvoiceStatus.Cancelled)
+                                .SelectMany(r => r.Lines)
+                                .GroupBy(l => new { l.ProductId, l.UnitId })
+                                .ToDictionary(
+                                    g => g.Key,
+                                    g => g.Sum(l => l.Quantity));
 
-                        var alreadyReturned = previouslyReturnedQty
-                            .GetValueOrDefault(new { lineDto.ProductId, lineDto.UnitId }, 0m);
-                        var remainingReturnable = invoiceLine.Quantity - alreadyReturned;
+                            foreach (var lineDto in dto.Lines)
+                            {
+                                var invoiceLine = originalInvoice.Lines
+                                    .FirstOrDefault(l => l.ProductId == lineDto.ProductId && l.UnitId == lineDto.UnitId);
 
-                        if (lineDto.Quantity > remainingReturnable)
-                            return ServiceResult<PurchaseReturnDto>.Failure(
-                                $"كمية المرتجع ({lineDto.Quantity}) تتجاوز الكمية المتاحة للإرجاع ({remainingReturnable}) للصنف {lineDto.ProductId}. " +
-                                $"(الكمية الأصلية: {invoiceLine.Quantity}، تم إرجاع: {alreadyReturned})");
-                    }
+                                if (invoiceLine == null)
+                                    throw new PurchaseReturnDomainException(
+                                        $"الصنف {lineDto.ProductId} بالوحدة {lineDto.UnitId} غير موجود في فاتورة الشراء الأصلية.");
+
+                                var alreadyReturned = previouslyReturnedQty
+                                    .GetValueOrDefault(new { lineDto.ProductId, lineDto.UnitId }, 0m);
+                                var remainingReturnable = invoiceLine.Quantity - alreadyReturned;
+
+                                if (lineDto.Quantity > remainingReturnable)
+                                    throw new PurchaseReturnDomainException(
+                                        $"كمية المرتجع ({lineDto.Quantity}) تتجاوز الكمية المتاحة للإرجاع ({remainingReturnable}) للصنف {lineDto.ProductId}. " +
+                                        $"(الكمية الأصلية: {invoiceLine.Quantity}، تم إرجاع: {alreadyReturned})");
+                            }
+                        }
+
+                        var returnNumber = await _returnRepo.GetNextNumberAsync(ct);
+
+                        purchaseReturn = new PurchaseReturn(
+                            returnNumber,
+                            dto.ReturnDate,
+                            dto.SupplierId,
+                            dto.WarehouseId,
+                            dto.OriginalInvoiceId,
+                            dto.Notes,
+                            salesRepresentativeId: dto.SalesRepresentativeId,
+                            counterpartyType: dto.CounterpartyType,
+                            customerId: dto.CounterpartyCustomerId);
+
+                        foreach (var lineDto in dto.Lines)
+                        {
+                            var product = await _productRepo.GetByIdWithUnitsAsync(lineDto.ProductId, ct);
+                            if (product == null)
+                                throw new PurchaseReturnDomainException($"الصنف برقم {lineDto.ProductId} غير موجود.");
+
+                            var productUnit = product.ProductUnits.FirstOrDefault(pu => pu.UnitId == lineDto.UnitId);
+                            if (productUnit == null)
+                                throw new PurchaseReturnDomainException(
+                                    $"الوحدة المحددة غير مرتبطة بالصنف ({product.NameAr}).");
+
+                            purchaseReturn.AddLine(
+                                lineDto.ProductId,
+                                lineDto.UnitId,
+                                lineDto.Quantity,
+                                lineDto.UnitPrice,
+                                productUnit.ConversionFactor,
+                                lineDto.DiscountPercent,
+                                product.VatRate);
+                        }
+
+                        await _returnRepo.AddAsync(purchaseReturn, ct);
+                        await _unitOfWork.SaveChangesAsync(ct);
+                    }, IsolationLevel.Serializable, ct);
+
+                    var saved = await _returnRepo.GetWithLinesAsync(purchaseReturn.Id, ct);
+                    return ServiceResult<PurchaseReturnDto>.Success(PurchaseReturnMapper.ToDto(saved));
                 }
-
-                var returnNumber = await _returnRepo.GetNextNumberAsync(ct);
-
-                var purchaseReturn = new PurchaseReturn(
-                    returnNumber,
-                    dto.ReturnDate,
-                    dto.SupplierId,
-                    dto.WarehouseId,
-                    dto.OriginalInvoiceId,
-                    dto.Notes,
-                    salesRepresentativeId: dto.SalesRepresentativeId,
-                    counterpartyType: dto.CounterpartyType,
-                    customerId: dto.CounterpartyCustomerId);
-
-                foreach (var lineDto in dto.Lines)
+                catch (DuplicateRecordException) when (attempt < maxRetries)
                 {
-                    var product = await _productRepo.GetByIdWithUnitsAsync(lineDto.ProductId, ct);
-                    if (product == null)
-                        return ServiceResult<PurchaseReturnDto>.Failure($"الصنف برقم {lineDto.ProductId} غير موجود.");
-
-                    var productUnit = product.ProductUnits.FirstOrDefault(pu => pu.UnitId == lineDto.UnitId);
-                    if (productUnit == null)
-                        return ServiceResult<PurchaseReturnDto>.Failure(
-                            $"الوحدة المحددة غير مرتبطة بالصنف ({product.NameAr}).");
-
-                    purchaseReturn.AddLine(
-                        lineDto.ProductId,
-                        lineDto.UnitId,
-                        lineDto.Quantity,
-                        lineDto.UnitPrice,
-                        productUnit.ConversionFactor,
-                        lineDto.DiscountPercent,
-                        product.VatRate);
+                    await Task.Delay(TimeSpan.FromMilliseconds(100 * attempt), ct);
+                    continue;
                 }
-
-                await _returnRepo.AddAsync(purchaseReturn, ct);
-                await _unitOfWork.SaveChangesAsync(ct);
-
-                var saved = await _returnRepo.GetWithLinesAsync(purchaseReturn.Id, ct);
-                return ServiceResult<PurchaseReturnDto>.Success(PurchaseReturnMapper.ToDto(saved));
+                catch (PurchaseReturnDomainException ex)
+                {
+                    return ServiceResult<PurchaseReturnDto>.Failure(ex.Message);
+                }
+                catch (PurchaseInvoiceDomainException ex)
+                {
+                    return ServiceResult<PurchaseReturnDto>.Failure(ex.Message);
+                }
+                catch (ConcurrencyConflictException)
+                {
+                    return ServiceResult<PurchaseReturnDto>.Failure("تم تعديل المرتجع بواسطة مستخدم آخر. يرجى إعادة المحاولة.");
+                }
+                catch (DuplicateRecordException)
+                {
+                    return ServiceResult<PurchaseReturnDto>.Failure("تعذر حفظ المرتجع بسبب تعارض بيانات فريدة. يرجى إعادة المحاولة.");
+                }
             }
-            catch (PurchaseInvoiceDomainException ex)
-            {
-                return ServiceResult<PurchaseReturnDto>.Failure(ex.Message);
-            }
+
+            return ServiceResult<PurchaseReturnDto>.Failure("فشل حفظ مرتجع الشراء بعد عدة محاولات.");
         }
 
         public async Task<ServiceResult<PurchaseReturnDto>> UpdateAsync(UpdatePurchaseReturnDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<PurchaseReturnDto>(_currentUser, PermissionKeys.PurchasesCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "PurchaseReturn", dto.Id);
 
             var vr = await _updateValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<PurchaseReturnDto>.Failure(
                     string.Join(" | ", vr.Errors.Select(e => e.ErrorMessage)));
 
-            var purchaseReturn = await _returnRepo.GetWithLinesAsync(dto.Id, ct);
+            var purchaseReturn = await _returnRepo.GetWithLinesTrackedAsync(dto.Id, ct);
             if (purchaseReturn == null)
                 return ServiceResult<PurchaseReturnDto>.Failure(ReturnNotFoundMessage);
 
@@ -243,15 +290,20 @@ namespace MarcoERP.Application.Services.Purchases
                         lineDto.UnitPrice,
                         productUnit.ConversionFactor,
                         lineDto.DiscountPercent,
-                        product.VatRate));
+                        product.VatRate,
+                        lineDto.Id));
                 }
 
                 purchaseReturn.ReplaceLines(newLines);
-                _returnRepo.Update(purchaseReturn);
+                // Entity is already tracked — no need for _returnRepo.Update(purchaseReturn)
                 await _unitOfWork.SaveChangesAsync(ct);
 
                 var saved = await _returnRepo.GetWithLinesAsync(purchaseReturn.Id, ct);
                 return ServiceResult<PurchaseReturnDto>.Success(PurchaseReturnMapper.ToDto(saved));
+            }
+            catch (PurchaseReturnDomainException ex)
+            {
+                return ServiceResult<PurchaseReturnDto>.Failure(ex.Message);
             }
             catch (PurchaseInvoiceDomainException ex)
             {
@@ -267,8 +319,7 @@ namespace MarcoERP.Application.Services.Purchases
         /// </summary>
         public async Task<ServiceResult<PurchaseReturnDto>> PostAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<PurchaseReturnDto>(_currentUser, PermissionKeys.PurchasesPost);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "PostAsync", "PurchaseReturn", id);
 
             var purchaseReturn = await _returnRepo.GetWithLinesAsync(id, ct);
             if (purchaseReturn == null)
@@ -285,9 +336,27 @@ namespace MarcoERP.Application.Services.Purchases
                 var saved = await ExecutePostAsync(purchaseReturn, ct);
                 return ServiceResult<PurchaseReturnDto>.Success(PurchaseReturnMapper.ToDto(saved));
             }
+            catch (PurchaseReturnDomainException ex)
+            {
+                return ServiceResult<PurchaseReturnDto>.Failure(ex.Message);
+            }
             catch (PurchaseInvoiceDomainException ex)
             {
                 return ServiceResult<PurchaseReturnDto>.Failure(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "InvalidOperationException while posting purchase return {ReturnId}.", purchaseReturn?.Id);
+                return ServiceResult<PurchaseReturnDto>.Failure(
+                    ErrorSanitizer.Sanitize(ex, "ترحيل مرتجع الشراء"));
+            }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult<PurchaseReturnDto>.Failure("تعذر ترحيل المرتجع بسبب تعارض تحديث متزامن. يرجى إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult<PurchaseReturnDto>.Failure("تعذر ترحيل المرتجع بسبب تعارض بيانات فريدة. يرجى إعادة المحاولة.");
             }
             catch (Exception ex)
             {
@@ -298,8 +367,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult> CancelAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.PurchasesPost);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CancelAsync", "PurchaseReturn", id);
 
             var purchaseReturn = await _returnRepo.GetWithLinesAsync(id, ct);
             if (purchaseReturn == null)
@@ -313,13 +381,31 @@ namespace MarcoERP.Application.Services.Purchases
 
             try
             {
-                var context = await GetCancelContextAsync(purchaseReturn.ReturnDate, ct);
+                var context = await _fiscalValidator.ValidateForCancelAsync(purchaseReturn.ReturnDate, ct);
                 await ExecuteCancelAsync(purchaseReturn, context, ct);
                 return ServiceResult.Success();
+            }
+            catch (PurchaseReturnDomainException ex)
+            {
+                return ServiceResult.Failure(ex.Message);
             }
             catch (PurchaseInvoiceDomainException ex)
             {
                 return ServiceResult.Failure(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "InvalidOperationException while cancelling purchase return.");
+                return ServiceResult.Failure(
+                    ErrorSanitizer.Sanitize(ex, "إلغاء مرتجع الشراء"));
+            }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult.Failure("تعذر إلغاء المرتجع بسبب تعارض تحديث متزامن. يرجى إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult.Failure("تعذر إلغاء المرتجع بسبب تعارض بيانات فريدة. يرجى إعادة المحاولة.");
             }
             catch (Exception ex)
             {
@@ -330,8 +416,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult> DeleteDraftAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.PurchasesCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteDraftAsync", "PurchaseReturn", id);
 
             var purchaseReturn = await _returnRepo.GetWithLinesAsync(id, ct);
             if (purchaseReturn == null)
@@ -353,51 +438,30 @@ namespace MarcoERP.Application.Services.Purchases
 
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                var context = await GetPostingContextAsync(purchaseReturn.ReturnDate, ct);
+                // Use tracked query to avoid EF Core graph attachment conflicts
+                var reloaded = await _returnRepo.GetWithLinesTrackedAsync(purchaseReturn.Id, ct);
+                if (reloaded == null)
+                    throw new PurchaseReturnDomainException(ReturnNotFoundMessage);
+                if (reloaded.Status != InvoiceStatus.Draft)
+                    throw new PurchaseReturnDomainException("لا يمكن ترحيل مرتجع مرحّل بالفعل أو ملغى.");
+
+                var context = await _fiscalValidator.ValidateForPostingAsync(reloaded.ReturnDate, ct);
                 var accounts = await ResolveAccountsAsync(ct);
 
-                var journalEntry = await CreateReversalJournalAsync(purchaseReturn, accounts, context, ct);
+                var journalEntry = await CreateReversalJournalAsync(reloaded, accounts, context, ct);
 
                 await _unitOfWork.SaveChangesAsync(ct);
 
-                await DeductStockAsync(purchaseReturn, ct);
+                await DeductStockAsync(reloaded, ct);
 
-                purchaseReturn.Post(journalEntry.Id);
-                _returnRepo.Update(purchaseReturn);
+                reloaded.Post(journalEntry.Id);
+                // Entity is already tracked — no need for explicit Update
                 await _unitOfWork.SaveChangesAsync(ct);
 
-                saved = await _returnRepo.GetWithLinesAsync(purchaseReturn.Id, ct);
+                saved = await _returnRepo.GetWithLinesAsync(reloaded.Id, ct);
             }, IsolationLevel.Serializable, ct);
 
             return saved ?? purchaseReturn;
-        }
-
-        private async Task<PurchaseReturnPostingContext> GetPostingContextAsync(DateTime returnDate, CancellationToken ct)
-        {
-            var fiscalYear = await _fiscalYearRepo.GetActiveYearAsync(ct);
-            if (fiscalYear == null)
-                throw new PurchaseInvoiceDomainException("لا توجد سنة مالية نشطة.");
-
-            if (!fiscalYear.ContainsDate(returnDate))
-                throw new PurchaseInvoiceDomainException(
-                    $"تاريخ المرتجع {returnDate:yyyy-MM-dd} لا يقع ضمن السنة المالية النشطة.");
-
-            var yearWithPeriods = await _fiscalYearRepo.GetWithPeriodsAsync(fiscalYear.Id, ct);
-            var period = yearWithPeriods.GetPeriod(returnDate.Month);
-            if (period == null)
-                throw new PurchaseInvoiceDomainException("لا توجد فترة مالية للشهر المحدد.");
-
-            if (!period.IsOpen)
-                throw new PurchaseInvoiceDomainException(
-                    $"الفترة المالية ({period.Year}-{period.Month:D2}) مقفلة. لا يمكن الترحيل.");
-
-            return new PurchaseReturnPostingContext
-            {
-                FiscalYear = yearWithPeriods,
-                Period = period,
-                Now = _dateTime.UtcNow,
-                Username = _currentUser.Username ?? "System"
-            };
         }
 
         private async Task<PurchaseReturnAccounts> ResolveAccountsAsync(CancellationToken ct)
@@ -407,7 +471,7 @@ namespace MarcoERP.Application.Services.Purchases
             var apAccount = await _accountRepo.GetByCodeAsync(ApAccountCode, ct);
 
             if (inventoryAccount == null || vatInputAccount == null || apAccount == null)
-                throw new PurchaseInvoiceDomainException(
+                throw new PurchaseReturnDomainException(
                     "حسابات النظام المطلوبة (مخزون / ضريبة مدخلات / دائنون) غير موجودة. تأكد من تشغيل Seed.");
 
             return new PurchaseReturnAccounts
@@ -421,121 +485,122 @@ namespace MarcoERP.Application.Services.Purchases
         private async Task<JournalEntry> CreateReversalJournalAsync(
             PurchaseReturn purchaseReturn,
             PurchaseReturnAccounts accounts,
-            PurchaseReturnPostingContext context,
+            PostingContext context,
             CancellationToken ct)
         {
-            var netExVat = purchaseReturn.Subtotal - purchaseReturn.DiscountTotal;
-            var journalEntry = JournalEntry.CreateDraft(
+            var netExVat = purchaseReturn.Subtotal - purchaseReturn.DiscountTotal + purchaseReturn.DeliveryFee;
+            var lines = new List<JournalLineSpec>();
+
+            lines.Add(new JournalLineSpec(accounts.Ap.Id, purchaseReturn.NetTotal, 0,
+                $"مورد — مرتجع شراء {purchaseReturn.ReturnNumber}"));
+
+            if (netExVat > 0)
+                lines.Add(new JournalLineSpec(accounts.Inventory.Id, 0, netExVat,
+                    $"مخزون — مرتجع شراء {purchaseReturn.ReturnNumber}"));
+
+            if (purchaseReturn.VatTotal > 0)
+                lines.Add(new JournalLineSpec(accounts.VatInput.Id, 0, purchaseReturn.VatTotal,
+                    $"ضريبة مدخلات — مرتجع شراء {purchaseReturn.ReturnNumber}"));
+
+            return await _journalFactory.CreateAndPostAsync(
                 purchaseReturn.ReturnDate,
                 $"مرتجع شراء رقم {purchaseReturn.ReturnNumber}",
                 SourceType.PurchaseReturn,
                 context.FiscalYear.Id,
                 context.Period.Id,
+                lines,
+                context.Username,
+                context.Now,
                 referenceNumber: purchaseReturn.ReturnNumber,
-                sourceId: purchaseReturn.Id);
-
-            journalEntry.AddLine(accounts.Ap.Id, purchaseReturn.NetTotal, 0, context.Now,
-                $"مورد — مرتجع شراء {purchaseReturn.ReturnNumber}");
-
-            if (netExVat > 0)
-                journalEntry.AddLine(accounts.Inventory.Id, 0, netExVat, context.Now,
-                    $"مخزون — مرتجع شراء {purchaseReturn.ReturnNumber}");
-
-            if (purchaseReturn.VatTotal > 0)
-                journalEntry.AddLine(accounts.VatInput.Id, 0, purchaseReturn.VatTotal, context.Now,
-                    $"ضريبة مدخلات — مرتجع شراء {purchaseReturn.ReturnNumber}");
-
-            var journalNumber = _journalNumberGen.NextNumber(context.FiscalYear.Id);
-            journalEntry.Post(journalNumber, context.Username, context.Now);
-
-            await _journalRepo.AddAsync(journalEntry, ct);
-            return journalEntry;
+                sourceId: purchaseReturn.Id,
+                ct: ct);
         }
 
         private async Task DeductStockAsync(PurchaseReturn purchaseReturn, CancellationToken ct)
         {
+            // Running totals to handle duplicate product lines (mirrors PurchaseInvoice cancel pattern)
+            var runningDeductions = new Dictionary<int, decimal>();
+            var runningProducts = new Dictionary<int, Product>();
+            var allowNegativeStock = await IsNegativeStockAllowedAsync(ct);
+
             foreach (var line in purchaseReturn.Lines)
             {
-                var whProduct = await _whProductRepo.GetAsync(
-                    purchaseReturn.WarehouseId, line.ProductId, ct);
-
-                if (whProduct == null)
-                    throw new PurchaseInvoiceDomainException(
-                        "لا يوجد مخزون للصنف في المستودع المحدد. تحقق من مطابقة المستودع.");
-
-                if (whProduct.Quantity < line.BaseQuantity)
-                    throw new PurchaseInvoiceDomainException(
-                        $"الكمية المتاحة ({whProduct.Quantity:N2}) أقل من كمية المرتجع ({line.BaseQuantity:N2}).");
-
                 var costPerBaseUnit = line.BaseQuantity > 0
-                    ? line.NetTotal / line.BaseQuantity
+                    ? Math.Round(line.NetTotal / line.BaseQuantity, 4)
                     : 0;
 
-                whProduct.DecreaseStock(line.BaseQuantity);
-                _whProductRepo.Update(whProduct);
+                await _stockManager.DecreaseAsync(new StockOperation
+                {
+                    ProductId = line.ProductId,
+                    WarehouseId = purchaseReturn.WarehouseId,
+                    UnitId = line.UnitId,
+                    MovementType = MovementType.PurchaseReturn,
+                    Quantity = line.Quantity,
+                    BaseQuantity = line.BaseQuantity,
+                    CostPerBaseUnit = costPerBaseUnit,
+                    DocumentDate = purchaseReturn.ReturnDate,
+                    DocumentNumber = purchaseReturn.ReturnNumber,
+                    SourceType = SourceType.PurchaseReturn,
+                    SourceId = purchaseReturn.Id,
+                    Notes = $"مرتجع شراء رقم {purchaseReturn.ReturnNumber}",
+                    AllowCreate = false,
+                    AllowNegativeStock = allowNegativeStock,
+                }, ct);
 
-                var totalCost = Math.Round(line.BaseQuantity * costPerBaseUnit, 4);
+                // Track cumulative deductions per product for stale-DB correction
+                if (!runningDeductions.TryGetValue(line.ProductId, out var previousDeductions))
+                    previousDeductions = 0;
 
-                var movement = new InventoryMovement(
-                    line.ProductId,
-                    purchaseReturn.WarehouseId,
-                    line.UnitId,
-                    MovementType.PurchaseReturn,
-                    line.Quantity,
-                    line.BaseQuantity,
-                    costPerBaseUnit,
-                    totalCost,
-                    purchaseReturn.ReturnDate,
-                    purchaseReturn.ReturnNumber,
-                    SourceType.PurchaseReturn,
-                    sourceId: purchaseReturn.Id,
-                    notes: $"مرتجع شراء رقم {purchaseReturn.ReturnNumber}");
+                // ── WAC recalculation: Remove this batch's cost contribution ──
+                if (!runningProducts.TryGetValue(line.ProductId, out var product))
+                {
+                    product = await _productRepo.GetByIdWithUnitsAsync(line.ProductId, ct);
+                    runningProducts[line.ProductId] = product;
+                }
+                var dbTotalQty = await _stockManager.GetTotalStockAsync(line.ProductId, ct);
+                // DB hasn't been saved yet, so subtract all deductions made in this loop
+                var remainingTotalQty = dbTotalQty - previousDeductions - line.BaseQuantity;
 
-                movement.SetBalanceAfter(whProduct.Quantity);
-                await _movementRepo.AddAsync(movement, ct);
+                if (remainingTotalQty > 0)
+                {
+                    var totalValueBefore = product.WeightedAverageCost * (remainingTotalQty + line.BaseQuantity);
+                    var batchValue = line.BaseQuantity * costPerBaseUnit;
+                    var newWac = (totalValueBefore - batchValue) / remainingTotalQty;
+                    product.SetWeightedAverageCost(Math.Round(newWac, 4));
+                }
+                else
+                {
+                    product.SetWeightedAverageCost(product.CostPrice);
+                }
+                _productRepo.Update(product);
+
+                runningDeductions[line.ProductId] = previousDeductions + line.BaseQuantity;
             }
-        }
-
-        private async Task<PurchaseReturnCancelContext> GetCancelContextAsync(DateTime returnDate, CancellationToken ct)
-        {
-            var fiscalYear = await _fiscalYearRepo.GetByYearAsync(returnDate.Year, ct);
-            if (fiscalYear == null)
-                throw new PurchaseInvoiceDomainException($"لا توجد سنة مالية للعام {returnDate.Year}.");
-
-            fiscalYear = await _fiscalYearRepo.GetWithPeriodsAsync(fiscalYear.Id, ct);
-            if (fiscalYear.Status != FiscalYearStatus.Active)
-                throw new PurchaseInvoiceDomainException($"السنة المالية {fiscalYear.Year} ليست فعّالة.");
-
-            var period = fiscalYear.GetPeriod(returnDate.Month);
-            if (period == null || !period.IsOpen)
-                throw new PurchaseInvoiceDomainException($"الفترة المالية لـ {returnDate:yyyy-MM} مُقفلة.");
-
-            return new PurchaseReturnCancelContext
-            {
-                FiscalYear = fiscalYear,
-                Period = period,
-                Today = returnDate
-            };
         }
 
         private async Task ExecuteCancelAsync(
             PurchaseReturn purchaseReturn,
-            PurchaseReturnCancelContext context,
+            CancelContext context,
             CancellationToken ct)
         {
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                await ReverseStockAsync(purchaseReturn, context, ct);
+                // Reload as tracked inside the transaction to ensure fresh data
+                // and avoid stale-entity issues (mirrors PurchaseInvoice cancel pattern)
+                var tracked = await _returnRepo.GetWithLinesTrackedAsync(purchaseReturn.Id, ct)
+                    ?? throw new PurchaseReturnDomainException(ReturnNotFoundMessage);
+
+                await ReverseStockAsync(tracked, context, ct);
 
                 await ReverseJournalAsync(
-                    purchaseReturn.JournalEntryId.Value,
-                    $"عكس مرتجع شراء رقم {purchaseReturn.ReturnNumber}",
+                    tracked.JournalEntryId.Value,
+                    $"عكس مرتجع شراء رقم {tracked.ReturnNumber}",
                     "القيد المحاسبي الأصلي غير موجود.",
                     context,
                     ct);
 
-                purchaseReturn.Cancel();
-                _returnRepo.Update(purchaseReturn);
+                tracked.Cancel();
+                // Entity is already tracked — no need for explicit Update
                 await _unitOfWork.SaveChangesAsync(ct);
 
             }, IsolationLevel.Serializable, ct);
@@ -543,40 +608,54 @@ namespace MarcoERP.Application.Services.Purchases
 
         private async Task ReverseStockAsync(
             PurchaseReturn purchaseReturn,
-            PurchaseReturnCancelContext context,
+            CancelContext context,
             CancellationToken ct)
         {
+            // Running totals to handle duplicate product lines (C-06 fix: add WAC recalculation)
+            var runningTotals = new Dictionary<int, (Product product, decimal totalQty)>();
+
             foreach (var line in purchaseReturn.Lines)
             {
-                var whProduct = await _whProductRepo.GetOrCreateAsync(
-                    purchaseReturn.WarehouseId, line.ProductId, ct);
-
-                whProduct.IncreaseStock(line.BaseQuantity);
-                _whProductRepo.Update(whProduct);
-
                 var costPerBaseUnit = line.BaseQuantity > 0
-                    ? line.NetTotal / line.BaseQuantity
+                    ? Math.Round(line.NetTotal / line.BaseQuantity, 4)
                     : 0;
 
-                var totalCost = Math.Round(line.BaseQuantity * costPerBaseUnit, 4);
+                await _stockManager.IncreaseAsync(new StockOperation
+                {
+                    ProductId = line.ProductId,
+                    WarehouseId = purchaseReturn.WarehouseId,
+                    UnitId = line.UnitId,
+                    MovementType = MovementType.PurchaseIn,
+                    Quantity = line.Quantity,
+                    BaseQuantity = line.BaseQuantity,
+                    CostPerBaseUnit = costPerBaseUnit,
+                    DocumentDate = context.Today,
+                    DocumentNumber = purchaseReturn.ReturnNumber,
+                    SourceType = SourceType.PurchaseReturn,
+                    SourceId = purchaseReturn.Id,
+                    Notes = $"إلغاء مرتجع شراء رقم {purchaseReturn.ReturnNumber}",
+                }, ct);
 
-                var movement = new InventoryMovement(
-                    line.ProductId,
-                    purchaseReturn.WarehouseId,
-                    line.UnitId,
-                    MovementType.PurchaseIn,
-                    line.Quantity,
-                    line.BaseQuantity,
-                    costPerBaseUnit,
-                    totalCost,
-                    context.Today,
-                    purchaseReturn.ReturnNumber,
-                    SourceType.PurchaseReturn,
-                    sourceId: purchaseReturn.Id,
-                    notes: $"إلغاء مرتجع شراء رقم {purchaseReturn.ReturnNumber}");
+                // ── WAC recalculation: re-blend the returned stock cost ──
+                if (!runningTotals.TryGetValue(line.ProductId, out var state))
+                {
+                    var product = await _productRepo.GetByIdWithUnitsAsync(line.ProductId, ct);
+                    var existingTotalQty = await _stockManager.GetTotalStockAsync(line.ProductId, ct);
+                    state = (product, existingTotalQty);
+                }
 
-                movement.SetBalanceAfter(whProduct.Quantity);
-                await _movementRepo.AddAsync(movement, ct);
+                if (state.totalQty <= 0)
+                {
+                    state.product.SetWeightedAverageCost(costPerBaseUnit);
+                }
+                else
+                {
+                    state.product.UpdateWeightedAverageCost(state.totalQty, line.BaseQuantity, costPerBaseUnit);
+                }
+
+                state.totalQty += line.BaseQuantity;
+                runningTotals[line.ProductId] = state;
+                _productRepo.Update(state.product);
             }
         }
 
@@ -584,7 +663,7 @@ namespace MarcoERP.Application.Services.Purchases
             int journalId,
             string description,
             string notFoundMessage,
-            PurchaseReturnCancelContext context,
+            CancelContext context,
             CancellationToken ct)
         {
             var originalJournal = await _journalRepo.GetWithLinesAsync(journalId, ct);
@@ -597,7 +676,7 @@ namespace MarcoERP.Application.Services.Purchases
                 context.FiscalYear.Id,
                 context.Period.Id);
 
-            var reversalNumber = _journalNumberGen.NextNumber(context.FiscalYear.Id);
+            var reversalNumber = await _journalNumberGen.NextNumberAsync(context.FiscalYear.Id, ct);
             var username = _currentUser.Username ?? "System";
             var now = _dateTime.UtcNow;
             reversalEntry.Post(reversalNumber, username, now);
@@ -608,14 +687,6 @@ namespace MarcoERP.Application.Services.Purchases
             _journalRepo.Update(originalJournal);
         }
 
-        private sealed class PurchaseReturnPostingContext
-        {
-            public FiscalYear FiscalYear { get; init; } = default!;
-            public FiscalPeriod Period { get; init; } = default!;
-            public DateTime Now { get; init; }
-            public string Username { get; init; } = string.Empty;
-        }
-
         private sealed class PurchaseReturnAccounts
         {
             public Account Inventory { get; init; } = default!;
@@ -623,16 +694,30 @@ namespace MarcoERP.Application.Services.Purchases
             public Account Ap { get; init; } = default!;
         }
 
-        private sealed class PurchaseReturnCancelContext
+        private async Task<bool> IsNegativeStockAllowedAsync(CancellationToken ct)
         {
-            public FiscalYear FiscalYear { get; init; } = default!;
-            public FiscalPeriod Period { get; init; } = default!;
-            public DateTime Today { get; init; }
+            if (_featureService == null)
+                return false;
+
+            var result = await _featureService.IsEnabledAsync(FeatureKeys.AllowNegativeStock, ct);
+            return result.IsSuccess && result.Data;
         }
+
     }
 
     public sealed class PurchaseReturnRepositories
     {
+        public PurchaseReturnRepositories(
+            IPurchaseReturnRepository returnRepo,
+            IProductRepository productRepo,
+            IWarehouseProductRepository whProductRepo,
+            IInventoryMovementRepository movementRepo,
+            IJournalEntryRepository journalRepo,
+            IAccountRepository accountRepo = null)
+            : this(returnRepo, null, productRepo, whProductRepo, movementRepo, journalRepo, accountRepo)
+        {
+        }
+
         public PurchaseReturnRepositories(
             IPurchaseReturnRepository returnRepo,
             IPurchaseInvoiceRepository invoiceRepo,
@@ -640,15 +725,15 @@ namespace MarcoERP.Application.Services.Purchases
             IWarehouseProductRepository whProductRepo,
             IInventoryMovementRepository movementRepo,
             IJournalEntryRepository journalRepo,
-            IAccountRepository accountRepo)
+            IAccountRepository accountRepo = null)
         {
             ReturnRepo = returnRepo ?? throw new ArgumentNullException(nameof(returnRepo));
-            InvoiceRepo = invoiceRepo ?? throw new ArgumentNullException(nameof(invoiceRepo));
+            InvoiceRepo = invoiceRepo;
             ProductRepo = productRepo ?? throw new ArgumentNullException(nameof(productRepo));
             WhProductRepo = whProductRepo ?? throw new ArgumentNullException(nameof(whProductRepo));
             MovementRepo = movementRepo ?? throw new ArgumentNullException(nameof(movementRepo));
             JournalRepo = journalRepo ?? throw new ArgumentNullException(nameof(journalRepo));
-            AccountRepo = accountRepo ?? throw new ArgumentNullException(nameof(accountRepo));
+            AccountRepo = accountRepo;
         }
 
         public IPurchaseReturnRepository ReturnRepo { get; }
@@ -667,13 +752,15 @@ namespace MarcoERP.Application.Services.Purchases
             IJournalNumberGenerator journalNumberGen,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
-            IDateTimeProvider dateTime)
+            IDateTimeProvider dateTime,
+            ISystemSettingRepository systemSettingRepo = null)
         {
             FiscalYearRepo = fiscalYearRepo ?? throw new ArgumentNullException(nameof(fiscalYearRepo));
             JournalNumberGen = journalNumberGen ?? throw new ArgumentNullException(nameof(journalNumberGen));
             UnitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             CurrentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             DateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            SystemSettingRepo = systemSettingRepo;
         }
 
         public IFiscalYearRepository FiscalYearRepo { get; }
@@ -681,6 +768,7 @@ namespace MarcoERP.Application.Services.Purchases
         public IUnitOfWork UnitOfWork { get; }
         public ICurrentUserService CurrentUser { get; }
         public IDateTimeProvider DateTime { get; }
+        public ISystemSettingRepository SystemSettingRepo { get; }
     }
 
     public sealed class PurchaseReturnValidators

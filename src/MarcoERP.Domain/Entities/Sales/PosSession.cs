@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using MarcoERP.Domain.Entities.Common;
+using MarcoERP.Domain.Entities.Inventory;
+using MarcoERP.Domain.Entities.Security;
+using MarcoERP.Domain.Entities.Treasury;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Sales;
 
@@ -11,7 +14,7 @@ namespace MarcoERP.Domain.Entities.Sales
     /// Represents a POS cashier session (جلسة نقطة بيع).
     /// Lifecycle: Open → Closed. Tracks cash flow and reconciliation.
     /// </summary>
-    public sealed class PosSession : AuditableEntity
+    public sealed class PosSession : CompanyAwareEntity
     {
         private readonly List<PosPayment> _payments = new();
 
@@ -67,11 +70,20 @@ namespace MarcoERP.Domain.Entities.Sales
         /// <summary>FK to User (cashier).</summary>
         public int UserId { get; private set; }
 
+        /// <summary>Navigation to User.</summary>
+        public User User { get; private set; }
+
         /// <summary>FK to Cashbox.</summary>
         public int CashboxId { get; private set; }
 
+        /// <summary>Navigation to Cashbox.</summary>
+        public Cashbox Cashbox { get; private set; }
+
         /// <summary>FK to Warehouse this POS draws stock from.</summary>
         public int WarehouseId { get; private set; }
+
+        /// <summary>Navigation to Warehouse.</summary>
+        public Warehouse Warehouse { get; private set; }
 
         /// <summary>Cash in the drawer at session start.</summary>
         public decimal OpeningBalance { get; private set; }
@@ -141,6 +153,13 @@ namespace MarcoERP.Domain.Entities.Sales
         public void ReverseSale(decimal invoiceNetTotal, decimal cashAmount, decimal cardAmount, decimal onAccountAmount)
         {
             EnsureOpen("لا يمكن عكس بيع في جلسة مغلقة.");
+
+            if (invoiceNetTotal <= 0)
+                throw new SalesInvoiceDomainException("مبلغ الفاتورة يجب أن يكون أكبر من صفر.");
+            if (TotalSales < invoiceNetTotal)
+                throw new SalesInvoiceDomainException("لا يمكن عكس مبلغ أكبر من إجمالي المبيعات.");
+            if (TransactionCount <= 0)
+                throw new SalesInvoiceDomainException("لا توجد معاملات لعكسها.");
 
             TotalSales -= invoiceNetTotal;
             TotalCashReceived -= cashAmount;

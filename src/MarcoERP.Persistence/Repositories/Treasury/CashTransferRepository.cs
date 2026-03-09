@@ -31,12 +31,14 @@ namespace MarcoERP.Persistence.Repositories.Treasury
 
         public async Task<CashTransfer> GetByIdAsync(int id, CancellationToken cancellationToken = default)
             => await _context.CashTransfers
+                .AsNoTracking()
                 .Include(ct2 => ct2.SourceCashbox)
                 .Include(ct2 => ct2.TargetCashbox)
             .FirstOrDefaultAsync(ct2 => ct2.Id == id, cancellationToken);
 
         public async Task<IReadOnlyList<CashTransfer>> GetAllAsync(CancellationToken cancellationToken = default)
             => await _context.CashTransfers
+                .AsNoTracking()
                 .Include(ct2 => ct2.SourceCashbox)
                 .Include(ct2 => ct2.TargetCashbox)
                 .OrderByDescending(ct2 => ct2.TransferDate)
@@ -46,12 +48,41 @@ namespace MarcoERP.Persistence.Repositories.Treasury
         public async Task AddAsync(CashTransfer entity, CancellationToken cancellationToken = default)
             => await _context.CashTransfers.AddAsync(entity, cancellationToken);
 
-        public void Update(CashTransfer entity) => _context.CashTransfers.Update(entity);
-        public void Remove(CashTransfer entity) => _context.CashTransfers.Remove(entity);
+        public void Update(CashTransfer entity)
+        {
+            if (entity == null) return;
+
+            var local = _context.CashTransfers.Local.FirstOrDefault(ct2 => ct2.Id == entity.Id);
+            if (local != null && !ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+                return;
+            }
+            if (local != null)
+            {
+                var existing = _context.Entry(local);
+                if (existing.State == EntityState.Unchanged)
+                    existing.State = EntityState.Modified;
+                return;
+            }
+
+            // Use Entry().State to avoid recursive graph traversal that
+            // conflicts on SourceCashbox/TargetCashbox navigation properties.
+            _context.Entry(entity).State = EntityState.Modified;
+        }
+        public void Remove(CashTransfer entity) => throw new NotSupportedException(
+            "Hard delete is not supported for financial aggregate 'CashTransfer'. Use lifecycle operations (Cancel/SoftDelete draft) instead.");
 
         // ── ICashTransferRepository ──────────────────────────────
 
         public async Task<CashTransfer> GetWithDetailsAsync(int id, CancellationToken ct = default)
+            => await _context.CashTransfers
+                .AsNoTracking()
+                .Include(ct2 => ct2.SourceCashbox)
+                .Include(ct2 => ct2.TargetCashbox)
+                .FirstOrDefaultAsync(ct2 => ct2.Id == id, ct);
+
+        public async Task<CashTransfer> GetWithDetailsTrackedAsync(int id, CancellationToken ct = default)
             => await _context.CashTransfers
                 .Include(ct2 => ct2.SourceCashbox)
                 .Include(ct2 => ct2.TargetCashbox)
@@ -59,6 +90,7 @@ namespace MarcoERP.Persistence.Repositories.Treasury
 
         public async Task<CashTransfer> GetByNumberAsync(string transferNumber, CancellationToken ct = default)
             => await _context.CashTransfers
+                .AsNoTracking()
                 .Include(ct2 => ct2.SourceCashbox)
                 .Include(ct2 => ct2.TargetCashbox)
                 .FirstOrDefaultAsync(ct2 => ct2.TransferNumber == transferNumber, ct);
@@ -68,6 +100,7 @@ namespace MarcoERP.Persistence.Repositories.Treasury
 
         public async Task<IReadOnlyList<CashTransfer>> GetByStatusAsync(InvoiceStatus status, CancellationToken ct = default)
             => await _context.CashTransfers
+                .AsNoTracking()
                 .Include(ct2 => ct2.SourceCashbox)
                 .Include(ct2 => ct2.TargetCashbox)
                 .Where(ct2 => ct2.Status == status)
@@ -76,6 +109,7 @@ namespace MarcoERP.Persistence.Repositories.Treasury
 
         public async Task<IReadOnlyList<CashTransfer>> GetByCashboxAsync(int cashboxId, CancellationToken ct = default)
             => await _context.CashTransfers
+                .AsNoTracking()
                 .Include(ct2 => ct2.SourceCashbox)
                 .Include(ct2 => ct2.TargetCashbox)
                 .Where(ct2 => ct2.SourceCashboxId == cashboxId || ct2.TargetCashboxId == cashboxId)
@@ -91,6 +125,7 @@ namespace MarcoERP.Persistence.Repositories.Treasury
             var prefix = $"CT-{_dateTime.UtcNow:yyyyMM}-";
 
             var lastNumber = await _context.CashTransfers
+                .AsNoTracking()
                 .Where(ct2 => ct2.TransferNumber.StartsWith(prefix))
                 .OrderByDescending(ct2 => ct2.TransferNumber)
                 .Select(ct2 => ct2.TransferNumber)

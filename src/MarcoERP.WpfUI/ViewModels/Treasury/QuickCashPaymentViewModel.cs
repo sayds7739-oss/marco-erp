@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Purchases;
 using MarcoERP.Application.DTOs.Treasury;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Purchases;
 using MarcoERP.Application.Interfaces.Treasury;
 
@@ -19,6 +20,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         private readonly ICashPaymentService _cashPaymentService;
         private readonly ICashboxService _cashboxService;
         private readonly ISupplierService _supplierService;
+        private readonly IDateTimeProvider _dateTime;
 
         public ObservableCollection<CashboxDto> Cashboxes { get; } = new();
         public ObservableCollection<SupplierDto> Suppliers { get; } = new();
@@ -32,7 +34,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
             set => SetProperty(ref _paymentNumber, value);
         }
 
-        private DateTime _paymentDate = DateTime.Today;
+        private DateTime _paymentDate;
         public DateTime PaymentDate
         {
             get => _paymentDate;
@@ -103,6 +105,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
             set => SetProperty(ref _notes, value);
         }
 
+        /// <summary>Optional: links this payment to a specific purchase invoice.</summary>
+        public int? PurchaseInvoiceId { get; set; }
+
         // ── Commands ──
 
         public ICommand LoadedCommand { get; }
@@ -118,11 +123,14 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         public QuickCashPaymentViewModel(
             ICashPaymentService cashPaymentService,
             ICashboxService cashboxService,
-            ISupplierService supplierService)
+            ISupplierService supplierService,
+            IDateTimeProvider dateTime)
         {
             _cashPaymentService = cashPaymentService ?? throw new ArgumentNullException(nameof(cashPaymentService));
             _cashboxService = cashboxService ?? throw new ArgumentNullException(nameof(cashboxService));
             _supplierService = supplierService ?? throw new ArgumentNullException(nameof(supplierService));
+            _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            _paymentDate = _dateTime.Today;
 
             LoadedCommand = new AsyncRelayCommand(LoadAsync);
             SaveAndPostCommand = new AsyncRelayCommand(SaveAndPostAsync);
@@ -220,7 +228,10 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
 
         private CreateCashPaymentDto BuildDto()
         {
-            var supplier = Suppliers.First(s => s.Id == SelectedSupplierId);
+            var supplier = Suppliers.FirstOrDefault(s => s.Id == SelectedSupplierId);
+            if (supplier == null)
+                throw new InvalidOperationException("المورد المحدد غير موجود.");
+
             return new CreateCashPaymentDto
             {
                 PaymentDate = PaymentDate,
@@ -228,6 +239,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
                 AccountId = supplier.AccountId!.Value,
                 SupplierId = SelectedSupplierId,
                 Amount = Amount,
+                PurchaseInvoiceId = PurchaseInvoiceId,
                 Description = string.IsNullOrWhiteSpace(BeneficiaryName)
                     ? Description
                     : $"{Description} — المستفيد: {BeneficiaryName}".Trim(' ', '—', ' '),

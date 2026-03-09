@@ -32,6 +32,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<SalesInvoice> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.SalesInvoices
+                .AsNoTracking()
                 .Include(si => si.Customer)
                 .FirstOrDefaultAsync(si => si.Id == id, cancellationToken);
         }
@@ -39,7 +40,12 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<SalesInvoice>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _context.SalesInvoices
+                .AsNoTracking()
+                .Where(si => !si.IsDeleted)
                 .Include(si => si.Customer)
+                .Include(si => si.Warehouse)
+                .Include(si => si.CounterpartySupplier)
+                .Include(si => si.SalesRepresentative)
                 .OrderByDescending(si => si.InvoiceDate)
                 .ThenByDescending(si => si.InvoiceNumber)
                 .ToListAsync(cancellationToken);
@@ -52,12 +58,29 @@ namespace MarcoERP.Persistence.Repositories.Sales
 
         public void Update(SalesInvoice entity)
         {
-            _context.SalesInvoices.Update(entity);
+            if (entity == null) return;
+
+            var local = _context.SalesInvoices.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && !ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+                return;
+            }
+            if (local != null)
+            {
+                if (_context.Entry(local).State == EntityState.Unchanged)
+                    _context.Entry(local).State = EntityState.Modified;
+                return;
+            }
+
+            // Safe: only marks root entity as Modified without graph traversal
+            _context.Entry(entity).State = EntityState.Modified;
         }
 
         public void Remove(SalesInvoice entity)
         {
-            _context.SalesInvoices.Remove(entity);
+            throw new NotSupportedException(
+                "Hard delete is not supported for financial aggregate 'SalesInvoice'. Use lifecycle operations (Cancel/SoftDelete draft) instead.");
         }
 
         // ── ISalesInvoiceRepository ─────────────────────────────
@@ -65,14 +88,32 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<SalesInvoice> GetWithLinesAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.SalesInvoices
+                .AsNoTracking()
                 .Include(si => si.Customer)
-                .Include(si => si.Lines)
+                .Include(si => si.Warehouse)
+                .Include(si => si.CounterpartySupplier)
+                .Include(si => si.SalesRepresentative)
+                .Include(si => si.Lines).ThenInclude(l => l.Product)
+                .Include(si => si.Lines).ThenInclude(l => l.Unit)
+                .FirstOrDefaultAsync(si => si.Id == id, cancellationToken);
+        }
+
+        public async Task<SalesInvoice> GetWithLinesTrackedAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return await _context.SalesInvoices
+                .Include(si => si.Customer)
+                .Include(si => si.Warehouse)
+                .Include(si => si.CounterpartySupplier)
+                .Include(si => si.SalesRepresentative)
+                .Include(si => si.Lines).ThenInclude(l => l.Product)
+                .Include(si => si.Lines).ThenInclude(l => l.Unit)
                 .FirstOrDefaultAsync(si => si.Id == id, cancellationToken);
         }
 
         public async Task<SalesInvoice> GetByNumberAsync(string invoiceNumber, CancellationToken cancellationToken = default)
         {
             return await _context.SalesInvoices
+                .AsNoTracking()
                 .Include(si => si.Customer)
                 .FirstOrDefaultAsync(si => si.InvoiceNumber == invoiceNumber, cancellationToken);
         }
@@ -86,6 +127,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<SalesInvoice>> GetByStatusAsync(InvoiceStatus status, CancellationToken cancellationToken = default)
         {
             return await _context.SalesInvoices
+                .AsNoTracking()
                 .Include(si => si.Customer)
                 .Where(si => si.Status == status)
                 .OrderByDescending(si => si.InvoiceDate)
@@ -95,6 +137,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<SalesInvoice>> GetByCustomerAsync(int customerId, CancellationToken cancellationToken = default)
         {
             return await _context.SalesInvoices
+                .AsNoTracking()
                 .Include(si => si.Customer)
                 .Where(si => si.CustomerId == customerId)
                 .OrderByDescending(si => si.InvoiceDate)
@@ -111,6 +154,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
             var prefix = $"SI-{_dateTime.UtcNow:yyyyMM}-";
 
             var lastNumber = await _context.SalesInvoices
+                .AsNoTracking()
                 .Where(si => si.InvoiceNumber.StartsWith(prefix) && !si.IsDeleted)
                 .OrderByDescending(si => si.InvoiceNumber)
                 .Select(si => si.InvoiceNumber)

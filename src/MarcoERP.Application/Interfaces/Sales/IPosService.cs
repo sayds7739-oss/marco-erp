@@ -15,12 +15,14 @@ namespace MarcoERP.Application.Interfaces.Sales
         // ── Session Management ──────────────────────────────────
 
         /// <summary>Opens a new POS session for the current user.</summary>
+        [RequiresPermission(PermissionKeys.PosAccess)]
         Task<ServiceResult<PosSessionDto>> OpenSessionAsync(OpenPosSessionDto dto, CancellationToken ct = default);
 
         /// <summary>Gets the current open session for the current user.</summary>
         Task<ServiceResult<PosSessionDto>> GetCurrentSessionAsync(CancellationToken ct = default);
 
         /// <summary>Closes a POS session with reconciliation.</summary>
+        [RequiresPermission(PermissionKeys.PosAccess)]
         Task<ServiceResult<PosSessionDto>> CloseSessionAsync(ClosePosSessionDto dto, CancellationToken ct = default);
 
         /// <summary>Gets a session by ID.</summary>
@@ -49,9 +51,11 @@ namespace MarcoERP.Application.Interfaces.Sales
         /// Completes a POS sale: creates invoice, posts it, deducts stock,
         /// generates journals, records payments. All in one atomic transaction.
         /// </summary>
+        [RequiresPermission(PermissionKeys.PosAccess)]
         Task<ServiceResult<SalesInvoiceDto>> CompleteSaleAsync(CompletePoseSaleDto dto, CancellationToken ct = default);
 
         /// <summary>Cancels a posted POS invoice (reversal).</summary>
+        [RequiresPermission(PermissionKeys.PosAccess)]
         Task<ServiceResult> CancelSaleAsync(int salesInvoiceId, int sessionId, CancellationToken ct = default);
 
         // ── Reports ─────────────────────────────────────────────

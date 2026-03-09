@@ -12,6 +12,8 @@ using MarcoERP.Application.Common;
 using MarcoERP.Application.DTOs.Common;
 using MarcoERP.Application.DTOs.Sales;
 using MarcoERP.Application.Interfaces;
+using MarcoERP.Application.Interfaces.Sales;
+using MarcoERP.Application.Interfaces.Settings;
 using MarcoERP.Application.Services.Common;
 using MarcoERP.Application.Services.Sales;
 using MarcoERP.Domain.Entities.Accounting;
@@ -22,6 +24,7 @@ using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Entities.Accounting.Policies;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Sales;
+using MarcoERP.Domain.Interfaces.Settings;
 
 namespace MarcoERP.Application.Tests
 {
@@ -47,6 +50,10 @@ namespace MarcoERP.Application.Tests
         private readonly Mock<IValidator<ClosePosSessionDto>> _closeValMock = new();
         private readonly Mock<IValidator<CompletePoseSaleDto>> _saleValMock = new();
         private readonly Mock<IJournalNumberGenerator> _journalNumberGenMock = new();
+        private readonly Mock<ISystemSettingRepository> _systemSettingRepoMock = new();
+        private readonly Mock<IFeatureService> _featureServiceMock = new();
+        private readonly Mock<IAuditLogger> _auditLoggerMock = new();
+        private readonly Mock<IReceiptPrinterService> _receiptPrinterMock = new();
 
         private PosService CreateService()
         {
@@ -68,14 +75,21 @@ namespace MarcoERP.Application.Tests
                 _journalNumberGenMock.Object,
                 _unitOfWorkMock.Object,
                 _currentUserMock.Object,
-                _dateTimeMock.Object);
+                _dateTimeMock.Object,
+                _systemSettingRepoMock.Object,
+                _featureServiceMock.Object,
+                _auditLoggerMock.Object,
+                _receiptPrinterMock.Object);
 
             var validators = new PosValidators(
                 _openValMock.Object,
                 _closeValMock.Object,
                 _saleValMock.Object);
 
-            return new PosService(repos, services, validators);
+            return new PosService(repos, services, validators,
+                new JournalEntryFactory(_journalRepoMock.Object, _journalNumberGenMock.Object),
+                new FiscalPeriodValidator(_fiscalYearRepoMock.Object, _systemSettingRepoMock.Object, _dateTimeMock.Object, _currentUserMock.Object),
+                new StockManager(_whProductRepoMock.Object, _movementRepoMock.Object));
         }
 
         // ── Helpers ─────────────────────────────────────────────
@@ -158,7 +172,7 @@ namespace MarcoERP.Application.Tests
             var result = await CreateService().OpenSessionAsync(dto, CancellationToken.None);
 
             result.IsSuccess.Should().BeFalse();
-            result.ErrorMessage.Should().Contain("تسجيل الدخول");
+            result.ErrorMessage.Should().Contain("لم يتم تحديد المستخدم الحالي");
         }
 
         [Fact]

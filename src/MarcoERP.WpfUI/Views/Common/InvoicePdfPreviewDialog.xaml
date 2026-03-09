@@ -19,12 +19,39 @@
         <Border Grid.Row="0" Style="{StaticResource CardPanel}" Padding="10" Margin="0,0,0,8">
             <DockPanel>
                 <TextBlock Text="{Binding TitleText}" FontSize="16" FontWeight="Bold" DockPanel.Dock="Right" />
+
+                <!-- View Mode Toggle (HTML / PDF) -->
+                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Command="{Binding ToggleViewModeCommand}"
+                    Visibility="{Binding CanToggleViewMode, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        DockPanel.Dock="Left" Padding="12,4" Margin="6,0,0,0"
+                        ToolTip="التبديل بين عرض HTML و PDF">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon x:Name="ViewModeIcon" Width="16" Height="16" VerticalAlignment="Center"
+                                                 Kind="FileDocumentOutline">
+                            <materialDesign:PackIcon.Style>
+                                <Style TargetType="materialDesign:PackIcon">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPdfMode}" Value="True">
+                                            <Setter Property="Kind" Value="FilePdfBox" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsPdfMode}" Value="False">
+                                            <Setter Property="Kind" Value="FileDocumentOutline" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </materialDesign:PackIcon.Style>
+                        </materialDesign:PackIcon>
+                        <TextBlock Text="{Binding ViewModeText}" Margin="4,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
                 <Button Style="{StaticResource MaterialDesignOutlinedButton}"
                         Command="{Binding OpenPdfCommand}"
                         DockPanel.Dock="Left" Padding="12,4" Margin="6,0,0,0">
                     <TextBlock Text="فتح PDF للطباعة" />
                 </Button>
-                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                <Button Style="{StaticResource MaterialDesignOutlinedButton}" IsCancel="True"
                         Command="{Binding CloseCommand}"
                         DockPanel.Dock="Left" Padding="12,4" Margin="6,0,0,0">
                     <TextBlock Text="إغلاق" />

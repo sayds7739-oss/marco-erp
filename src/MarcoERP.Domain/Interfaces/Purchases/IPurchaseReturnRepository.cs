@@ -11,8 +11,11 @@ namespace MarcoERP.Domain.Interfaces.Purchases
     /// </summary>
     public interface IPurchaseReturnRepository : IRepository<PurchaseReturn>
     {
-        /// <summary>Gets return with all lines eagerly loaded.</summary>
+        /// <summary>Gets return with all lines eagerly loaded (no tracking — read-only).</summary>
         Task<PurchaseReturn> GetWithLinesAsync(int id, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets return with all lines eagerly loaded WITH change tracking (for updates).</summary>
+        Task<PurchaseReturn> GetWithLinesTrackedAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>Gets return by number.</summary>
         Task<PurchaseReturn> GetByNumberAsync(string returnNumber, CancellationToken cancellationToken = default);

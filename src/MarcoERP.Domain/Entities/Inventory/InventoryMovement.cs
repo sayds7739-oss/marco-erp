@@ -9,8 +9,9 @@ namespace MarcoERP.Domain.Entities.Inventory
     /// Records every individual stock movement for auditing and stock card.
     /// Each movement is immutable once created — no edits, no deletes.
     /// Reversals are done by creating opposite movements.
+    /// Immutable financial record — cannot be deleted (RECORD_PROTECTION_POLICY).
     /// </summary>
-    public sealed class InventoryMovement : AuditableEntity
+    public sealed class InventoryMovement : AuditableEntity, IImmutableFinancialRecord
     {
         // ── Constructors ─────────────────────────────────────────
 
@@ -64,6 +65,12 @@ namespace MarcoERP.Domain.Entities.Inventory
             QuantityInBaseUnit = quantityInBaseUnit;
             UnitCost = unitCost;
             TotalCost = totalCost;
+
+            // Validate TotalCost matches QuantityInBaseUnit * UnitCost
+            var expectedTotal = Math.Round(quantityInBaseUnit * unitCost, 4);
+            if (Math.Abs(totalCost - expectedTotal) > 0.01m)
+                throw new InventoryDomainException($"إجمالي التكلفة ({totalCost}) لا يتطابق مع الكمية × تكلفة الوحدة ({expectedTotal}).");
+
             MovementDate = movementDate;
             ReferenceNumber = referenceNumber.Trim();
             SourceType = sourceType;
@@ -138,6 +145,14 @@ namespace MarcoERP.Domain.Entities.Inventory
             if (balanceAfter < 0)
                 throw new InventoryDomainException("الرصيد بعد الحركة لا يمكن أن يكون سالباً.");
 
+            BalanceAfter = balanceAfter;
+        }
+
+        /// <summary>
+        /// Sets the balance-after value allowing negative (used when AllowNegativeStock = true).
+        /// </summary>
+        public void SetBalanceAfterAllowNegative(decimal balanceAfter)
+        {
             BalanceAfter = balanceAfter;
         }
 

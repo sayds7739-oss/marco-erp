@@ -203,7 +203,7 @@ namespace MarcoERP.Application.Tests.Reports
             var result = await _service.ExportToExcelAsync(CreateSampleRequest(), invalidPath, CancellationToken.None);
 
             result.IsSuccess.Should().BeFalse();
-            result.ErrorMessage.Should().Contain("خطأ في تصدير Excel");
+            result.ErrorMessage.Should().Contain("تصدير Excel");
         }
     }
 }

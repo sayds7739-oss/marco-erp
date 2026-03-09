@@ -30,6 +30,8 @@ No code reaches production without passing ALM gates.
 
 ## 3. Continuous Integration (CI) Rules
 
+> **Note:** The CI/CD pipeline described in this section is planned but not yet implemented. The rules below are requirements for the future pipeline implementation. Until then, these checks should be performed manually before merging.
+
 Every commit to `develop` or `main` triggers automated validation.
 
 ### 3.1 Build Validation
@@ -65,9 +67,19 @@ Violations block merge unless explicitly approved.
 
 ### 3.3 Architecture Enforcement
 
+The MarcoERP solution comprises the following deployable layers:
+
+- **MarcoERP.WpfUI** – Desktop client (WPF, .NET 8.0)
+- **MarcoERP.API** – REST API layer (.NET 9.0) at `src/MarcoERP.API/`
+- **MarcoERP.Application** – Business logic and service orchestration
+- **MarcoERP.Domain** – Core entities, enums, and domain rules
+- **MarcoERP.Persistence** – EF Core data access and migrations
+- **MarcoERP.Infrastructure** – Cross-cutting infrastructure services
+- **Mobile App** – Flutter/Dart client at `mobile/marco_erp/`
+
 Automated checks verify:
 
-- No business logic in WpfUI
+- No business logic in WpfUI or API controllers
 - No SQL outside Persistence
 - No DateTime.Now usage
 - No float/double in financial calculations
@@ -145,7 +157,7 @@ Automated checks verify:
 
 - No plain-text passwords
 - No sensitive data in logs
-- AuthorizationGuard used in Application services
+- AuthorizationProxy (DispatchProxy pattern) used in Application services
 - No UI-only authorization enforcement
 - No exposed internal IDs in DTOs
 
@@ -240,3 +252,4 @@ PROJECT_RULES.md takes precedence.
 | Version | Date       | Change Description |
 |---------|------------|-------------------|
 | 1.0     | 2026-02-09 | Initial ALM framework |
+| 2.0     | 2026-03-06 | Updated AuthorizationGuard references to AuthorizationProxy (DispatchProxy pattern); added API layer (.NET 9.0) and mobile app (Flutter/Dart) to architecture; noted CI/CD pipeline as planned but not yet implemented |

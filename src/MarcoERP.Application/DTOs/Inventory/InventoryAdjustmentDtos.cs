@@ -66,6 +66,7 @@ namespace MarcoERP.Application.DTOs.Inventory
     /// <summary>DTO for creating an adjustment line.</summary>
     public sealed class CreateInventoryAdjustmentLineDto
     {
+        public int Id { get; set; }
         public int ProductId { get; set; }
         public int UnitId { get; set; }
         public decimal ActualQuantity { get; set; }

@@ -27,6 +27,7 @@ namespace MarcoERP.Application.Mappers.Purchases
                 CounterpartyCustomerNameAr = entity.CounterpartyCustomer?.NameAr,
                 SalesRepresentativeId = entity.SalesRepresentativeId,
                 WarehouseId = entity.WarehouseId,
+                WarehouseNameAr = entity.Warehouse?.NameAr,
                 OriginalInvoiceId = entity.OriginalInvoiceId,
                 OriginalInvoiceNumber = entity.OriginalInvoice?.InvoiceNumber,
                 Status = entity.Status.ToString(),
@@ -49,7 +50,10 @@ namespace MarcoERP.Application.Mappers.Purchases
             {
                 Id = line.Id,
                 ProductId = line.ProductId,
+                ProductNameAr = line.Product?.NameAr,
+                ProductCode = line.Product?.Code,
                 UnitId = line.UnitId,
+                UnitNameAr = line.Unit?.NameAr,
                 Quantity = line.Quantity,
                 UnitPrice = line.UnitPrice,
                 ConversionFactor = line.ConversionFactor,

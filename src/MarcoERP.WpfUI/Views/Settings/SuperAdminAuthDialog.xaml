@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="التحقق من الهوية — Governance" Width="520" Height="460"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResizeWithGrip"
+        MinHeight="400" MinWidth="420"
         ShowInTaskbar="False" Topmost="True"
         FlowDirection="RightToLeft"
         Background="{StaticResource BackgroundBrush}">
@@ -14,6 +15,7 @@
 
     <Grid Margin="24">
         <Border Background="White" CornerRadius="10" Padding="24" BorderBrush="#E6E9EE" BorderThickness="1">
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -32,7 +34,7 @@
                     <materialDesign:PackIcon Kind="ShieldLock" Width="44" Height="44"
                                              Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Center"/>
                     <TextBlock Text="التحقق من الهوية"
-                               FontSize="30"
+                               FontSize="22"
                                FontWeight="Bold"
                                Foreground="{StaticResource DarkSurfaceBrush}"
                                HorizontalAlignment="Center"
@@ -76,7 +78,7 @@
                             Background="{StaticResource PrimaryBrush}" Foreground="White"
                             Width="170" Height="44" FontSize="16" FontWeight="Bold"
                             Margin="0,0,12,0"/>
-                    <Button Content="إلغاء"
+                    <Button Content="إلغاء" IsCancel="True"
                             Command="{Binding CancelCommand}"
                             Style="{StaticResource MaterialDesignOutlinedButton}"
                             Width="130" Height="44" FontSize="15"/>
@@ -87,6 +89,7 @@
                              Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
                              Foreground="{StaticResource PrimaryBrush}"/>
             </Grid>
+          </ScrollViewer>
         </Border>
     </Grid>
 </Window>

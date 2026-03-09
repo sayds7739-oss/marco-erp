@@ -179,5 +179,37 @@ namespace MarcoERP.Application.Services.Security
                 return ServiceResult.Failure(ex.Message);
             }
         }
+
+        public async Task<ServiceResult<LoginResultDto>> GetUserForRefreshAsync(int userId, CancellationToken ct = default)
+        {
+            var user = await _userRepo.GetByIdAsync(userId, ct);
+            if (user == null)
+                return ServiceResult<LoginResultDto>.Failure("المستخدم غير موجود.");
+
+            if (!user.IsActive)
+                return ServiceResult<LoginResultDto>.Failure("الحساب معطّل. يرجى التواصل مع المدير.");
+
+            if (user.IsLocked)
+                return ServiceResult<LoginResultDto>.Failure("الحساب مقفل. يرجى التواصل مع المدير.");
+
+            var role = await _roleRepo.GetByIdWithPermissionsAsync(user.RoleId, ct);
+            if (role == null)
+                return ServiceResult<LoginResultDto>.Failure("الدور المعيّن للمستخدم غير موجود.");
+
+            var result = new LoginResultDto
+            {
+                UserId = user.Id,
+                Username = user.Username,
+                FullNameAr = user.FullNameAr,
+                RoleId = role.Id,
+                RoleNameAr = role.NameAr,
+                RoleNameEn = role.NameEn,
+                MustChangePassword = user.MustChangePassword,
+                Permissions = role.Permissions.Select(p => p.PermissionKey).ToList(),
+                LoginAt = _dateTimeProvider.UtcNow
+            };
+
+            return ServiceResult<LoginResultDto>.Success(result);
+        }
     }
 }

@@ -16,8 +16,11 @@ using MarcoERP.Application.Interfaces.Sales;
 using MarcoERP.Application.Interfaces.SmartEntry;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions;
+using MarcoERP.Application.DTOs.Printing;
+using MarcoERP.Application.Interfaces.Printing;
 using MarcoERP.WpfUI.Common;
 using MarcoERP.WpfUI.Navigation;
+using MarcoERP.WpfUI.Services;
 using MarcoERP.WpfUI.ViewModels.Common;
 using MarcoERP.WpfUI.Views.Common;
 
@@ -39,6 +42,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private readonly INavigationService _navigationService;
         private readonly ILineCalculationService _lineCalculationService;
         private readonly ISmartEntryQueryService _smartEntryQueryService;
+        private readonly IDialogService _dialog;
+        private readonly IInvoicePdfPreviewService _previewService;
+        private readonly IDocumentHtmlBuilder _htmlBuilder;
 
         public ObservableCollection<CustomerDto> Customers { get; } = new();
         public ObservableCollection<SupplierDto> Suppliers { get; } = new();
@@ -219,6 +225,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         public ICommand OpenAddLinePopupCommand { get; }
         public ICommand EditLineCommand { get; }
         public ICommand OpenPriceHistoryCommand { get; }
+        public ICommand PrintCommand { get; }
 
         // ── IDirtyStateAware ─────────────────────────────────────
         public void ResetDirtyState() => ResetDirtyTracking();
@@ -242,7 +249,10 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             ISalesRepresentativeService salesRepresentativeService,
             INavigationService navigationService,
             ILineCalculationService lineCalculationService,
-            ISmartEntryQueryService smartEntryQueryService)
+            ISmartEntryQueryService smartEntryQueryService,
+            IDialogService dialog,
+            IInvoicePdfPreviewService previewService,
+            IDocumentHtmlBuilder htmlBuilder)
         {
             _returnService = returnService ?? throw new ArgumentNullException(nameof(returnService));
             _invoiceService = invoiceService ?? throw new ArgumentNullException(nameof(invoiceService));
@@ -254,6 +264,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             _lineCalculationService = lineCalculationService ?? throw new ArgumentNullException(nameof(lineCalculationService));
             _smartEntryQueryService = smartEntryQueryService ?? throw new ArgumentNullException(nameof(smartEntryQueryService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
+            _previewService = previewService ?? throw new ArgumentNullException(nameof(previewService));
+            _htmlBuilder = htmlBuilder ?? throw new ArgumentNullException(nameof(htmlBuilder));
 
             SaveCommand = new AsyncRelayCommand(SaveAsync, () => CanSave);
             PostCommand = new AsyncRelayCommand(PostAsync, () => CanPost);
@@ -267,6 +280,57 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             OpenAddLinePopupCommand = new RelayCommand(_ => OpenAddLinePopup());
             EditLineCommand = new RelayCommand(EditLinePopup);
             OpenPriceHistoryCommand = new AsyncRelayCommand(OpenPriceHistoryAsync);
+            PrintCommand = new AsyncRelayCommand(PrintAsync);
+        }
+
+        private async Task PrintAsync(object _)
+        {
+            if (CurrentReturn == null) return;
+            IsBusy = true;
+            ClearError();
+            try
+            {
+                var data = new DocumentData
+                {
+                    Title = $"مرتجع مبيعات رقم {CurrentReturn.ReturnNumber}",
+                    DocumentType = PrintableDocumentType.SalesReturn,
+                    MetaFields = new()
+                    {
+                        new("رقم المرتجع", CurrentReturn.ReturnNumber),
+                        new("التاريخ", CurrentReturn.ReturnDate.ToString("yyyy-MM-dd")),
+                        new("العميل", CurrentReturn.CustomerNameAr ?? "—"),
+                        new("المستودع", CurrentReturn.WarehouseNameAr ?? "—"),
+                        new("الحالة", CurrentReturn.Status, true),
+                        new("فاتورة المرجع", CurrentReturn.OriginalInvoiceNumber ?? "—")
+                    },
+                    Columns = new()
+                    {
+                        new("#"), new("كود الصنف"), new("اسم الصنف"),
+                        new("الوحدة"), new("الكمية", true), new("السعر", true),
+                        new("الخصم", true), new("الضريبة", true), new("الصافي", true)
+                    },
+                    Notes = CurrentReturn.Notes
+                };
+                int row = 1;
+                foreach (var l in CurrentReturn.Lines)
+                    data.Rows.Add(new() { (row++).ToString(), l.ProductCode, l.ProductNameAr, l.UnitNameAr,
+                        l.Quantity.ToString("N2"), l.UnitPrice.ToString("N2"), l.DiscountAmount.ToString("N2"),
+                        l.VatAmount.ToString("N2"), l.NetTotal.ToString("N2") });
+                data.SummaryFields = new()
+                {
+                    new("الإجمالي", CurrentReturn.Subtotal.ToString("N2")),
+                    new("الخصم", CurrentReturn.DiscountTotal.ToString("N2")),
+                    new("الضريبة", CurrentReturn.VatTotal.ToString("N2")),
+                    new("الصافي", CurrentReturn.NetTotal.ToString("N2"), true)
+                };
+                var html = await _htmlBuilder.BuildAsync(data);
+                await _previewService.ShowHtmlPreviewAsync(new InvoicePdfPreviewRequest
+                {
+                    Title = data.Title, FilePrefix = "sales_return", HtmlContent = html
+                });
+            }
+            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("الطباعة", ex); }
+            finally { IsBusy = false; }
         }
 
         private async Task OpenPriceHistoryAsync(object parameter)
@@ -426,7 +490,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
                 try
                 {
                     var lines = FormLines.Select(l => new CreateSalesReturnLineDto
-                    { ProductId = l.ProductId, UnitId = l.UnitId, Quantity = l.Quantity, UnitPrice = l.UnitPrice, DiscountPercent = l.DiscountPercent }).ToList();
+                    { Id = l.Id, ProductId = l.ProductId, UnitId = l.UnitId, Quantity = l.Quantity, UnitPrice = l.UnitPrice, DiscountPercent = l.DiscountPercent }).ToList();
 
                     if (IsNew)
                     {
@@ -489,7 +553,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private async Task PostAsync()
         {
             if (CurrentReturn == null) return;
-            if (MessageBox.Show($"هل تريد ترحيل مرتجع البيع «{CurrentReturn.ReturnNumber}»؟\nبعد الترحيل لا يمكن التعديل.", "تأكيد الترحيل", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"هل تريد ترحيل مرتجع البيع «{CurrentReturn.ReturnNumber}»؟\nبعد الترحيل لا يمكن التعديل.", "تأكيد الترحيل")) return;
             IsBusy = true; ClearError();
             try { var r = await _returnService.PostAsync(CurrentReturn.Id); if (r.IsSuccess) { StatusMessage = $"تم ترحيل مرتجع البيع «{r.Data.ReturnNumber}»"; CurrentReturn = r.Data; PopulateForm(r.Data); } else ErrorMessage = r.ErrorMessage; }
             catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("ترحيل المرتجع", ex); }
@@ -499,7 +563,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private async Task CancelReturnAsync()
         {
             if (CurrentReturn == null) return;
-            if (MessageBox.Show($"هل تريد إلغاء مرتجع البيع «{CurrentReturn.ReturnNumber}»؟", "تأكيد الإلغاء", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"هل تريد إلغاء مرتجع البيع «{CurrentReturn.ReturnNumber}»؟", "تأكيد الإلغاء")) return;
             IsBusy = true; ClearError();
             try { var r = await _returnService.CancelAsync(CurrentReturn.Id); if (r.IsSuccess) { StatusMessage = "تم إلغاء المرتجع"; await LoadDetailAsync(CurrentReturn.Id); } else ErrorMessage = r.ErrorMessage; }
             catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("إلغاء المرتجع", ex); }
@@ -509,7 +573,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private async Task DeleteDraftAsync()
         {
             if (CurrentReturn == null) return;
-            if (MessageBox.Show($"هل تريد حذف مسودة المرتجع «{CurrentReturn.ReturnNumber}»؟", "تأكيد الحذف", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"هل تريد حذف مسودة المرتجع «{CurrentReturn.ReturnNumber}»؟", "تأكيد الحذف")) return;
             IsBusy = true; ClearError();
             try { var r = await _returnService.DeleteDraftAsync(CurrentReturn.Id); if (r.IsSuccess) { StatusMessage = "تم حذف المسودة"; NavigateBack(); } else ErrorMessage = r.ErrorMessage; }
             catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("حذف المسودة", ex); }
@@ -533,7 +597,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             FormNotes = ret.Notes;
             FormLines.Clear();
             foreach (var line in ret.Lines ?? new List<SalesReturnLineDto>())
-                FormLines.Add(new SalesReturnLineFormItem(this) { ProductId = line.ProductId, UnitId = line.UnitId, Quantity = line.Quantity, UnitPrice = line.UnitPrice, DiscountPercent = line.DiscountPercent });
+                FormLines.Add(new SalesReturnLineFormItem(this) { Id = line.Id, ProductId = line.ProductId, UnitId = line.UnitId, Quantity = line.Quantity, UnitPrice = line.UnitPrice, DiscountPercent = line.DiscountPercent });
             IsEditing = false; IsNew = false; RefreshTotals();
             ResetDirtyTracking();
         }
@@ -598,10 +662,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
                 .Any();
             if (isDuplicate)
             {
-                var confirm = MessageBox.Show(
+                if (!_dialog.Confirm(
                     "هذا الصنف موجود بالفعل في المرتجع.\nهل تريد إضافته مرة أخرى؟",
-                    "صنف مكرر", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-                if (confirm != MessageBoxResult.Yes)
+                    "صنف مكرر"))
                     return;
             }
 

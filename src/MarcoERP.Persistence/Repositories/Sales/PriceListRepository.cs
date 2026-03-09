@@ -25,12 +25,14 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<PriceList> GetByIdAsync(int id, CancellationToken ct = default)
         {
             return await _context.PriceLists
+                .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Id == id, ct);
         }
 
         public async Task<IReadOnlyList<PriceList>> GetAllAsync(CancellationToken ct = default)
         {
             return await _context.PriceLists
+                .AsNoTracking()
                 .Include(p => p.Tiers)
                 .OrderBy(p => p.Code)
                 .ToListAsync(ct);
@@ -41,12 +43,31 @@ namespace MarcoERP.Persistence.Repositories.Sales
             await _context.PriceLists.AddAsync(entity, ct);
         }
 
-        public void Update(PriceList entity) => _context.PriceLists.Update(entity);
+        public void Update(PriceList entity)
+        {
+            if (entity == null) return;
+
+            var local = _context.PriceLists.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && !ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+                return;
+            }
+            if (local != null)
+            {
+                if (_context.Entry(local).State == EntityState.Unchanged)
+                    _context.Entry(local).State = EntityState.Modified;
+                return;
+            }
+
+            _context.Entry(entity).State = EntityState.Modified;
+        }
         public void Remove(PriceList entity) => _context.PriceLists.Remove(entity);
 
         public async Task<PriceList> GetWithTiersAsync(int id, CancellationToken ct = default)
         {
             return await _context.PriceLists
+                .AsNoTracking()
                 .Include(p => p.Tiers).ThenInclude(t => t.Product)
                 .FirstOrDefaultAsync(p => p.Id == id, ct);
         }
@@ -54,6 +75,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<PriceList> GetByCodeAsync(string code, CancellationToken ct = default)
         {
             return await _context.PriceLists
+                .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Code == code, ct);
         }
 
@@ -66,6 +88,8 @@ namespace MarcoERP.Persistence.Repositories.Sales
         {
             var prefix = "PL-";
             var lastCode = await _context.PriceLists
+                .IgnoreQueryFilters()
+                .AsNoTracking()
                 .Where(p => p.Code.StartsWith(prefix))
                 .OrderByDescending(p => p.Code)
                 .Select(p => p.Code)
@@ -83,6 +107,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<PriceList>> GetActiveListsAsync(DateTime date, CancellationToken ct = default)
         {
             return await _context.PriceLists
+                .AsNoTracking()
                 .Include(p => p.Tiers)
                 .Where(p => p.IsActive
                     && (!p.ValidFrom.HasValue || p.ValidFrom.Value <= date)

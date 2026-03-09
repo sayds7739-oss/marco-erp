@@ -134,6 +134,18 @@ namespace MarcoERP.Domain.Tests.Inventory
             act.Should().Throw<Exception>();
         }
 
+        [Fact]
+        public void UpdateWeightedAverageCost_NegativeExistingQty_ResetsToNewCost()
+        {
+            // C-07: When stock is negative (AllowNegativeStock cancel/adjustment),
+            // the WAC formula produces distorted results.  Fix resets to new cost.
+            var p = CreateValidProduct();
+            // existingQty = -5 (negative stock from cancel flow)
+            p.UpdateWeightedAverageCost(-5m, 10m, 200m);
+            p.WeightedAverageCost.Should().Be(200m);
+            p.CostPrice.Should().Be(200m);
+        }
+
         // ── ProductUnit Management ──────────────────────────────
 
         [Fact]

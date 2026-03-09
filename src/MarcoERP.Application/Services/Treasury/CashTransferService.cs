@@ -9,13 +9,17 @@ using MarcoERP.Application.Common;
 using MarcoERP.Application.DTOs.Treasury;
 using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Treasury;
+using MarcoERP.Application.Interfaces.Settings;
 using MarcoERP.Application.Mappers.Treasury;
 using MarcoERP.Domain.Entities.Accounting;
 using MarcoERP.Domain.Entities.Accounting.Policies;
 using MarcoERP.Domain.Entities.Treasury;
 using MarcoERP.Domain.Enums;
+using MarcoERP.Domain.Exceptions;
+using MarcoERP.Domain.Exceptions.Accounting;
 using MarcoERP.Domain.Exceptions.Treasury;
 using MarcoERP.Domain.Interfaces;
+using MarcoERP.Domain.Interfaces.Settings;
 using MarcoERP.Domain.Interfaces.Treasury;
 using Microsoft.Extensions.Logging;
 
@@ -35,7 +39,6 @@ namespace MarcoERP.Application.Services.Treasury
         private readonly ICashboxRepository _cashboxRepo;
         private readonly IJournalEntryRepository _journalRepo;
         private readonly IAccountRepository _accountRepo;
-        private readonly IFiscalYearRepository _fiscalYearRepo;
         private readonly IJournalNumberGenerator _journalNumberGen;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
@@ -43,12 +46,19 @@ namespace MarcoERP.Application.Services.Treasury
         private readonly IValidator<CreateCashTransferDto> _createValidator;
         private readonly IValidator<UpdateCashTransferDto> _updateValidator;
         private readonly ILogger<CashTransferService> _logger;
+        private readonly ISystemSettingRepository _systemSettingRepository;
+        private readonly JournalEntryFactory _journalFactory;
+        private readonly FiscalPeriodValidator _fiscalValidator;
+        private readonly IFeatureService _featureService;
+        private readonly IAuditLogger _auditLogger;
         private const string TransferNotFoundMessage = "التحويل غير موجود.";
 
         public CashTransferService(
             CashTransferRepositories repos,
             CashTransferServices services,
             CashTransferValidators validators,
+            JournalEntryFactory journalFactory,
+            FiscalPeriodValidator fiscalValidator,
             ILogger<CashTransferService> logger)
         {
             if (repos == null) throw new ArgumentNullException(nameof(repos));
@@ -60,14 +70,18 @@ namespace MarcoERP.Application.Services.Treasury
             _journalRepo = repos.JournalRepo;
             _accountRepo = repos.AccountRepo;
 
-            _fiscalYearRepo = services.FiscalYearRepo;
             _journalNumberGen = services.JournalNumberGen;
             _unitOfWork = services.UnitOfWork;
             _currentUser = services.CurrentUser;
             _dateTime = services.DateTime;
+            _systemSettingRepository = services.SystemSettingRepo;
+            _featureService = services.FeatureService;
+            _auditLogger = services.AuditLogger;
 
             _createValidator = validators.CreateValidator;
             _updateValidator = validators.UpdateValidator;
+            _journalFactory = journalFactory ?? throw new ArgumentNullException(nameof(journalFactory));
+            _fiscalValidator = fiscalValidator ?? throw new ArgumentNullException(nameof(fiscalValidator));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -103,8 +117,14 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult<CashTransferDto>> CreateAsync(CreateCashTransferDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<CashTransferDto>(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
+            // Feature Guard — block operation if Treasury module is disabled
+            var guard = await FeatureGuard.CheckAsync<CashTransferDto>(_featureService, FeatureKeys.Treasury, ct);
+            if (guard != null) return guard;
+
+            _logger.LogInformation(
+                "CreateAsync started for {Entity} operation {Operation}.",
+                nameof(CashTransfer),
+                "Create");
 
             var vr = await _createValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
@@ -148,6 +168,14 @@ namespace MarcoERP.Application.Services.Treasury
             {
                 return ServiceResult<CashTransferDto>.Failure(ex.Message);
             }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult<CashTransferDto>.Failure("تعذر حفظ التحويل بسبب تعارض تزامن. الرجاء إعادة التحميل والمحاولة مرة أخرى.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult<CashTransferDto>.Failure("رقم التحويل مستخدم بالفعل. الرجاء إعادة المحاولة.");
+            }
         }
 
         // ══════════════════════════════════════════════════════════
@@ -156,15 +184,14 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult<CashTransferDto>> UpdateAsync(UpdateCashTransferDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<CashTransferDto>(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "CashTransfer", dto.Id);
 
             var vr = await _updateValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<CashTransferDto>.Failure(
                     string.Join(" | ", vr.Errors.Select(e => e.ErrorMessage)));
 
-            var transfer = await _transferRepo.GetWithDetailsAsync(dto.Id, ct);
+            var transfer = await _transferRepo.GetWithDetailsTrackedAsync(dto.Id, ct);
             if (transfer == null)
                 return ServiceResult<CashTransferDto>.Failure(TransferNotFoundMessage);
 
@@ -177,7 +204,6 @@ namespace MarcoERP.Application.Services.Treasury
                     dto.TransferDate, dto.SourceCashboxId, dto.TargetCashboxId,
                     dto.Amount, dto.Description, dto.Notes);
 
-                _transferRepo.Update(transfer);
                 await _unitOfWork.SaveChangesAsync(ct);
 
                 var saved = await _transferRepo.GetWithDetailsAsync(transfer.Id, ct);
@@ -201,21 +227,18 @@ namespace MarcoERP.Application.Services.Treasury
         /// </summary>
         public async Task<ServiceResult<CashTransferDto>> PostAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<CashTransferDto>(_currentUser, PermissionKeys.TreasuryPost);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation(
+                "PostAsync started for {Entity}Id {EntityId} operation {Operation}.",
+                nameof(CashTransfer),
+                id,
+                "Post");
 
             var transfer = await _transferRepo.GetWithDetailsAsync(id, ct);
             var preCheck = ValidatePostPreconditions(transfer);
             if (preCheck != null) return preCheck;
 
-            // CSH-03: Prevent source cashbox balance from going negative
-            var sourceBalance = await _cashboxRepo.GetGLBalanceAsync(transfer.SourceCashboxId, ct);
-            if (sourceBalance < transfer.Amount)
-            {
-                var sourceCashbox = await _cashboxRepo.GetByIdAsync(transfer.SourceCashboxId, ct);
-                return ServiceResult<CashTransferDto>.Failure(
-                    $"رصيد الخزنة المصدر ({sourceCashbox?.NameAr ?? "غير معروفة"}) غير كافٍ. الرصيد الحالي: {sourceBalance:N2}، المبلغ المطلوب: {transfer.Amount:N2}");
-            }
+            var allowNegativeCash = await IsNegativeCashAllowedAsync(ct);
+            var warningMessages = new List<string>();
 
             CashTransfer saved = null;
 
@@ -223,32 +246,96 @@ namespace MarcoERP.Application.Services.Treasury
             {
                 await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
+                    // Use tracked query to avoid EF Core graph attachment conflicts
+                    transfer = await _transferRepo.GetWithDetailsTrackedAsync(id, ct);
+                    var txCheck = ValidatePostPreconditions(transfer);
+                    if (txCheck != null)
+                        throw new TreasuryDomainException(txCheck.ErrorMessage ?? "لا يمكن ترحيل التحويل.");
+
                     var accounts = await GetPostingAccountsAsync(transfer, ct);
-                    var (fiscalYear, period) = await GetPostingPeriodAsync(transfer, ct);
-                    var now = _dateTime.UtcNow;
+                    var postingCtx = await _fiscalValidator.ValidateForPostingAsync(transfer.TransferDate, ct);
+
+                    // CSH-03: Domain-level balance protection (inside Serializable tx)
+                    if (allowNegativeCash && accounts.sourceCashbox.Balance < transfer.Amount)
+                    {
+                        var warning = $"Negative cash allowed for cashbox {accounts.sourceCashbox.NameAr}";
+                        warningMessages.Add(warning);
+
+                        if (_auditLogger != null)
+                        {
+                            var performedBy = _currentUser.Username ?? "System";
+                            await _auditLogger.LogAsync(
+                                "CashTransfer",
+                                transfer.Id,
+                                "RiskOperation",
+                                performedBy,
+                                warning,
+                                ct);
+                        }
+                    }
+
+                    var cashboxOrder = new[]
+                    {
+                        (cashbox: accounts.sourceCashbox, isSource: true),
+                        (cashbox: accounts.targetCashbox, isSource: false)
+                    }.OrderBy(x => x.cashbox.Id);
+
+                    foreach (var entry in cashboxOrder)
+                    {
+                        if (entry.isSource)
+                        {
+                            if (allowNegativeCash)
+                                entry.cashbox.DecreaseBalanceAllowNegative(transfer.Amount);
+                            else
+                                entry.cashbox.DecreaseBalance(transfer.Amount);
+                        }
+                        else
+                        {
+                            entry.cashbox.IncreaseBalance(transfer.Amount);
+                        }
+
+                        _cashboxRepo.Update(entry.cashbox);
+                    }
 
                     var journalEntry = await CreateJournalEntryAsync(
                         transfer,
                         accounts,
-                        fiscalYear,
-                        period,
-                        now,
+                        postingCtx.FiscalYear,
+                        postingCtx.Period,
+                        postingCtx.Now,
                         ct);
 
                     await _unitOfWork.SaveChangesAsync(ct);
 
                     transfer.Post(journalEntry.Id);
-                    _transferRepo.Update(transfer);
+                    // Entity is already tracked — no need for explicit Update
                     await _unitOfWork.SaveChangesAsync(ct);
 
                     saved = await _transferRepo.GetWithDetailsAsync(transfer.Id, ct);
                 }, IsolationLevel.Serializable, ct);
 
-                return ServiceResult<CashTransferDto>.Success(CashTransferMapper.ToDto(saved));
+                var dto = CashTransferMapper.ToDto(saved);
+                if (warningMessages.Count > 0)
+                    dto.WarningMessage = string.Join(" | ", warningMessages);
+                return ServiceResult<CashTransferDto>.Success(dto);
             }
             catch (TreasuryDomainException ex)
             {
                 return ServiceResult<CashTransferDto>.Failure(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "InvalidOperationException while posting cash transfer.");
+                return ServiceResult<CashTransferDto>.Failure(
+                    ErrorSanitizer.Sanitize(ex, "ترحيل التحويل"));
+            }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult<CashTransferDto>.Failure("تعذر ترحيل التحويل بسبب تعارض تزامن. الرجاء إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult<CashTransferDto>.Failure("تعذر ترحيل التحويل بسبب تعارض في البيانات. الرجاء إعادة المحاولة.");
             }
             catch (Exception ex)
             {
@@ -296,29 +383,6 @@ namespace MarcoERP.Application.Services.Treasury
             return (sourceCashbox, targetCashbox, sourceAccount, targetAccount);
         }
 
-        private async Task<(FiscalYear fiscalYear, FiscalPeriod period)> GetPostingPeriodAsync(
-            CashTransfer transfer,
-            CancellationToken ct)
-        {
-            var fiscalYear = await _fiscalYearRepo.GetActiveYearAsync(ct);
-            if (fiscalYear == null)
-                throw new TreasuryDomainException("لا توجد سنة مالية نشطة.");
-
-            if (!fiscalYear.ContainsDate(transfer.TransferDate))
-                throw new TreasuryDomainException(
-                    $"تاريخ التحويل {transfer.TransferDate:yyyy-MM-dd} لا يقع ضمن السنة المالية النشطة.");
-
-            var yearWithPeriods = await _fiscalYearRepo.GetWithPeriodsAsync(fiscalYear.Id, ct);
-            var period = yearWithPeriods.GetPeriod(transfer.TransferDate.Month);
-            if (period == null)
-                throw new TreasuryDomainException("لا توجد فترة مالية للشهر المحدد.");
-            if (!period.IsOpen)
-                throw new TreasuryDomainException(
-                    $"الفترة المالية ({period.PeriodNumber}/{period.Year}) مُقفلة.");
-
-            return (fiscalYear, period);
-        }
-
         private async Task<JournalEntry> CreateJournalEntryAsync(
             CashTransfer transfer,
             (Cashbox sourceCashbox, Cashbox targetCashbox, Account sourceAccount, Account targetAccount) accounts,
@@ -327,27 +391,27 @@ namespace MarcoERP.Application.Services.Treasury
             DateTime now,
             CancellationToken ct)
         {
-            var journalEntry = JournalEntry.CreateDraft(
+            var username = _currentUser.Username ?? "System";
+            var lines = new[]
+            {
+                new JournalLineSpec(accounts.targetAccount.Id, transfer.Amount, 0,
+                    $"تحويل وارد — {accounts.targetCashbox.NameAr}"),
+                new JournalLineSpec(accounts.sourceAccount.Id, 0, transfer.Amount,
+                    $"تحويل صادر — {accounts.sourceCashbox.NameAr}")
+            };
+
+            return await _journalFactory.CreateAndPostAsync(
                 transfer.TransferDate,
                 $"تحويل بين الخزن رقم {transfer.TransferNumber}",
                 SourceType.CashTransfer,
                 fiscalYear.Id,
                 period.Id,
+                lines,
+                username,
+                now,
                 referenceNumber: transfer.TransferNumber,
-                sourceId: transfer.Id);
-
-            journalEntry.AddLine(accounts.targetAccount.Id, transfer.Amount, 0, now,
-                $"تحويل وارد — {accounts.targetCashbox.NameAr}");
-
-            journalEntry.AddLine(accounts.sourceAccount.Id, 0, transfer.Amount, now,
-                $"تحويل صادر — {accounts.sourceCashbox.NameAr}");
-
-            var journalNumber = _journalNumberGen.NextNumber(fiscalYear.Id);
-            var username = _currentUser.Username ?? "System";
-            journalEntry.Post(journalNumber, username, now);
-
-            await _journalRepo.AddAsync(journalEntry, ct);
-            return journalEntry;
+                sourceId: transfer.Id,
+                ct: ct);
         }
 
         // ══════════════════════════════════════════════════════════
@@ -356,44 +420,46 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult> CancelAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.TreasuryPost);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation(
+                "CancelAsync started for {Entity}Id {EntityId} operation {Operation}.",
+                nameof(CashTransfer),
+                id,
+                "Cancel");
 
             var transfer = await _transferRepo.GetWithDetailsAsync(id, ct);
             if (transfer == null)
                 return ServiceResult.Failure(TransferNotFoundMessage);
 
+            if (transfer.Status != InvoiceStatus.Posted)
+                return ServiceResult.Failure("لا يمكن إلغاء إلا التحويلات المرحّلة.");
+
             if (!transfer.JournalEntryId.HasValue)
                 return ServiceResult.Failure("لا يمكن إلغاء تحويل بدون قيد محاسبي.");
 
-            // ── Resolve fiscal year/period for reversal date ──
-            var reversalDate = transfer.TransferDate;
-            var fiscalYear = await _fiscalYearRepo.GetByYearAsync(reversalDate.Year, ct);
-            if (fiscalYear == null)
-                return ServiceResult.Failure($"لا توجد سنة مالية للعام {reversalDate.Year}.");
-
-            fiscalYear = await _fiscalYearRepo.GetWithPeriodsAsync(fiscalYear.Id, ct);
-            if (fiscalYear.Status != FiscalYearStatus.Active)
-                return ServiceResult.Failure($"السنة المالية {fiscalYear.Year} ليست فعّالة.");
-
-            var period = fiscalYear.GetPeriod(reversalDate.Month);
-            if (period == null || !period.IsOpen)
-                return ServiceResult.Failure($"الفترة المالية لـ {reversalDate:yyyy-MM} مُقفلة.");
-
             try
             {
+                var cancelCtx = await _fiscalValidator.ValidateForCancelAsync(transfer.TransferDate, ct);
+
                 await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
+                    // Reload as tracked inside the transaction to ensure fresh data
+                    // and avoid stale-entity / EF graph-attachment issues (C-05 fix)
+                    var tracked = await _transferRepo.GetWithDetailsTrackedAsync(id, ct);
+                    if (tracked == null)
+                        throw new TreasuryDomainException(TransferNotFoundMessage);
+                    if (tracked.Status != InvoiceStatus.Posted)
+                        throw new TreasuryDomainException("لا يمكن إلغاء إلا التحويلات المرحّلة.");
+
                     // ── Reverse journal entry ──
-                    var originalJournal = await _journalRepo.GetWithLinesAsync(transfer.JournalEntryId.Value, ct);
+                    var originalJournal = await _journalRepo.GetWithLinesAsync(tracked.JournalEntryId.Value, ct);
                     if (originalJournal == null)
                         throw new TreasuryDomainException("القيد المحاسبي الأصلي غير موجود.");
 
                     var reversalEntry = originalJournal.CreateReversal(
-                        reversalDate, $"عكس تحويل رقم {transfer.TransferNumber}",
-                        fiscalYear.Id, period.Id);
+                        cancelCtx.Today, $"عكس تحويل رقم {tracked.TransferNumber}",
+                        cancelCtx.FiscalYear.Id, cancelCtx.Period.Id);
 
-                    var reversalNumber = _journalNumberGen.NextNumber(fiscalYear.Id);
+                    var reversalNumber = await _journalNumberGen.NextNumberAsync(cancelCtx.FiscalYear.Id, ct);
                     reversalEntry.Post(reversalNumber, _currentUser.Username, _dateTime.UtcNow);
                     await _journalRepo.AddAsync(reversalEntry, ct);
                     await _unitOfWork.SaveChangesAsync(ct);
@@ -402,8 +468,37 @@ namespace MarcoERP.Application.Services.Treasury
                     _journalRepo.Update(originalJournal);
 
                     // ── Cancel the transfer ──
-                    transfer.Cancel();
-                    _transferRepo.Update(transfer);
+                    tracked.Cancel();
+                    // Entity is already tracked — no need for explicit Update
+
+                    // CSH-03: Reverse balance changes (source gets money back, target loses it)
+                    var sourceCashbox = await _cashboxRepo.GetByIdAsync(tracked.SourceCashboxId, ct);
+                    var targetCashbox = await _cashboxRepo.GetByIdAsync(tracked.TargetCashboxId, ct);
+
+                    var cashboxes = new List<(Cashbox cashbox, bool isSource)>(2);
+                    if (sourceCashbox != null)
+                        cashboxes.Add((sourceCashbox, true));
+                    if (targetCashbox != null)
+                        cashboxes.Add((targetCashbox, false));
+
+                    // G-02 fix: Cancel is a correction — always allow negative on target
+                    // cashbox, consistent with CashReceiptService H-23 fix.
+                    // If we block the cancel because the target cashbox was depleted,
+                    // the user gets stuck with an incorrect transfer that can't be undone.
+                    foreach (var entry in cashboxes.OrderBy(x => x.cashbox.Id))
+                    {
+                        if (entry.isSource)
+                        {
+                            entry.cashbox.IncreaseBalance(tracked.Amount);
+                        }
+                        else
+                        {
+                            entry.cashbox.DecreaseBalanceAllowNegative(tracked.Amount);
+                        }
+
+                        _cashboxRepo.Update(entry.cashbox);
+                    }
+
                     await _unitOfWork.SaveChangesAsync(ct);
 
                 }, IsolationLevel.Serializable, ct);
@@ -414,11 +509,38 @@ namespace MarcoERP.Application.Services.Treasury
             {
                 return ServiceResult.Failure(ex.Message);
             }
+            catch (JournalEntryDomainException ex)
+            {
+                return ServiceResult.Failure(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "InvalidOperationException while cancelling cash transfer.");
+                return ServiceResult.Failure(
+                    ErrorSanitizer.Sanitize(ex, "إلغاء التحويل"));
+            }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult.Failure("تعذر إلغاء التحويل بسبب تعارض تزامن. الرجاء إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult.Failure("تعذر إلغاء التحويل بسبب تعارض في البيانات. الرجاء إعادة المحاولة.");
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "خطأ غير متوقع أثناء إلغاء التحويل {TransferId}", id);
                 return ServiceResult.Failure("حدث خطأ غير متوقع أثناء إلغاء التحويل.");
             }
+        }
+
+        private async Task<bool> IsNegativeCashAllowedAsync(CancellationToken ct)
+        {
+            if (_featureService == null)
+                return false;
+
+            var result = await _featureService.IsEnabledAsync(FeatureKeys.AllowNegativeCash, ct);
+            return result.IsSuccess && result.Data;
         }
 
         // ══════════════════════════════════════════════════════════
@@ -427,8 +549,7 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult> DeleteDraftAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteDraftAsync", "CashTransfer", id);
 
             var transfer = await _transferRepo.GetByIdAsync(id, ct);
             if (transfer == null)
@@ -471,13 +592,19 @@ namespace MarcoERP.Application.Services.Treasury
             IJournalNumberGenerator journalNumberGen,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
-            IDateTimeProvider dateTime)
+            IDateTimeProvider dateTime,
+            ISystemSettingRepository systemSettingRepo,
+            IFeatureService featureService,
+            IAuditLogger auditLogger)
         {
             FiscalYearRepo = fiscalYearRepo ?? throw new ArgumentNullException(nameof(fiscalYearRepo));
             JournalNumberGen = journalNumberGen ?? throw new ArgumentNullException(nameof(journalNumberGen));
             UnitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             CurrentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             DateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            SystemSettingRepo = systemSettingRepo ?? throw new ArgumentNullException(nameof(systemSettingRepo));
+            FeatureService = featureService;
+            AuditLogger = auditLogger;
         }
 
         public IFiscalYearRepository FiscalYearRepo { get; }
@@ -485,6 +612,9 @@ namespace MarcoERP.Application.Services.Treasury
         public IUnitOfWork UnitOfWork { get; }
         public ICurrentUserService CurrentUser { get; }
         public IDateTimeProvider DateTime { get; }
+        public ISystemSettingRepository SystemSettingRepo { get; }
+        public IFeatureService FeatureService { get; }
+        public IAuditLogger AuditLogger { get; }
     }
 
     public sealed class CashTransferValidators

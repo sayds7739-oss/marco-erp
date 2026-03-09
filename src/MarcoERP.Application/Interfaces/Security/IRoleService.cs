@@ -19,12 +19,15 @@ namespace MarcoERP.Application.Interfaces.Security
         Task<ServiceResult<RoleDto>> GetByIdAsync(int id, CancellationToken ct = default);
 
         /// <summary>إنشاء دور جديد — Creates a new role.</summary>
+        [RequiresPermission(PermissionKeys.RolesManage)]
         Task<ServiceResult<RoleDto>> CreateAsync(CreateRoleDto dto, CancellationToken ct = default);
 
         /// <summary>تحديث دور — Updates an existing role.</summary>
+        [RequiresPermission(PermissionKeys.RolesManage)]
         Task<ServiceResult<RoleDto>> UpdateAsync(UpdateRoleDto dto, CancellationToken ct = default);
 
         /// <summary>حذف دور — Deletes a role (non-system only).</summary>
+        [RequiresPermission(PermissionKeys.RolesManage)]
         Task<ServiceResult> DeleteAsync(int id, CancellationToken ct = default);
     }
 }

@@ -14,6 +14,8 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Treasury;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Treasury;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Treasury
 {
@@ -29,19 +31,25 @@ namespace MarcoERP.Application.Services.Treasury
         private readonly ICurrentUserService _currentUser;
         private readonly IValidator<CreateCashboxDto> _createValidator;
         private readonly IValidator<UpdateCashboxDto> _updateValidator;
+        private readonly ILogger<CashboxService> _logger;
+        private readonly IFeatureService _featureService;
 
         public CashboxService(
             ICashboxRepository cashboxRepo,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
             IValidator<CreateCashboxDto> createValidator,
-            IValidator<UpdateCashboxDto> updateValidator)
+            IValidator<UpdateCashboxDto> updateValidator,
+            ILogger<CashboxService> logger = null,
+            IFeatureService featureService = null)
         {
             _cashboxRepo = cashboxRepo ?? throw new ArgumentNullException(nameof(cashboxRepo));
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<CashboxService>.Instance;
+            _featureService = featureService;
         }
 
         public async Task<ServiceResult<IReadOnlyList<CashboxDto>>> GetAllAsync(CancellationToken ct)
@@ -66,10 +74,22 @@ namespace MarcoERP.Application.Services.Treasury
             return ServiceResult<CashboxDto>.Success(CashboxMapper.ToDto(entity));
         }
 
+        public async Task<ServiceResult<string>> GetNextCodePreviewAsync(CancellationToken ct)
+        {
+            var nextCode = await _cashboxRepo.GetNextCodeAsync(ct);
+            return ServiceResult<string>.Success(nextCode);
+        }
+
         public async Task<ServiceResult<CashboxDto>> CreateAsync(CreateCashboxDto dto, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check<CashboxDto>(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "Cashbox", 0);
+
+            // Feature Guard — block operation if Treasury module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<CashboxDto>(_featureService, FeatureKeys.Treasury, ct);
+                if (guard != null) return guard;
+            }
 
             var vr = await _createValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
@@ -85,7 +105,7 @@ namespace MarcoERP.Application.Services.Treasury
 
                 // If first cashbox, make it default
                 var existing = await _cashboxRepo.GetAllAsync(ct);
-                if (existing.Count == 0)
+                if (existing.Count == 1)
                     entity.SetAsDefault();
 
                 await _unitOfWork.SaveChangesAsync(ct);
@@ -99,9 +119,7 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult<CashboxDto>> UpdateAsync(UpdateCashboxDto dto, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check<CashboxDto>(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "Cashbox", dto.Id);
             var vr = await _updateValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<CashboxDto>.Failure(
@@ -126,9 +144,7 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult> SetDefaultAsync(int id, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "SetDefaultAsync", "Cashbox", id);
             var entity = await _cashboxRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("الخزنة غير موجودة.");
 
@@ -147,9 +163,7 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "Cashbox", id);
             var entity = await _cashboxRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("الخزنة غير موجودة.");
 
@@ -161,9 +175,7 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "Cashbox", id);
             var entity = await _cashboxRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("الخزنة غير موجودة.");
 

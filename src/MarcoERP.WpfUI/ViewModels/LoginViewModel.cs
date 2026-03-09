@@ -15,15 +15,18 @@ namespace MarcoERP.WpfUI.ViewModels
         private readonly IAuthenticationService _authenticationService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IWindowService _windowService;
+        private readonly IDialogService _dialog;
 
         public LoginViewModel(
             IAuthenticationService authenticationService,
             ICurrentUserService currentUserService,
-            IWindowService windowService)
+            IWindowService windowService,
+            IDialogService dialog)
         {
             _authenticationService = authenticationService ?? throw new ArgumentNullException(nameof(authenticationService));
             _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
             _windowService = windowService ?? throw new ArgumentNullException(nameof(windowService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             LoginCommand = new AsyncRelayCommand(LoginAsync, CanLogin);
             CloseCommand = new RelayCommand(CloseApp);
@@ -107,7 +110,7 @@ namespace MarcoERP.WpfUI.ViewModels
 
                 if (loginResult.MustChangePassword)
                 {
-                    var changeResult = PromptForPasswordChange(loginResult.UserId);
+                    var changeResult = await PromptForPasswordChangeAsync(loginResult.UserId);
                     if (!changeResult)
                     {
                         ErrorMessage = "يجب تغيير كلمة المرور للمتابعة.";
@@ -122,11 +125,11 @@ namespace MarcoERP.WpfUI.ViewModels
                 else
                     CredentialStore.Clear();
 
-                _windowService.ShowMainWindow();
+                await _windowService.ShowMainWindowAsync();
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"حدث خطأ غير متوقع: {ex.Message}";
+                ErrorMessage = FriendlyErrorMessage("تسجيل الدخول", ex);
                 System.Diagnostics.Debug.WriteLine($"Login error: {ex}");
             }
             finally
@@ -154,7 +157,7 @@ namespace MarcoERP.WpfUI.ViewModels
         }
 
         /// <summary>يعرض نافذة تغيير كلمة المرور ويستدعي الخدمة. يعيد true عند النجاح.</summary>
-        private bool PromptForPasswordChange(int userId)
+        private async Task<bool> PromptForPasswordChangeAsync(int userId)
         {
             const int maxAttempts = 3;
             for (int attempt = 0; attempt < maxAttempts; attempt++)
@@ -172,14 +175,11 @@ namespace MarcoERP.WpfUI.ViewModels
                     ConfirmNewPassword = dialog.ConfirmNewPassword
                 };
 
-                var changeTask = _authenticationService.ChangePasswordAsync(userId, dto);
-                changeTask.Wait();
-                var serviceResult = changeTask.Result;
+                var serviceResult = await _authenticationService.ChangePasswordAsync(userId, dto);
 
                 if (serviceResult.IsSuccess)
                 {
-                    MessageBox.Show("تم تغيير كلمة المرور بنجاح.", "نجاح",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    _dialog.ShowInfo("تم تغيير كلمة المرور بنجاح.", "نجاح");
                     return true;
                 }
 
@@ -188,7 +188,7 @@ namespace MarcoERP.WpfUI.ViewModels
                 if (remaining > 0)
                     msg += $"\nمحاولات متبقية: {remaining}";
 
-                MessageBox.Show(msg, "خطأ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialog.ShowWarning(msg, "خطأ");
             }
 
             return false;

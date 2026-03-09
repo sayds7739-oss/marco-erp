@@ -14,6 +14,8 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Inventory;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Inventory
 {
@@ -25,6 +27,8 @@ namespace MarcoERP.Application.Services.Inventory
         private readonly ICurrentUserService _currentUser;
         private readonly IValidator<CreateCategoryDto> _createValidator;
         private readonly IValidator<UpdateCategoryDto> _updateValidator;
+        private readonly ILogger<CategoryService> _logger;
+        private readonly IFeatureService _featureService;
 
         private const string CategoryNotFoundMessage = "التصنيف غير موجود.";
 
@@ -33,13 +37,17 @@ namespace MarcoERP.Application.Services.Inventory
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
             IValidator<CreateCategoryDto> createValidator,
-            IValidator<UpdateCategoryDto> updateValidator)
+            IValidator<UpdateCategoryDto> updateValidator,
+            ILogger<CategoryService> logger = null,
+            IFeatureService featureService = null)
         {
             _categoryRepo = categoryRepo ?? throw new ArgumentNullException(nameof(categoryRepo));
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<CategoryService>.Instance;
+            _featureService = featureService;
         }
 
         public async Task<ServiceResult<IReadOnlyList<CategoryDto>>> GetAllAsync(CancellationToken ct = default)
@@ -73,8 +81,13 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult<CategoryDto>> CreateAsync(CreateCategoryDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<CategoryDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "Category", 0);
+            // Feature Guard — block operation if Inventory module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<CategoryDto>(_featureService, FeatureKeys.Inventory, ct);
+                if (guard != null) return guard;
+            }
 
             var vr = await _createValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
@@ -100,9 +113,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult<CategoryDto>> UpdateAsync(UpdateCategoryDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<CategoryDto>(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "Category", dto.Id);
             var vr = await _updateValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<CategoryDto>.Failure(
@@ -130,9 +141,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "Category", id);
             var entity = await _categoryRepo.GetByIdAsync(id, ct);
             if (entity == null)
                 return ServiceResult.Failure(CategoryNotFoundMessage);
@@ -145,9 +154,7 @@ namespace MarcoERP.Application.Services.Inventory
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.InventoryManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "Category", id);
             var entity = await _categoryRepo.GetByIdAsync(id, ct);
             if (entity == null)
                 return ServiceResult.Failure(CategoryNotFoundMessage);

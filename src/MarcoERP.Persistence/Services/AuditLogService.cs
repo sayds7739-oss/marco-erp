@@ -28,9 +28,6 @@ namespace MarcoERP.Persistence.Services
 
         public async Task<ServiceResult<IReadOnlyList<AuditLogDto>>> GetAllAsync(CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<IReadOnlyList<AuditLogDto>>(_currentUser, PermissionKeys.AuditLogView);
-            if (authCheck != null) return authCheck;
-
             var logs = await _db.AuditLogs
                 .AsNoTracking()
                 .OrderByDescending(a => a.Timestamp)
@@ -42,9 +39,6 @@ namespace MarcoERP.Persistence.Services
 
         public async Task<ServiceResult<IReadOnlyList<AuditLogDto>>> GetByEntityAsync(string entityType, int entityId, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<IReadOnlyList<AuditLogDto>>(_currentUser, PermissionKeys.AuditLogView);
-            if (authCheck != null) return authCheck;
-
             var logs = await _db.AuditLogs
                 .AsNoTracking()
                 .Where(a => a.EntityType == entityType && a.EntityId == entityId)
@@ -57,9 +51,6 @@ namespace MarcoERP.Persistence.Services
 
         public async Task<ServiceResult<IReadOnlyList<AuditLogDto>>> GetByDateRangeAsync(DateTime start, DateTime end, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<IReadOnlyList<AuditLogDto>>(_currentUser, PermissionKeys.AuditLogView);
-            if (authCheck != null) return authCheck;
-
             var logs = await _db.AuditLogs
                 .AsNoTracking()
                 .Where(a => a.Timestamp >= start && a.Timestamp <= end)
@@ -72,9 +63,6 @@ namespace MarcoERP.Persistence.Services
 
         public async Task<ServiceResult<IReadOnlyList<AuditLogDto>>> GetByUserAsync(string username, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<IReadOnlyList<AuditLogDto>>(_currentUser, PermissionKeys.AuditLogView);
-            if (authCheck != null) return authCheck;
-
             var logs = await _db.AuditLogs
                 .AsNoTracking()
                 .Where(a => a.PerformedBy == username)

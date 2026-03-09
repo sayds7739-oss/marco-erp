@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Purchases;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Purchases;
 using MarcoERP.Domain.Exceptions;
 using MarcoERP.WpfUI.Common;
@@ -16,10 +17,12 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
     public sealed class SupplierViewModel : BaseViewModel
     {
         private readonly ISupplierService _supplierService;
+        private readonly IDialogService _dialog;
 
-        public SupplierViewModel(ISupplierService supplierService)
+        public SupplierViewModel(ISupplierService supplierService, IDialogService dialog)
         {
             _supplierService = supplierService ?? throw new ArgumentNullException(nameof(supplierService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllSuppliers = new ObservableCollection<SupplierDto>();
 
@@ -134,6 +137,90 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             set => SetProperty(ref _formPreviousBalance, value);
         }
 
+        private string _formEmail;
+        public string FormEmail
+        {
+            get => _formEmail;
+            set => SetProperty(ref _formEmail, value);
+        }
+
+        private string _formCommercialRegister;
+        public string FormCommercialRegister
+        {
+            get => _formCommercialRegister;
+            set => SetProperty(ref _formCommercialRegister, value);
+        }
+
+        private string _formCountry;
+        public string FormCountry
+        {
+            get => _formCountry;
+            set => SetProperty(ref _formCountry, value);
+        }
+
+        private string _formPostalCode;
+        public string FormPostalCode
+        {
+            get => _formPostalCode;
+            set => SetProperty(ref _formPostalCode, value);
+        }
+
+        private string _formContactPerson;
+        public string FormContactPerson
+        {
+            get => _formContactPerson;
+            set => SetProperty(ref _formContactPerson, value);
+        }
+
+        private string _formWebsite;
+        public string FormWebsite
+        {
+            get => _formWebsite;
+            set => SetProperty(ref _formWebsite, value);
+        }
+
+        private decimal _formCreditLimit;
+        public decimal FormCreditLimit
+        {
+            get => _formCreditLimit;
+            set => SetProperty(ref _formCreditLimit, value);
+        }
+
+        private int? _formDaysAllowed;
+        public int? FormDaysAllowed
+        {
+            get => _formDaysAllowed;
+            set => SetProperty(ref _formDaysAllowed, value);
+        }
+
+        private string _formBankName;
+        public string FormBankName
+        {
+            get => _formBankName;
+            set => SetProperty(ref _formBankName, value);
+        }
+
+        private string _formBankAccountName;
+        public string FormBankAccountName
+        {
+            get => _formBankAccountName;
+            set => SetProperty(ref _formBankAccountName, value);
+        }
+
+        private string _formBankAccountNumber;
+        public string FormBankAccountNumber
+        {
+            get => _formBankAccountNumber;
+            set => SetProperty(ref _formBankAccountNumber, value);
+        }
+
+        private string _formIBAN;
+        public string FormIBAN
+        {
+            get => _formIBAN;
+            set => SetProperty(ref _formIBAN, value);
+        }
+
         private string _formNotes;
         public string FormNotes
         {
@@ -202,8 +289,9 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
                 var codeResult = await _supplierService.GetNextCodeAsync();
                 FormCode = codeResult.IsSuccess ? codeResult.Data : "";
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[SupplierVM] Failed to get next code: {ex.Message}");
                 FormCode = "";
             }
 
@@ -214,6 +302,18 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             FormAddress = "";
             FormCity = "";
             FormTaxNumber = "";
+            FormEmail = "";
+            FormCommercialRegister = "";
+            FormCountry = "";
+            FormPostalCode = "";
+            FormContactPerson = "";
+            FormWebsite = "";
+            FormCreditLimit = 0;
+            FormDaysAllowed = null;
+            FormBankName = "";
+            FormBankAccountName = "";
+            FormBankAccountNumber = "";
+            FormIBAN = "";
             FormPreviousBalance = 0;
             FormNotes = "";
             StatusMessage = "إدخال مورد جديد...";
@@ -239,6 +339,18 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
                         Address = FormAddress,
                         City = FormCity,
                         TaxNumber = FormTaxNumber,
+                        Email = FormEmail,
+                        CommercialRegister = FormCommercialRegister,
+                        Country = FormCountry,
+                        PostalCode = FormPostalCode,
+                        ContactPerson = FormContactPerson,
+                        Website = FormWebsite,
+                        CreditLimit = FormCreditLimit,
+                        DaysAllowed = FormDaysAllowed,
+                        BankName = FormBankName,
+                        BankAccountName = FormBankAccountName,
+                        BankAccountNumber = FormBankAccountNumber,
+                        IBAN = FormIBAN,
                         PreviousBalance = FormPreviousBalance,
                         Notes = FormNotes
                     };
@@ -267,6 +379,18 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
                         Address = FormAddress,
                         City = FormCity,
                         TaxNumber = FormTaxNumber,
+                        Email = FormEmail,
+                        CommercialRegister = FormCommercialRegister,
+                        Country = FormCountry,
+                        PostalCode = FormPostalCode,
+                        ContactPerson = FormContactPerson,
+                        Website = FormWebsite,
+                        CreditLimit = FormCreditLimit,
+                        DaysAllowed = FormDaysAllowed,
+                        BankName = FormBankName,
+                        BankAccountName = FormBankAccountName,
+                        BankAccountNumber = FormBankAccountNumber,
+                        IBAN = FormIBAN,
                         Notes = FormNotes
                     };
                     var result = await _supplierService.UpdateAsync(dto);
@@ -302,11 +426,7 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
         {
             if (SelectedItem == null) return;
 
-            var confirm = MessageBox.Show(
-                $"هل أنت متأكد من حذف المورد «{SelectedItem.NameAr}»؟\nالحذف سيكون ناعم (Soft Delete).",
-                "تأكيد الحذف",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"هل أنت متأكد من حذف المورد «{SelectedItem.NameAr}»؟\nالحذف سيكون ناعم (Soft Delete).", "تأكيد الحذف")) return;
 
             IsBusy = true;
             ClearError();
@@ -418,6 +538,18 @@ namespace MarcoERP.WpfUI.ViewModels.Purchases
             FormAddress = item.Address;
             FormCity = item.City;
             FormTaxNumber = item.TaxNumber;
+            FormEmail = item.Email;
+            FormCommercialRegister = item.CommercialRegister;
+            FormCountry = item.Country;
+            FormPostalCode = item.PostalCode;
+            FormContactPerson = item.ContactPerson;
+            FormWebsite = item.Website;
+            FormCreditLimit = item.CreditLimit;
+            FormDaysAllowed = item.DaysAllowed;
+            FormBankName = item.BankName;
+            FormBankAccountName = item.BankAccountName;
+            FormBankAccountNumber = item.BankAccountNumber;
+            FormIBAN = item.IBAN;
             FormPreviousBalance = item.PreviousBalance;
             FormNotes = item.Notes;
             IsEditing = false;

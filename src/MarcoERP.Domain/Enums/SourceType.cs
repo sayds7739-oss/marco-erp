@@ -18,6 +18,7 @@ namespace MarcoERP.Domain.Enums
         SalesReturn = 10,
         CashTransfer = 11,
         SalesQuotation = 12,
-        PurchaseQuotation = 13
+        PurchaseQuotation = 13,
+        PosSession = 14
     }
 }

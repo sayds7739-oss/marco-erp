@@ -307,7 +307,7 @@ namespace MarcoERP.WpfUI.Reporting
 
             ReportDefinition = BuildReportDefinition();
             if (ReportDefinition == null)
-                throw new InvalidOperationException("BuildReportDefinition() must return a non-null ReportDefinition.");
+                throw new InvalidOperationException("يجب أن تُرجع BuildReportDefinition() تعريف تقرير صالح.");
 
             PageSize = ReportDefinition.DefaultPageSize;
             CurrentSort = ReportDefinition.DefaultSort;
@@ -365,7 +365,7 @@ namespace MarcoERP.WpfUI.Reporting
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"خطأ: {ex.Message}";
+                ErrorMessage = FriendlyErrorMessage("تحميل التقرير", ex);
             }
             finally
             {
@@ -426,7 +426,7 @@ namespace MarcoERP.WpfUI.Reporting
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                ErrorMessage = $"خطأ: {ex.Message}";
+                ErrorMessage = FriendlyErrorMessage("تحميل الصفحة", ex);
             }
             finally
             {

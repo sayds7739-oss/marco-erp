@@ -39,6 +39,7 @@ namespace MarcoERP.Application.Interfaces.Accounting
         /// Resolves fiscal year/period from JournalDate.
         /// Validates all accounts are postable (JE-INV-06).
         /// </summary>
+        [RequiresPermission(PermissionKeys.JournalCreate)]
         Task<ServiceResult<JournalEntryDto>> CreateDraftAsync(CreateJournalEntryDto dto, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -46,6 +47,7 @@ namespace MarcoERP.Application.Interfaces.Accounting
         /// Validates JE-INV-07 through JE-INV-10 (period open, year active, date in range).
         /// Generates sequential JournalNumber.
         /// </summary>
+        [RequiresPermission(PermissionKeys.JournalPost)]
         Task<ServiceResult<PostJournalResultDto>> PostAsync(int journalEntryId, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -53,12 +55,14 @@ namespace MarcoERP.Application.Interfaces.Accounting
         /// Creates a new reversal entry with swapped debit/credit.
         /// Both entries are persisted atomically.
         /// </summary>
+        [RequiresPermission(PermissionKeys.JournalReverse)]
         Task<ServiceResult<PostJournalResultDto>> ReverseAsync(ReverseJournalEntryDto dto, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Soft-deletes a draft journal entry.
         /// Only drafts can be deleted.
         /// </summary>
+        [RequiresPermission(PermissionKeys.JournalCreate)]
         Task<ServiceResult> DeleteDraftAsync(int journalEntryId, CancellationToken cancellationToken = default);
     }
 }

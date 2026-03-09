@@ -38,6 +38,39 @@ namespace MarcoERP.Application.Validators.Purchases
             RuleFor(x => x.TaxNumber)
                 .MaximumLength(50).WithMessage("الرقم الضريبي لا يتجاوز 50 حرف.");
 
+            RuleFor(x => x.Email)
+                .MaximumLength(200).WithMessage("البريد الإلكتروني لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.CommercialRegister)
+                .MaximumLength(50).WithMessage("السجل التجاري لا يتجاوز 50 حرف.");
+
+            RuleFor(x => x.Country)
+                .MaximumLength(100).WithMessage("الدولة لا تتجاوز 100 حرف.");
+
+            RuleFor(x => x.PostalCode)
+                .MaximumLength(20).WithMessage("الرمز البريدي لا يتجاوز 20 حرف.");
+
+            RuleFor(x => x.ContactPerson)
+                .MaximumLength(200).WithMessage("جهة الاتصال لا تتجاوز 200 حرف.");
+
+            RuleFor(x => x.Website)
+                .MaximumLength(200).WithMessage("الموقع الإلكتروني لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.BankName)
+                .MaximumLength(200).WithMessage("اسم البنك لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.BankAccountName)
+                .MaximumLength(200).WithMessage("اسم صاحب الحساب لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.BankAccountNumber)
+                .MaximumLength(50).WithMessage("رقم الحساب البنكي لا يتجاوز 50 حرف.");
+
+            RuleFor(x => x.IBAN)
+                .MaximumLength(34).WithMessage("رقم الآيبان لا يتجاوز 34 حرف.");
+
+            RuleFor(x => x.CreditLimit)
+                .GreaterThanOrEqualTo(0).WithMessage("حد الائتمان لا يمكن أن يكون بالسالب.");
+
             RuleFor(x => x.Notes)
                 .MaximumLength(1000).WithMessage("الملاحظات لا تتجاوز 1000 حرف.");
         }
@@ -72,6 +105,39 @@ namespace MarcoERP.Application.Validators.Purchases
 
             RuleFor(x => x.TaxNumber)
                 .MaximumLength(50).WithMessage("الرقم الضريبي لا يتجاوز 50 حرف.");
+
+            RuleFor(x => x.Email)
+                .MaximumLength(200).WithMessage("البريد الإلكتروني لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.CommercialRegister)
+                .MaximumLength(50).WithMessage("السجل التجاري لا يتجاوز 50 حرف.");
+
+            RuleFor(x => x.Country)
+                .MaximumLength(100).WithMessage("الدولة لا تتجاوز 100 حرف.");
+
+            RuleFor(x => x.PostalCode)
+                .MaximumLength(20).WithMessage("الرمز البريدي لا يتجاوز 20 حرف.");
+
+            RuleFor(x => x.ContactPerson)
+                .MaximumLength(200).WithMessage("جهة الاتصال لا تتجاوز 200 حرف.");
+
+            RuleFor(x => x.Website)
+                .MaximumLength(200).WithMessage("الموقع الإلكتروني لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.BankName)
+                .MaximumLength(200).WithMessage("اسم البنك لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.BankAccountName)
+                .MaximumLength(200).WithMessage("اسم صاحب الحساب لا يتجاوز 200 حرف.");
+
+            RuleFor(x => x.BankAccountNumber)
+                .MaximumLength(50).WithMessage("رقم الحساب البنكي لا يتجاوز 50 حرف.");
+
+            RuleFor(x => x.IBAN)
+                .MaximumLength(34).WithMessage("رقم الآيبان لا يتجاوز 34 حرف.");
+
+            RuleFor(x => x.CreditLimit)
+                .GreaterThanOrEqualTo(0).WithMessage("حد الائتمان لا يمكن أن يكون بالسالب.");
 
             RuleFor(x => x.Notes)
                 .MaximumLength(1000).WithMessage("الملاحظات لا تتجاوز 1000 حرف.");

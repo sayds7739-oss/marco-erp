@@ -11,6 +11,8 @@ using MarcoERP.Domain.Entities.Accounting;
 using MarcoERP.Domain.Entities.Accounting.Policies;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Interfaces;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Accounting
 {
@@ -29,6 +31,8 @@ namespace MarcoERP.Application.Services.Accounting
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
         private readonly IDateTimeProvider _dateTime;
+        private readonly ILogger<YearEndClosingService> _logger;
+        private readonly IFeatureService _featureService;
 
         /// <summary>System account code for Retained Earnings (الأرباح المحتجزة).</summary>
         private const string RetainedEarningsCode = "3121";
@@ -40,7 +44,9 @@ namespace MarcoERP.Application.Services.Accounting
             IJournalNumberGenerator journalNumberGen,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
-            IDateTimeProvider dateTime)
+            IDateTimeProvider dateTime,
+            ILogger<YearEndClosingService> logger = null,
+            IFeatureService featureService = null)
         {
             _accountRepo = accountRepo ?? throw new ArgumentNullException(nameof(accountRepo));
             _journalRepo = journalRepo ?? throw new ArgumentNullException(nameof(journalRepo));
@@ -49,6 +55,8 @@ namespace MarcoERP.Application.Services.Accounting
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<YearEndClosingService>.Instance;
+            _featureService = featureService;
         }
 
         /// <summary>
@@ -60,8 +68,13 @@ namespace MarcoERP.Application.Services.Accounting
         public async Task<ServiceResult> GenerateClosingEntryAsync(
             int fiscalYearId, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.FiscalYearManage);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "GenerateClosingEntryAsync", "FiscalYear", fiscalYearId);
+            // Feature Guard — block operation if Accounting module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync(_featureService, FeatureKeys.Accounting, ct);
+                if (guard != null) return guard;
+            }
 
             var fiscalYear = await _fiscalYearRepo.GetWithPeriodsAsync(fiscalYearId, ct);
             if (fiscalYear == null)
@@ -223,7 +236,7 @@ namespace MarcoERP.Application.Services.Accounting
                     if (validationErrors.Count > 0)
                         throw new InvalidOperationException(string.Join(" | ", validationErrors));
 
-                    var journalNumber = _journalNumberGen.NextNumber(fiscalYearId);
+                    var journalNumber = await _journalNumberGen.NextNumberAsync(fiscalYearId, ct);
                     journalEntry.Post(journalNumber, username, now);
 
                     await _journalRepo.AddAsync(journalEntry, ct);
@@ -235,7 +248,8 @@ namespace MarcoERP.Application.Services.Accounting
             }
             catch (Exception ex)
             {
-                return ServiceResult.Failure($"فشل إنشاء قيد الإقفال: {ex.Message}");
+                _logger.LogError(ex, "GenerateClosingEntryAsync failed for FiscalYear.");
+                return ServiceResult.Failure(ErrorSanitizer.SanitizeGeneric(ex, "إنشاء قيد الإقفال"));
             }
         }
     }

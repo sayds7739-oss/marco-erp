@@ -14,9 +14,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(c => c.Id);
             builder.Property(c => c.Id).UseIdentityColumn();
 
-            builder.Property(c => c.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             // ── Business Fields ─────────────────────────────────
             builder.Property(c => c.Code)
@@ -44,6 +42,27 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.Property(c => c.TaxNumber)
                 .HasMaxLength(50);
+
+            builder.Property(c => c.Email)
+                .HasMaxLength(200);
+
+            builder.Property(c => c.CommercialRegister)
+                .HasMaxLength(50);
+
+            builder.Property(c => c.Country)
+                .HasMaxLength(100);
+
+            builder.Property(c => c.PostalCode)
+                .HasMaxLength(20);
+
+            builder.Property(c => c.ContactPerson)
+                .HasMaxLength(200);
+
+            builder.Property(c => c.Website)
+                .HasMaxLength(200);
+
+            builder.Property(c => c.DefaultDiscountPercent)
+                .HasPrecision(18, 4);
 
             builder.Property(c => c.PreviousBalance)
                 .HasPrecision(18, 4)
@@ -83,7 +102,7 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(c => c.TaxNumber)
                 .HasDatabaseName("IX_Customers_TaxNumber")
-                .HasFilter("[TaxNumber] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("TaxNumber"));
 
             builder.HasIndex(c => c.IsActive)
                 .HasDatabaseName("IX_Customers_IsActive");
@@ -109,7 +128,7 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(c => c.DefaultSalesRepresentativeId)
                 .HasDatabaseName("IX_Customers_DefaultSalesRepresentativeId")
-                .HasFilter("[DefaultSalesRepresentativeId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("DefaultSalesRepresentativeId"));
 
             // ── Credit Control Fields ───────────────────────────
             builder.Property(c => c.DaysAllowed);
@@ -127,7 +146,7 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(c => c.PriceListId)
                 .HasDatabaseName("IX_Customers_PriceListId")
-                .HasFilter("[PriceListId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("PriceListId"));
         }
     }
 }

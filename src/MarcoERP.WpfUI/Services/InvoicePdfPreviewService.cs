@@ -1,9 +1,11 @@
 using System;
 using System.Globalization;
+using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Extensions.DependencyInjection;
 using MarcoERP.Application.DTOs.Purchases;
 using MarcoERP.Application.DTOs.Sales;
@@ -67,6 +69,74 @@ namespace MarcoERP.WpfUI.Services
                 return Task.CompletedTask;
             ShowDialog(request);
             return Task.CompletedTask;
+        }
+
+        public Task ShowPdfFileAsync(InvoicePdfPreviewRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.PdfPath))
+                return Task.CompletedTask;
+
+            ShowDialog(request);
+            return Task.CompletedTask;
+        }
+
+        public async Task<byte[]> GenerateSalesInvoicePdfBytesAsync(SalesInvoiceDto invoice)
+        {
+            if (invoice == null) return null;
+
+            var html = BuildSalesInvoiceHtml(invoice);
+            var folder = Path.Combine(Path.GetTempPath(), "MarcoERP", "email-pdf");
+            Directory.CreateDirectory(folder);
+            var tempFile = Path.Combine(folder, $"invoice_{Guid.NewGuid():N}.pdf");
+
+            byte[] pdfBytes = null;
+
+            // Use a hidden off-screen window with WebView2 to render HTML to PDF
+            var webView = new Microsoft.Web.WebView2.Wpf.WebView2();
+            var hiddenWindow = new Window
+            {
+                Width = 800,
+                Height = 600,
+                Left = -10000,
+                WindowStyle = WindowStyle.None,
+                ShowInTaskbar = false,
+                ShowActivated = false,
+                Content = webView
+            };
+
+            try
+            {
+                hiddenWindow.Show();
+
+                await webView.EnsureCoreWebView2Async();
+
+                var tcs = new TaskCompletionSource<bool>();
+                webView.NavigationCompleted += (_, e) => tcs.TrySetResult(e.IsSuccess);
+                webView.CoreWebView2.NavigateToString(html);
+                await tcs.Task;
+
+                var settings = webView.CoreWebView2.Environment.CreatePrintSettings();
+                settings.PageWidth = 8.27;   // A4 width in inches
+                settings.PageHeight = 11.69;  // A4 height in inches
+                settings.MarginTop = 0.4;
+                settings.MarginBottom = 0.4;
+                settings.MarginLeft = 0.4;
+                settings.MarginRight = 0.4;
+
+                var success = await webView.CoreWebView2.PrintToPdfAsync(tempFile, settings);
+                if (success && File.Exists(tempFile))
+                {
+                    pdfBytes = await File.ReadAllBytesAsync(tempFile);
+                }
+            }
+            finally
+            {
+                webView.Dispose();
+                hiddenWindow.Close();
+                try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
+            }
+
+            return pdfBytes;
         }
 
         private static string BuildSalesInvoiceHtml(SalesInvoiceDto invoice)

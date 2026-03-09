@@ -6,9 +6,13 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Treasury;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Treasury;
+using MarcoERP.Application.DTOs.Printing;
+using MarcoERP.Application.Interfaces.Printing;
 using MarcoERP.Domain.Exceptions;
 using MarcoERP.WpfUI.Common;
+using MarcoERP.WpfUI.Services;
 
 namespace MarcoERP.WpfUI.ViewModels.Treasury
 {
@@ -19,11 +23,20 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
     {
         private readonly ICashTransferService _transferService;
         private readonly ICashboxService _cashboxService;
+        private readonly IDateTimeProvider _dateTime;
+        private readonly IDialogService _dialog;
+        private readonly IInvoicePdfPreviewService _previewService;
+        private readonly IDocumentHtmlBuilder _htmlBuilder;
 
-        public CashTransferViewModel(ICashTransferService transferService, ICashboxService cashboxService)
+        public CashTransferViewModel(ICashTransferService transferService, ICashboxService cashboxService, IDateTimeProvider dateTime, IDialogService dialog,
+            IInvoicePdfPreviewService previewService, IDocumentHtmlBuilder htmlBuilder)
         {
             _transferService = transferService ?? throw new ArgumentNullException(nameof(transferService));
             _cashboxService = cashboxService ?? throw new ArgumentNullException(nameof(cashboxService));
+            _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
+            _previewService = previewService ?? throw new ArgumentNullException(nameof(previewService));
+            _htmlBuilder = htmlBuilder ?? throw new ArgumentNullException(nameof(htmlBuilder));
 
             AllTransfers = new ObservableCollection<CashTransferListDto>();
             Cashboxes = new ObservableCollection<CashboxDto>();
@@ -37,6 +50,42 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
             CancelEditCommand = new RelayCommand(CancelEditing);
             EditSelectedCommand = new RelayCommand(_ => EditSelected());
             JumpToTransferCommand = new AsyncRelayCommand(JumpToTransferAsync);
+            PrintCommand = new AsyncRelayCommand(PrintAsync);
+        }
+
+        private async Task PrintAsync(object _)
+        {
+            if (_currentDetail == null) return;
+            IsBusy = true;
+            ClearError();
+            try
+            {
+                var data = new DocumentData
+                {
+                    Title = $"تحويل بين الخزن رقم {_currentDetail.TransferNumber}",
+                    DocumentType = PrintableDocumentType.CashTransfer,
+                    MetaFields = new()
+                    {
+                        new("رقم التحويل", _currentDetail.TransferNumber),
+                        new("التاريخ", _currentDetail.TransferDate.ToString("yyyy-MM-dd")),
+                        new("من خزنة", _currentDetail.SourceCashboxName ?? "—"),
+                        new("إلى خزنة", _currentDetail.TargetCashboxName ?? "—"),
+                        new("الحالة", _currentDetail.Status, true)
+                    },
+                    SummaryFields = new()
+                    {
+                        new("المبلغ", _currentDetail.Amount.ToString("N2"), true)
+                    },
+                    Notes = _currentDetail.Notes ?? _currentDetail.Description
+                };
+                var html = await _htmlBuilder.BuildAsync(data);
+                await _previewService.ShowHtmlPreviewAsync(new InvoicePdfPreviewRequest
+                {
+                    Title = data.Title, FilePrefix = "cash_transfer", HtmlContent = html
+                });
+            }
+            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("الطباعة", ex); }
+            finally { IsBusy = false; }
         }
 
         // ── Collections ──────────────────────────────────────────
@@ -97,7 +146,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
             set => SetProperty(ref _formTransferNumber, value);
         }
 
-        private DateTime _formTransferDate = DateTime.Today;
+        private DateTime _formTransferDate;
         public DateTime FormTransferDate
         {
             get => _formTransferDate;
@@ -157,6 +206,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         public ICommand CancelEditCommand { get; }
         public ICommand EditSelectedCommand { get; }
         public ICommand JumpToTransferCommand { get; }
+        public ICommand PrintCommand { get; }
 
         // ── Can Execute ──────────────────────────────────────────
 
@@ -243,7 +293,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
             ClearError();
 
             FormTransferNumber = "(تلقائي)";
-            FormTransferDate = DateTime.Today;
+            FormTransferDate = _dateTime.Today;
             FormSourceCashboxId = null;
             FormTargetCashboxId = null;
             FormAmount = 0;
@@ -330,10 +380,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         {
             if (_currentDetail == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 "هل تريد ترحيل هذا التحويل؟ سيتم إنشاء قيد محاسبي تلقائياً.",
-                "تأكيد الترحيل", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الترحيل")) return;
 
             IsBusy = true;
             ClearError();
@@ -342,7 +391,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
                 var result = await _transferService.PostAsync(_currentDetail.Id);
                 if (result.IsSuccess)
                 {
-                    StatusMessage = "تم ترحيل التحويل بنجاح";
+                    StatusMessage = string.IsNullOrWhiteSpace(result.Data.WarningMessage)
+                        ? "تم ترحيل التحويل بنجاح"
+                        : $"تم ترحيل التحويل بنجاح  |  ⚠ {result.Data.WarningMessage}";
                     await LoadTransfersAsync();
                 }
                 else
@@ -366,10 +417,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         {
             if (_currentDetail == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 "هل تريد إلغاء هذا التحويل؟",
-                "تأكيد الإلغاء", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الإلغاء")) return;
 
             IsBusy = true;
             ClearError();
@@ -402,10 +452,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         {
             if (_currentDetail == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 "هل تريد حذف هذا التحويل (المسودة)؟",
-                "تأكيد الحذف", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الحذف")) return;
 
             IsBusy = true;
             ClearError();
@@ -467,7 +516,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         {
             if (IsEditing)
             {
-                MessageBox.Show("يرجى إنهاء التعديل قبل التنقل.", "تنقل التحويلات", MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialog.ShowInfo("يرجى إنهاء التعديل قبل التنقل.", "تنقل التحويلات");
                 return;
             }
 
@@ -479,7 +528,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
 
             if (!_transferNumberToId.TryGetValue(JumpTransferNumber.Trim(), out var id))
             {
-                MessageBox.Show("رقم التحويل غير موجود.", "تنقل التحويلات", MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialog.ShowInfo("رقم التحويل غير موجود.", "تنقل التحويلات");
                 return;
             }
 

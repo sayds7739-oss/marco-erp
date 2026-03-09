@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Sales;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Sales;
 using MarcoERP.Domain.Exceptions;
 using MarcoERP.WpfUI.Common;
@@ -16,10 +17,12 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
     public sealed class SalesRepresentativeViewModel : BaseViewModel
     {
         private readonly ISalesRepresentativeService _service;
+        private readonly IDialogService _dialog;
 
-        public SalesRepresentativeViewModel(ISalesRepresentativeService service)
+        public SalesRepresentativeViewModel(ISalesRepresentativeService service, IDialogService dialog)
         {
             _service = service ?? throw new ArgumentNullException(nameof(service));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllRepresentatives = new ObservableCollection<SalesRepresentativeDto>();
 
@@ -283,11 +286,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         {
             if (SelectedItem == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل أنت متأكد من حذف المندوب «{SelectedItem.NameAr}»؟\nالحذف سيكون ناعم (Soft Delete).",
-                "تأكيد الحذف",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الحذف")) return;
 
             IsBusy = true;
             ClearError();

@@ -21,9 +21,7 @@ namespace MarcoERP.Persistence.Configurations
                 .UseIdentityColumn();
 
             // ── Concurrency Token ───────────────────────────────
-            builder.Property(a => a.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             // ── Properties ──────────────────────────────────────
             builder.Property(a => a.AccountCode)
@@ -115,7 +113,7 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(a => new { a.IsLeaf, a.AllowPosting, a.IsActive })
                 .HasDatabaseName("IX_Accounts_Postable")
-                .HasFilter("[IsDeleted] = 0");
+                .HasFilter(DbProviderHelper.SoftDeleteFilter());
 
             // ── Relationships ───────────────────────────────────
             // Self-referencing hierarchy: Account → ParentAccount

@@ -1,5 +1,7 @@
 using System;
+using MarcoERP.Domain.Entities.Accounting;
 using MarcoERP.Domain.Entities.Common;
+using MarcoERP.Domain.Entities.Purchases;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Treasury;
 
@@ -67,8 +69,14 @@ namespace MarcoERP.Domain.Entities.Treasury
         /// <summary>Contra GL account (e.g. 2111 AP for supplier payment, or any postable account).</summary>
         public int AccountId { get; private set; }
 
+        /// <summary>Navigation to contra GL Account.</summary>
+        public Account Account { get; private set; }
+
         /// <summary>Optional FK to Supplier (if this is a supplier payment).</summary>
         public int? SupplierId { get; private set; }
+
+        /// <summary>Navigation to linked Supplier.</summary>
+        public Supplier Supplier { get; private set; }
 
         /// <summary>Optional FK to PurchaseInvoice when payment is created from a purchase invoice.</summary>
         public int? PurchaseInvoiceId { get; private set; }
@@ -100,6 +108,7 @@ namespace MarcoERP.Domain.Entities.Treasury
             decimal amount,
             string description,
             int? supplierId,
+            int? purchaseInvoiceId,
             string notes)
         {
             EnsureDraft("لا يمكن تعديل سند صرف مرحّل أو ملغى.");
@@ -119,6 +128,7 @@ namespace MarcoERP.Domain.Entities.Treasury
             Amount = amount;
             Description = description.Trim();
             SupplierId = supplierId;
+            PurchaseInvoiceId = purchaseInvoiceId;
             Notes = notes?.Trim();
         }
 

@@ -5,11 +5,13 @@
         xmlns:local="clr-namespace:MarcoERP.WpfUI.Common"
         Title="{Binding TitleText}"
         Height="360" Width="520"
+        MinHeight="320" MinWidth="440"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize"
+        ResizeMode="CanResizeWithGrip"
         FlowDirection="RightToLeft"
         Background="{DynamicResource MaterialDesignPaper}">
 
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <Grid Margin="16" local:LoadedCommandBehavior.Command="{Binding LoadedCommand}">
         <Border Style="{StaticResource CardPanel}" Padding="16">
             <Grid>
@@ -72,7 +74,7 @@
                         </StackPanel>
                     </Button>
 
-                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}" IsCancel="True"
                             Command="{Binding CancelCommand}"
                             MinWidth="90" Margin="4,0">
                         <TextBlock Text="إلغاء" />
@@ -81,4 +83,5 @@
             </Grid>
         </Border>
     </Grid>
+    </ScrollViewer>
 </Window>

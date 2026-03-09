@@ -6,8 +6,8 @@ namespace MarcoERP.Application.Common
 {
     /// <summary>
     /// Static helper for checking feature availability before executing operations.
-    /// Phase 2: Feature Governance Engine — NOT wired into any existing service yet.
-    /// Future phases will inject this check at the Application layer entry points.
+    /// Phase 2: Feature Governance Engine — Wired into all main Application services.
+    /// Each service calls CheckAsync at the entry point of create/update operations.
     /// </summary>
     public static class FeatureGuard
     {
@@ -25,9 +25,13 @@ namespace MarcoERP.Application.Common
         {
             var result = await featureService.IsEnabledAsync(featureKey, ct);
 
-            // If feature not found, assume enabled (safe default)
+            // If feature not found or DB error, block the operation (fail-closed for security)
             if (result.IsFailure)
-                return null;
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[FeatureGuard] فشل التحقق من الميزة '{featureKey}': {result.ErrorMessage}. تم حظر العملية.");
+                return ServiceResult.Failure("تعذر التحقق من حالة الميزة. يرجى المحاولة لاحقاً.");
+            }
 
             if (!result.Data)
                 return ServiceResult.Failure(string.Format(FeatureDisabledMsg, featureKey));
@@ -45,9 +49,13 @@ namespace MarcoERP.Application.Common
         {
             var result = await featureService.IsEnabledAsync(featureKey, ct);
 
-            // If feature not found, assume enabled (safe default)
+            // If feature not found or DB error, block the operation (fail-closed for security)
             if (result.IsFailure)
-                return null;
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[FeatureGuard] فشل التحقق من الميزة '{featureKey}': {result.ErrorMessage}. تم حظر العملية.");
+                return ServiceResult<T>.Failure("تعذر التحقق من حالة الميزة. يرجى المحاولة لاحقاً.");
+            }
 
             if (!result.Data)
                 return ServiceResult<T>.Failure(string.Format(FeatureDisabledMsg, featureKey));

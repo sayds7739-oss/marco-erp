@@ -27,6 +27,10 @@
             <conv:StatusToArabicConverter x:Key="StatusToArabicConverter" />
             <conv:SourceTypeToArabicConverter x:Key="SourceTypeToArabicConverter" />
             <conv:IsNegativeConverter x:Key="IsNegativeConverter" />
+            <conv:InvoiceTypeToArabicConverter x:Key="InvoiceTypeToArabicConverter" />
+            <conv:PaymentMethodToArabicConverter x:Key="PaymentMethodToArabicConverter" />
+            <conv:AccountTypeToArabicConverter x:Key="AccountTypeToArabicConverter" />
+            <conv:LevelToIndentConverter x:Key="LevelToIndentConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -8,12 +8,16 @@ using System.Windows.Input;
 using MarcoERP.Application.DTOs.Accounting;
 using MarcoERP.Application.DTOs.Sales;
 using MarcoERP.Application.DTOs.Treasury;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Accounting;
 using MarcoERP.Application.Interfaces.Sales;
 using MarcoERP.Application.Interfaces.Treasury;
+using MarcoERP.Application.DTOs.Printing;
+using MarcoERP.Application.Interfaces.Printing;
 using MarcoERP.Domain.Exceptions;
 using MarcoERP.WpfUI.Common;
 using MarcoERP.WpfUI.Navigation;
+using MarcoERP.WpfUI.Services;
 
 namespace MarcoERP.WpfUI.ViewModels.Treasury
 {
@@ -27,6 +31,10 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         private readonly ICashboxService _cashboxService;
         private readonly IAccountService _accountService;
         private readonly ICustomerService _customerService;
+        private readonly IDateTimeProvider _dateTime;
+        private readonly IDialogService _dialog;
+        private readonly IInvoicePdfPreviewService _previewService;
+        private readonly IDocumentHtmlBuilder _htmlBuilder;
 
         private int? _linkedSalesInvoiceId;
 
@@ -82,7 +90,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         private string _formNumber;
         public string FormNumber { get => _formNumber; set => SetProperty(ref _formNumber, value); }
 
-        private DateTime _formDate = DateTime.Today;
+        private DateTime _formDate;
         public DateTime FormDate { get => _formDate; set => SetProperty(ref _formDate, value); }
 
         private int? _formCashboxId;
@@ -133,17 +141,26 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         public ICommand CancelEditCommand { get; }
         public ICommand EditSelectedCommand { get; }
         public ICommand JumpToReceiptCommand { get; }
+        public ICommand PrintCommand { get; }
 
         public CashReceiptViewModel(
             ICashReceiptService receiptService,
             ICashboxService cashboxService,
             IAccountService accountService,
-            ICustomerService customerService)
+            ICustomerService customerService,
+            IDateTimeProvider dateTime,
+            IDialogService dialog,
+            IInvoicePdfPreviewService previewService,
+            IDocumentHtmlBuilder htmlBuilder)
         {
             _receiptService = receiptService ?? throw new ArgumentNullException(nameof(receiptService));
             _cashboxService = cashboxService ?? throw new ArgumentNullException(nameof(cashboxService));
             _accountService = accountService ?? throw new ArgumentNullException(nameof(accountService));
             _customerService = customerService ?? throw new ArgumentNullException(nameof(customerService));
+            _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
+            _previewService = previewService ?? throw new ArgumentNullException(nameof(previewService));
+            _htmlBuilder = htmlBuilder ?? throw new ArgumentNullException(nameof(htmlBuilder));
 
             LoadCommand = new AsyncRelayCommand(LoadReceiptsAsync);
             NewCommand = new AsyncRelayCommand(PrepareNewAsync);
@@ -154,6 +171,43 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
             CancelEditCommand = new RelayCommand(CancelEditing);
             EditSelectedCommand = new RelayCommand(_ => EditSelected());
             JumpToReceiptCommand = new AsyncRelayCommand(JumpToReceiptAsync);
+            PrintCommand = new AsyncRelayCommand(PrintAsync);
+        }
+
+        private async Task PrintAsync(object _)
+        {
+            if (CurrentReceipt == null) return;
+            IsBusy = true;
+            ClearError();
+            try
+            {
+                var data = new DocumentData
+                {
+                    Title = $"سند قبض رقم {CurrentReceipt.ReceiptNumber}",
+                    DocumentType = PrintableDocumentType.CashReceipt,
+                    MetaFields = new()
+                    {
+                        new("رقم السند", CurrentReceipt.ReceiptNumber),
+                        new("التاريخ", CurrentReceipt.ReceiptDate.ToString("yyyy-MM-dd")),
+                        new("العميل", CurrentReceipt.CustomerName ?? "—"),
+                        new("الخزنة", CurrentReceipt.CashboxName ?? "—"),
+                        new("الحساب", CurrentReceipt.AccountName ?? "—"),
+                        new("الحالة", CurrentReceipt.Status, true)
+                    },
+                    SummaryFields = new()
+                    {
+                        new("المبلغ", CurrentReceipt.Amount.ToString("N2"), true)
+                    },
+                    Notes = CurrentReceipt.Notes ?? CurrentReceipt.Description
+                };
+                var html = await _htmlBuilder.BuildAsync(data);
+                await _previewService.ShowHtmlPreviewAsync(new InvoicePdfPreviewRequest
+                {
+                    Title = data.Title, FilePrefix = "cash_receipt", HtmlContent = html
+                });
+            }
+            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("الطباعة", ex); }
+            finally { IsBusy = false; }
         }
 
         public async Task OnNavigatedToAsync(object parameter)
@@ -180,7 +234,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
                 }
                 catch { FormNumber = ""; }
 
-                FormDate = p.Date ?? DateTime.Today;
+                FormDate = p.Date ?? _dateTime.Today;
                 FormCustomerId = p.CustomerId;
                 FormAmount = p.Amount ?? 0;
                 FormDescription = p.Description ?? "";
@@ -273,7 +327,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
             }
             catch { FormNumber = ""; }
 
-            FormDate = DateTime.Today; FormCashboxId = null; FormAccountId = null;
+            FormDate = _dateTime.Today; FormCashboxId = null; FormAccountId = null;
             FormCustomerId = null; FormAmount = 0; FormDescription = ""; FormNotes = "";
 
             // Default to first cashbox
@@ -336,10 +390,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         private async Task PostAsync()
         {
             if (CurrentReceipt == null) return;
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل تريد ترحيل سند القبض «{CurrentReceipt.ReceiptNumber}»؟\nبعد الترحيل لا يمكن التعديل.",
-                "تأكيد الترحيل", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الترحيل")) return;
             IsBusy = true; ClearError();
             try
             {
@@ -355,10 +408,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         private async Task CancelReceiptAsync()
         {
             if (CurrentReceipt == null) return;
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل تريد إلغاء سند القبض «{CurrentReceipt.ReceiptNumber}»؟",
-                "تأكيد الإلغاء", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الإلغاء")) return;
             IsBusy = true; ClearError();
             try
             {
@@ -373,10 +425,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         private async Task DeleteDraftAsync()
         {
             if (CurrentReceipt == null) return;
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل تريد حذف مسودة سند القبض «{CurrentReceipt.ReceiptNumber}»؟",
-                "تأكيد الحذف", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الحذف")) return;
             IsBusy = true; ClearError();
             try
             {
@@ -399,7 +450,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         {
             if (IsEditing)
             {
-                MessageBox.Show("يرجى إنهاء التعديل قبل التنقل.", "تنقل السندات", MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialog.ShowInfo("يرجى إنهاء التعديل قبل التنقل.", "تنقل السندات");
                 return;
             }
 
@@ -411,7 +462,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
 
             if (!_receiptNumberToId.TryGetValue(JumpReceiptNumber.Trim(), out var id))
             {
-                MessageBox.Show("رقم السند غير موجود.", "تنقل السندات", MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialog.ShowInfo("رقم السند غير موجود.", "تنقل السندات");
                 return;
             }
 
@@ -441,7 +492,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
 
         private void ClearForm()
         {
-            FormNumber = ""; FormDate = DateTime.Today; FormCashboxId = null;
+            FormNumber = ""; FormDate = _dateTime.Today; FormCashboxId = null;
             FormAccountId = null; FormCustomerId = null; FormAmount = 0;
             FormDescription = ""; FormNotes = "";
             _linkedSalesInvoiceId = null;

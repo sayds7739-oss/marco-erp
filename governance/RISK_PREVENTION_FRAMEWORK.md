@@ -275,14 +275,18 @@ If any answer is "wrong," refactor before proceeding.
 
 ### 6.1 Periodic Health Checks
 
-| Check                            | Frequency     | Owner       |
-|----------------------------------|---------------|-------------|
-| Layer boundary verification      | Per commit    | Developer   |
-| Circular dependency check        | Per build     | Build system|
-| Code complexity analysis         | Monthly       | Tech Lead   |
-| Governance document review       | Per phase     | Team        |
-| Test coverage review             | Per phase     | Tech Lead   |
-| Unused code/dead code removal    | Quarterly     | Developer   |
+Several of these checks are now automated via `GovernanceIntegrityCheckService` (in Persistence layer) and surfaced through `GovernanceConsoleViewModel` (in WpfUI). The table below defines the full set of required checks, including those already implemented and those still manual.
+
+| Check                            | Frequency     | Owner       | Status |
+|----------------------------------|---------------|-------------|--------|
+| Layer boundary verification      | Per commit    | Developer   | Manual |
+| Circular dependency check        | Per build     | Build system| Manual |
+| Code complexity analysis         | Monthly       | Tech Lead   | Manual |
+| Governance document review       | Per phase     | Team        | Manual |
+| Test coverage review             | Per phase     | Tech Lead   | Manual |
+| Unused code/dead code removal    | Quarterly     | Developer   | Manual |
+| Structural integrity checks      | On demand     | GovernanceIntegrityCheckService | Automated |
+| Governance console dashboard     | On demand     | GovernanceConsoleViewModel | Automated |
 
 ### 6.2 Red Flags That Require Immediate Action
 
@@ -333,4 +337,5 @@ If any answer is "wrong," refactor before proceeding.
 
 | Version | Date       | Change Description                    |
 |---------|------------|---------------------------------------|
-| 1.0     | 2026-02-08 | Initial Phase 1 governance release    |
+| 1.0     | 2026-02-08 | Initial governance release            |
+| 2.0     | 2026-03-06 | Updated phase references to current project state (Phase 8+); added GovernanceIntegrityCheckService and GovernanceConsoleViewModel references to structural health monitoring |

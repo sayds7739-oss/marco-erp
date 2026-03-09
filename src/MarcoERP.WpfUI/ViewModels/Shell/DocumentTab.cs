@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -47,6 +48,7 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
                     _title = value;
                     OnPropertyChanged(nameof(Title));
                     OnPropertyChanged(nameof(DisplayTitle));
+                    OnPropertyChanged(nameof(SafeTitle));
                 }
             }
         }
@@ -69,6 +71,24 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
 
         /// <summary>Display title with dirty indicator when needed.</summary>
         public string DisplayTitle => IsTabDirty ? $"{Title} *" : Title;
+
+        /// <summary>Guaranteed non-empty title for tab header rendering.</summary>
+        public string SafeTitle
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(DisplayTitle))
+                    return DisplayTitle;
+
+                if (!string.IsNullOrWhiteSpace(Title))
+                    return Title;
+
+                if (!string.IsNullOrWhiteSpace(ViewKey))
+                    return ViewKey;
+
+                return "صفحة";
+            }
+        }
 
         /// <summary>View instance hosted by the tab.</summary>
         public UserControl View { get; }
@@ -93,7 +113,10 @@ namespace MarcoERP.WpfUI.ViewModels.Shell
             private set
             {
                 if (SetProperty(ref _isTabDirty, value))
+                {
                     OnPropertyChanged(nameof(DisplayTitle));
+                    OnPropertyChanged(nameof(SafeTitle));
+                }
             }
         }
 

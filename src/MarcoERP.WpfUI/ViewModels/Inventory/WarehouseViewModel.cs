@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Accounting;
 using MarcoERP.Application.DTOs.Inventory;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Accounting;
 using MarcoERP.Application.Interfaces.Inventory;
 
@@ -17,11 +18,13 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
     {
         private readonly IWarehouseService _warehouseService;
         private readonly IAccountService _accountService;
+        private readonly IDialogService _dialog;
 
-        public WarehouseViewModel(IWarehouseService warehouseService, IAccountService accountService)
+        public WarehouseViewModel(IWarehouseService warehouseService, IAccountService accountService, IDialogService dialog)
         {
             _warehouseService = warehouseService ?? throw new ArgumentNullException(nameof(warehouseService));
             _accountService = accountService ?? throw new ArgumentNullException(nameof(accountService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllWarehouses = new ObservableCollection<WarehouseDto>();
             Accounts = new ObservableCollection<AccountDto>();
@@ -295,11 +298,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         {
             if (SelectedItem == null) return;
 
-            var confirm = MessageBox.Show(
-                $"هل أنت متأكد من تعطيل المخزن «{SelectedItem.NameAr}»؟",
-                "تأكيد التعطيل",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"هل أنت متأكد من تعطيل المخزن «{SelectedItem.NameAr}»؟", "تأكيد التعطيل")) return;
 
             IsBusy = true;
             ClearError();

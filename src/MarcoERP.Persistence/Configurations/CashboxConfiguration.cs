@@ -10,12 +10,14 @@ namespace MarcoERP.Persistence.Configurations
         {
             builder.ToTable("Cashboxes");
 
+            // NOTE: CK_Cashboxes_Balance_NonNegative removed — domain-level protection
+            // via Cashbox.DecreaseBalance() handles negative balance prevention,
+            // while AllowNegativeCash feature toggle uses DecreaseBalanceAllowNegative().
+
             builder.HasKey(c => c.Id);
             builder.Property(c => c.Id).UseIdentityColumn();
 
-            builder.Property(c => c.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(c => c.Code)
                 .IsRequired()
@@ -36,6 +38,12 @@ namespace MarcoERP.Persistence.Configurations
                 .IsRequired()
                 .HasDefaultValue(false);
 
+            // ── Balance ────────────────────────────────────────────
+            builder.Property(c => c.Balance)
+                .IsRequired()
+                .HasPrecision(18, 4)
+                .HasDefaultValue(0m);
+
             // ── Audit Fields ────────────────────────────────────
             builder.Property(c => c.CreatedAt).IsRequired();
             builder.Property(c => c.CreatedBy).IsRequired().HasMaxLength(100);
@@ -52,7 +60,10 @@ namespace MarcoERP.Persistence.Configurations
                 .HasMaxLength(100);
 
             // ── Optional relationship to GL Account ─────────────
-            builder.Property(c => c.AccountId);
+            builder.HasOne(c => c.Account).WithMany()
+                .HasForeignKey(c => c.AccountId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
 
             // ── Indexes ─────────────────────────────────────────
             builder.HasIndex(c => c.Code)

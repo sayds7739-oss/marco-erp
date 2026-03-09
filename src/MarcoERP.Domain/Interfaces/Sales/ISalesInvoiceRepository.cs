@@ -11,8 +11,11 @@ namespace MarcoERP.Domain.Interfaces.Sales
     /// </summary>
     public interface ISalesInvoiceRepository : IRepository<SalesInvoice>
     {
-        /// <summary>Gets invoice with all lines eagerly loaded.</summary>
+        /// <summary>Gets invoice with all lines eagerly loaded (no tracking — read-only).</summary>
         Task<SalesInvoice> GetWithLinesAsync(int id, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets invoice with all lines eagerly loaded WITH change tracking (for updates).</summary>
+        Task<SalesInvoice> GetWithLinesTrackedAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>Gets invoice by number.</summary>
         Task<SalesInvoice> GetByNumberAsync(string invoiceNumber, CancellationToken cancellationToken = default);

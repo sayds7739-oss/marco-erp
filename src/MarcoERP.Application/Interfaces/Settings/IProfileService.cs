@@ -22,6 +22,7 @@ namespace MarcoERP.Application.Interfaces.Settings
         /// Applies a profile by name. Enables features mapped to the profile,
         /// disables features not mapped to it.
         /// </summary>
+        [RequiresPermission(PermissionKeys.SettingsManage)]
         Task<ServiceResult> ApplyProfileAsync(string profileName, CancellationToken ct = default);
 
         /// <summary>Gets the feature keys that are enabled for a given profile.</summary>

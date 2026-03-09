@@ -24,15 +24,19 @@ namespace MarcoERP.Application.Interfaces.Inventory
         Task<ServiceResult<IReadOnlyList<CategoryDto>>> GetChildrenAsync(int parentId, CancellationToken ct = default);
 
         /// <summary>إنشاء تصنيف جديد — Creates a new category.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<CategoryDto>> CreateAsync(CreateCategoryDto dto, CancellationToken ct = default);
 
         /// <summary>تعديل تصنيف — Updates an existing category.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<CategoryDto>> UpdateAsync(UpdateCategoryDto dto, CancellationToken ct = default);
 
         /// <summary>تفعيل تصنيف — Activates a category.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult> ActivateAsync(int id, CancellationToken ct = default);
 
         /// <summary>تعطيل تصنيف — Deactivates a category.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct = default);
     }
 }

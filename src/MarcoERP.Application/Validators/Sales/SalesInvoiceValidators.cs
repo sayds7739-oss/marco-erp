@@ -47,6 +47,17 @@ namespace MarcoERP.Application.Validators.Sales
 
             RuleFor(x => x.Notes)
                 .MaximumLength(1000).WithMessage("الملاحظات لا تتجاوز 1000 حرف.");
+
+            RuleFor(x => x.HeaderDiscountPercent)
+                .InclusiveBetween(0, 100).WithMessage("نسبة خصم الفاتورة يجب أن تكون بين 0 و 100.");
+
+            RuleFor(x => x.HeaderDiscountAmount)
+                .GreaterThanOrEqualTo(0).WithMessage("مبلغ خصم الفاتورة لا يمكن أن يكون سالباً.")
+                .PrecisionScale(18, 2, false).WithMessage("مبلغ الخصم يجب أن يكون برقمين عشريين كحد أقصى.");
+
+            RuleFor(x => x.DeliveryFee)
+                .GreaterThanOrEqualTo(0).WithMessage("رسوم التوصيل لا يمكن أن تكون سالبة.")
+                .PrecisionScale(18, 2, false).WithMessage("رسوم التوصيل يجب أن تكون برقمين عشريين كحد أقصى.");
         }
     }
 
@@ -90,6 +101,17 @@ namespace MarcoERP.Application.Validators.Sales
 
             RuleFor(x => x.Notes)
                 .MaximumLength(1000).WithMessage("الملاحظات لا تتجاوز 1000 حرف.");
+
+            RuleFor(x => x.HeaderDiscountPercent)
+                .InclusiveBetween(0, 100).WithMessage("نسبة خصم الفاتورة يجب أن تكون بين 0 و 100.");
+
+            RuleFor(x => x.HeaderDiscountAmount)
+                .GreaterThanOrEqualTo(0).WithMessage("مبلغ خصم الفاتورة لا يمكن أن يكون سالباً.")
+                .PrecisionScale(18, 2, false).WithMessage("مبلغ الخصم يجب أن يكون برقمين عشريين كحد أقصى.");
+
+            RuleFor(x => x.DeliveryFee)
+                .GreaterThanOrEqualTo(0).WithMessage("رسوم التوصيل لا يمكن أن تكون سالبة.")
+                .PrecisionScale(18, 2, false).WithMessage("رسوم التوصيل يجب أن تكون برقمين عشريين كحد أقصى.");
         }
     }
 
@@ -108,7 +130,8 @@ namespace MarcoERP.Application.Validators.Sales
                 .GreaterThan(0).WithMessage("الكمية يجب أن تكون أكبر من صفر.");
 
             RuleFor(x => x.UnitPrice)
-                .GreaterThanOrEqualTo(0).WithMessage("سعر الوحدة لا يمكن أن يكون سالباً.");
+                .GreaterThanOrEqualTo(0).WithMessage("سعر الوحدة لا يمكن أن يكون سالباً.")
+                .PrecisionScale(18, 2, false).WithMessage("سعر الوحدة يجب أن يكون برقمين عشريين كحد أقصى.");
 
             RuleFor(x => x.DiscountPercent)
                 .InclusiveBetween(0, 100).WithMessage("نسبة الخصم يجب أن تكون بين 0 و 100.");

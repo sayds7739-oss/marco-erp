@@ -14,6 +14,8 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Purchases;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Purchases;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Purchases
 {
@@ -30,6 +32,8 @@ namespace MarcoERP.Application.Services.Purchases
         private readonly IDateTimeProvider _dateTime;
         private readonly IValidator<CreateSupplierDto> _createValidator;
         private readonly IValidator<UpdateSupplierDto> _updateValidator;
+        private readonly ILogger<SupplierService> _logger;
+        private readonly IFeatureService _featureService;
 
         private const string SupplierNotFoundMessage = "المورد غير موجود.";
 
@@ -40,7 +44,9 @@ namespace MarcoERP.Application.Services.Purchases
             ICurrentUserService currentUser,
             IDateTimeProvider dateTime,
             IValidator<CreateSupplierDto> createValidator,
-            IValidator<UpdateSupplierDto> updateValidator)
+            IValidator<UpdateSupplierDto> updateValidator,
+            ILogger<SupplierService> logger = null,
+            IFeatureService featureService = null)
         {
             _supplierRepo = supplierRepo ?? throw new ArgumentNullException(nameof(supplierRepo));
             _accountRepo = accountRepo ?? throw new ArgumentNullException(nameof(accountRepo));
@@ -49,6 +55,8 @@ namespace MarcoERP.Application.Services.Purchases
             _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<SupplierService>.Instance;
+            _featureService = featureService;
         }
 
         public async Task<ServiceResult<IReadOnlyList<SupplierDto>>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -81,8 +89,14 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult<SupplierDto>> CreateAsync(CreateSupplierDto dto, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check<SupplierDto>(_currentUser, PermissionKeys.PurchasesCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "Supplier", 0);
+
+            // Feature Guard — block operation if Purchases module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<SupplierDto>(_featureService, FeatureKeys.Purchases, cancellationToken);
+                if (guard != null) return guard;
+            }
 
             // 1. Validate DTO
             var vr = await _createValidator.ValidateAsync(dto, cancellationToken);
@@ -107,6 +121,18 @@ namespace MarcoERP.Application.Services.Purchases
                     Address = dto.Address,
                     City = dto.City,
                     TaxNumber = dto.TaxNumber,
+                    Email = dto.Email,
+                    CommercialRegister = dto.CommercialRegister,
+                    Country = dto.Country,
+                    PostalCode = dto.PostalCode,
+                    ContactPerson = dto.ContactPerson,
+                    Website = dto.Website,
+                    CreditLimit = dto.CreditLimit,
+                    DaysAllowed = dto.DaysAllowed,
+                    BankName = dto.BankName,
+                    BankAccountName = dto.BankAccountName,
+                    BankAccountNumber = dto.BankAccountNumber,
+                    IBAN = dto.IBAN,
                     PreviousBalance = dto.PreviousBalance,
                     Notes = dto.Notes
                 });
@@ -133,9 +159,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult<SupplierDto>> UpdateAsync(UpdateSupplierDto dto, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check<SupplierDto>(_currentUser, PermissionKeys.PurchasesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "Supplier", dto.Id);
             // 1. Validate DTO
             var vr = await _updateValidator.ValidateAsync(dto, cancellationToken);
             if (!vr.IsValid)
@@ -159,6 +183,18 @@ namespace MarcoERP.Application.Services.Purchases
                     Address = dto.Address,
                     City = dto.City,
                     TaxNumber = dto.TaxNumber,
+                    Email = dto.Email,
+                    CommercialRegister = dto.CommercialRegister,
+                    Country = dto.Country,
+                    PostalCode = dto.PostalCode,
+                    ContactPerson = dto.ContactPerson,
+                    Website = dto.Website,
+                    CreditLimit = dto.CreditLimit,
+                    DaysAllowed = dto.DaysAllowed,
+                    BankName = dto.BankName,
+                    BankAccountName = dto.BankAccountName,
+                    BankAccountNumber = dto.BankAccountNumber,
+                    IBAN = dto.IBAN,
                     Notes = dto.Notes
                 });
 
@@ -175,9 +211,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.PurchasesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "Supplier", id);
             var entity = await _supplierRepo.GetByIdAsync(id, cancellationToken);
             if (entity == null)
                 return ServiceResult.Failure(SupplierNotFoundMessage);
@@ -191,9 +225,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.PurchasesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "Supplier", id);
             var entity = await _supplierRepo.GetByIdAsync(id, cancellationToken);
             if (entity == null)
                 return ServiceResult.Failure(SupplierNotFoundMessage);
@@ -207,9 +239,7 @@ namespace MarcoERP.Application.Services.Purchases
 
         public async Task<ServiceResult> DeleteAsync(int id, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.PurchasesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteAsync", "Supplier", id);
             var entity = await _supplierRepo.GetByIdAsync(id, cancellationToken);
             if (entity == null)
                 return ServiceResult.Failure(SupplierNotFoundMessage);

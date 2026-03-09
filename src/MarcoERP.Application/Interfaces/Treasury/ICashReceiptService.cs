@@ -22,18 +22,23 @@ namespace MarcoERP.Application.Interfaces.Treasury
         Task<ServiceResult<string>> GetNextNumberAsync(CancellationToken ct = default);
 
         /// <summary>إنشاء سند قبض جديد — Creates a new draft cash receipt.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult<CashReceiptDto>> CreateAsync(CreateCashReceiptDto dto, CancellationToken ct = default);
 
         /// <summary>تعديل سند قبض — Updates a draft cash receipt.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult<CashReceiptDto>> UpdateAsync(UpdateCashReceiptDto dto, CancellationToken ct = default);
 
         /// <summary>ترحيل سند قبض — Posts a cash receipt (generates auto-journal).</summary>
+        [RequiresPermission(PermissionKeys.TreasuryPost)]
         Task<ServiceResult<CashReceiptDto>> PostAsync(int id, CancellationToken ct = default);
 
         /// <summary>إلغاء سند قبض مرحّل — Cancels a posted cash receipt.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryPost)]
         Task<ServiceResult> CancelAsync(int id, CancellationToken ct = default);
 
         /// <summary>حذف مسودة سند قبض — Deletes a draft cash receipt.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult> DeleteDraftAsync(int id, CancellationToken ct = default);
     }
 }

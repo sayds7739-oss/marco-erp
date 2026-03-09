@@ -14,6 +14,7 @@ namespace MarcoERP.Application.Interfaces.Accounting
         /// Generates the closing journal entry for the specified fiscal year.
         /// Transfers all temporary account balances to Retained Earnings (3121).
         /// </summary>
+        [RequiresPermission(PermissionKeys.FiscalYearManage)]
         Task<ServiceResult> GenerateClosingEntryAsync(int fiscalYearId, CancellationToken ct = default);
     }
 }

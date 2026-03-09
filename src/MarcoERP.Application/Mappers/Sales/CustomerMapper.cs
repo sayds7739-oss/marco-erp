@@ -25,6 +25,14 @@ namespace MarcoERP.Application.Mappers.Sales
                 Address = entity.Address,
                 City = entity.City,
                 TaxNumber = entity.TaxNumber,
+                Email = entity.Email,
+                CustomerType = entity.CustomerType,
+                CommercialRegister = entity.CommercialRegister,
+                Country = entity.Country,
+                PostalCode = entity.PostalCode,
+                ContactPerson = entity.ContactPerson,
+                Website = entity.Website,
+                DefaultDiscountPercent = entity.DefaultDiscountPercent,
                 PreviousBalance = entity.PreviousBalance,
                 CreditLimit = entity.CreditLimit,
                 DaysAllowed = entity.DaysAllowed,
@@ -48,6 +56,7 @@ namespace MarcoERP.Application.Mappers.Sales
                 Code = entity.Code,
                 NameAr = entity.NameAr,
                 Phone = entity.Phone,
+                CustomerType = entity.CustomerType,
                 IsActive = entity.IsActive
             };
         }

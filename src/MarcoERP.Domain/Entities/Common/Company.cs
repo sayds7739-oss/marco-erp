@@ -1,4 +1,5 @@
 using System;
+using MarcoERP.Domain.Exceptions;
 
 namespace MarcoERP.Domain.Entities.Common
 {
@@ -20,10 +21,10 @@ namespace MarcoERP.Domain.Entities.Common
         public Company(string code, string nameAr, string nameEn = null)
         {
             if (string.IsNullOrWhiteSpace(code))
-                throw new InvalidOperationException("كود الشركة مطلوب.");
+                throw new CommonDomainException("كود الشركة مطلوب.");
 
             if (string.IsNullOrWhiteSpace(nameAr))
-                throw new InvalidOperationException("اسم الشركة بالعربي مطلوب.");
+                throw new CommonDomainException("اسم الشركة بالعربي مطلوب.");
 
             Code = code.Trim();
             NameAr = nameAr.Trim();
@@ -51,7 +52,7 @@ namespace MarcoERP.Domain.Entities.Common
         public void Update(string nameAr, string nameEn)
         {
             if (string.IsNullOrWhiteSpace(nameAr))
-                throw new InvalidOperationException("اسم الشركة بالعربي مطلوب.");
+                throw new CommonDomainException("اسم الشركة بالعربي مطلوب.");
 
             NameAr = nameAr.Trim();
             NameEn = nameEn?.Trim();

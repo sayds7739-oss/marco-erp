@@ -13,9 +13,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(p => p.Id);
             builder.Property(p => p.Id).UseIdentityColumn();
 
-            builder.Property(p => p.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             // ── Properties ──────────────────────────────────────
             builder.Property(p => p.Code)
@@ -38,6 +36,15 @@ namespace MarcoERP.Persistence.Configurations
             builder.Property(p => p.WeightedAverageCost)
                 .HasPrecision(18, 4);
 
+            builder.Property(p => p.WholesalePrice)
+                .HasPrecision(18, 4);
+
+            builder.Property(p => p.RetailPrice)
+                .HasPrecision(18, 4);
+
+            builder.Property(p => p.MaximumStock)
+                .HasPrecision(18, 4);
+
             builder.Property(p => p.MinimumStock)
                 .HasPrecision(18, 4);
 
@@ -51,6 +58,9 @@ namespace MarcoERP.Persistence.Configurations
                 .HasMaxLength(50);
 
             builder.Property(p => p.Description)
+                .HasMaxLength(500);
+
+            builder.Property(p => p.ImagePath)
                 .HasMaxLength(500);
 
             builder.Property(p => p.Status)
@@ -98,7 +108,7 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(p => p.Barcode)
                 .HasDatabaseName("IX_Products_Barcode")
-                .HasFilter("[Barcode] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("Barcode"));
 
             builder.HasIndex(p => p.CategoryId)
                 .HasDatabaseName("IX_Products_CategoryId");
@@ -111,7 +121,7 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(p => p.DefaultSupplierId)
                 .HasDatabaseName("IX_Products_DefaultSupplierId")
-                .HasFilter("[DefaultSupplierId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("DefaultSupplierId"));
         }
     }
 }

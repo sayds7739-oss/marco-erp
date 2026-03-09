@@ -6,8 +6,13 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Accounting;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Accounting;
+using MarcoERP.Application.DTOs.Printing;
+using MarcoERP.Application.Interfaces.Printing;
 using MarcoERP.Domain.Enums;
+using MarcoERP.WpfUI.Common;
+using MarcoERP.WpfUI.Services;
 
 namespace MarcoERP.WpfUI.ViewModels.Accounting
 {
@@ -19,12 +24,21 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
     {
         private readonly IJournalEntryService _journalService;
         private readonly IAccountService _accountService;
+        private readonly IDialogService _dialog;
+        private readonly IInvoicePdfPreviewService _previewService;
+        private readonly IDocumentHtmlBuilder _htmlBuilder;
         public JournalEntryViewModel(
             IJournalEntryService journalService,
-            IAccountService accountService)
+            IAccountService accountService,
+            IDialogService dialog,
+            IInvoicePdfPreviewService previewService,
+            IDocumentHtmlBuilder htmlBuilder)
         {
             _journalService = journalService ?? throw new ArgumentNullException(nameof(journalService));
             _accountService = accountService ?? throw new ArgumentNullException(nameof(accountService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
+            _previewService = previewService ?? throw new ArgumentNullException(nameof(previewService));
+            _htmlBuilder = htmlBuilder ?? throw new ArgumentNullException(nameof(htmlBuilder));
 
             JournalEntries = new ObservableCollection<JournalEntryDto>();
             PostableAccounts = new ObservableCollection<AccountDto>();
@@ -39,6 +53,7 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
             ReverseCommand = new AsyncRelayCommand(ReverseEntryAsync, () => CanReverse);
             DeleteDraftCommand = new AsyncRelayCommand(DeleteDraftAsync, () => CanDeleteDraft);
             CancelCommand = new RelayCommand(CancelEditing);
+            PrintCommand = new AsyncRelayCommand(PrintAsync);
 
             // Default filter
             FilterStatus = null; // All
@@ -169,6 +184,7 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         public ICommand ReverseCommand { get; }
         public ICommand DeleteDraftCommand { get; }
         public ICommand CancelCommand { get; }
+        public ICommand PrintCommand { get; }
 
         // ── Can Execute ─────────────────────────────────────────
 
@@ -185,6 +201,54 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
 
         public bool CanDeleteDraft => SelectedEntry != null
                                    && SelectedEntry.Status == JournalEntryStatus.Draft;
+
+        // ── Print ─────────────────────────────────────────────────
+
+        private async Task PrintAsync(object _)
+        {
+            if (SelectedEntry == null) return;
+            IsBusy = true;
+            ClearError();
+            try
+            {
+                var data = new DocumentData
+                {
+                    Title = $"قيد يومية رقم {SelectedEntry.JournalNumber}",
+                    DocumentType = PrintableDocumentType.JournalEntry,
+                    MetaFields = new()
+                    {
+                        new("رقم القيد", SelectedEntry.JournalNumber),
+                        new("التاريخ", SelectedEntry.JournalDate.ToString("yyyy-MM-dd")),
+                        new("الوصف", SelectedEntry.Description ?? "—"),
+                        new("المرجع", SelectedEntry.ReferenceNumber ?? "—"),
+                        new("الحالة", SelectedEntry.StatusName, true),
+                        new("المصدر", SelectedEntry.SourceTypeName ?? "—")
+                    },
+                    Columns = new()
+                    {
+                        new("#"), new("كود الحساب"), new("اسم الحساب"),
+                        new("مدين", true), new("دائن", true), new("البيان")
+                    },
+                    Notes = SelectedEntry.Description
+                };
+                int row = 1;
+                foreach (var l in SelectedEntry.Lines)
+                    data.Rows.Add(new() { (row++).ToString(), l.AccountCode, l.AccountNameAr,
+                        l.DebitAmount.ToString("N2"), l.CreditAmount.ToString("N2"), l.Description ?? "" });
+                data.SummaryFields = new()
+                {
+                    new("إجمالي المدين", SelectedEntry.TotalDebit.ToString("N2"), true),
+                    new("إجمالي الدائن", SelectedEntry.TotalCredit.ToString("N2"), true)
+                };
+                var html = await _htmlBuilder.BuildAsync(data);
+                await _previewService.ShowHtmlPreviewAsync(new InvoicePdfPreviewRequest
+                {
+                    Title = data.Title, FilePrefix = "journal_entry", HtmlContent = html
+                });
+            }
+            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("الطباعة", ex); }
+            finally { IsBusy = false; }
+        }
 
         // ── Load ─────────────────────────────────────────────────
 
@@ -302,6 +366,7 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
                 else
                 {
                     ErrorMessage = result.ErrorMessage;
+                    await RefreshAfterConcurrencyFailureAsync(result.ErrorMessage, "تعارض في التزامن");
                 }
             }
             catch (Exception ex)
@@ -320,11 +385,9 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         {
             if (SelectedEntry == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل تريد ترحيل القيد «{SelectedEntry.DraftCode}»؟\nبعد الترحيل لا يمكن التعديل.",
-                "تأكيد الترحيل",
-                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الترحيل")) return;
 
             IsBusy = true;
             ClearError();
@@ -339,6 +402,7 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
                 else
                 {
                     ErrorMessage = result.ErrorMessage;
+                    await RefreshAfterConcurrencyFailureAsync(result.ErrorMessage, "تعارض في التزامن");
                 }
             }
             catch (Exception ex)
@@ -357,11 +421,9 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         {
             if (SelectedEntry == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل تريد عكس القيد «{SelectedEntry.JournalNumber}»؟\nسيتم إنشاء قيد عكسي.",
-                "تأكيد العكس",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد العكس")) return;
 
             IsBusy = true;
             ClearError();
@@ -383,6 +445,7 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
                 else
                 {
                     ErrorMessage = result.ErrorMessage;
+                    await RefreshAfterConcurrencyFailureAsync(result.ErrorMessage, "تعارض في التزامن");
                 }
             }
             catch (Exception ex)
@@ -401,11 +464,9 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         {
             if (SelectedEntry == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل تريد حذف المسودة «{SelectedEntry.DraftCode}»؟",
-                "تأكيد الحذف",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الحذف")) return;
 
             IsBusy = true;
             ClearError();
@@ -420,6 +481,7 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
                 else
                 {
                     ErrorMessage = result.ErrorMessage;
+                    await RefreshAfterConcurrencyFailureAsync(result.ErrorMessage, "تعارض في التزامن");
                 }
             }
             catch (Exception ex)
@@ -443,6 +505,20 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         }
 
         // ── Helpers ─────────────────────────────────────────────
+
+        private async Task RefreshAfterConcurrencyFailureAsync(string errorMessage, string title)
+        {
+            if (string.IsNullOrWhiteSpace(errorMessage)
+                || !errorMessage.Contains("تعارض تزامن", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            if (_dialog.Confirm("تم تعديل هذا القيد بواسطة مستخدم آخر. هل تريد إعادة تحميل البيانات الآن؟", title))
+            {
+                await LoadJournalEntriesAsync();
+            }
+        }
 
         private void PopulateFormFromEntry(JournalEntryDto entry)
         {

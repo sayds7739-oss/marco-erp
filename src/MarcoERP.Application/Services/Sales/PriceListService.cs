@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using FluentValidation;
 using MarcoERP.Application.Common;
 using MarcoERP.Application.DTOs.Sales;
 using MarcoERP.Application.Interfaces;
@@ -11,7 +12,9 @@ using MarcoERP.Domain.Entities.Sales;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Sales;
+using MarcoERP.Application.Interfaces.Settings;
 using static MarcoERP.Domain.Entities.Sales.PriceList;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Sales
 {
@@ -26,19 +29,31 @@ namespace MarcoERP.Application.Services.Sales
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
         private readonly IDateTimeProvider _dateTime;
+        private readonly ILogger<PriceListService> _logger;
+        private readonly IFeatureService _featureService;
+        private readonly IValidator<CreatePriceListDto> _createValidator;
+        private readonly IValidator<UpdatePriceListDto> _updateValidator;
 
         public PriceListService(
             IPriceListRepository priceListRepo,
             ICustomerRepository customerRepo,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
-            IDateTimeProvider dateTime)
+            IDateTimeProvider dateTime,
+            IValidator<CreatePriceListDto> createValidator,
+            IValidator<UpdatePriceListDto> updateValidator,
+            ILogger<PriceListService> logger = null,
+            IFeatureService featureService = null)
         {
             _priceListRepo = priceListRepo ?? throw new ArgumentNullException(nameof(priceListRepo));
             _customerRepo = customerRepo ?? throw new ArgumentNullException(nameof(customerRepo));
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
+            _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PriceListService>.Instance;
+            _featureService = featureService;
         }
 
         public async Task<ServiceResult<IReadOnlyList<PriceListListDto>>> GetAllAsync(CancellationToken ct = default)
@@ -76,11 +91,22 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult<PriceListDto>> CreateAsync(CreatePriceListDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<PriceListDto>(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "PriceList", 0);
+            // Feature Guard — block operation if Sales module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<PriceListDto>(_featureService, FeatureKeys.Sales, ct);
+                if (guard != null) return guard;
+            }
 
             if (string.IsNullOrWhiteSpace(dto.NameAr))
                 return ServiceResult<PriceListDto>.Failure("اسم قائمة الأسعار بالعربي مطلوب.");
+
+            // V-02 fix: Use FluentValidation validator
+            var vr = await _createValidator.ValidateAsync(dto, ct);
+            if (!vr.IsValid)
+                return ServiceResult<PriceListDto>.Failure(
+                    string.Join(" | ", vr.Errors.Select(e => e.ErrorMessage)));
 
             try
             {
@@ -110,14 +136,19 @@ namespace MarcoERP.Application.Services.Sales
             }
             catch (Exception ex)
             {
-                return ServiceResult<PriceListDto>.Failure(ex.Message);
+                _logger.LogError(ex, "CreateAsync failed for PriceList.");
+                return ServiceResult<PriceListDto>.Failure(ErrorSanitizer.SanitizeGeneric(ex, "حفظ قائمة الأسعار"));
             }
         }
 
         public async Task<ServiceResult<PriceListDto>> UpdateAsync(UpdatePriceListDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<PriceListDto>(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "PriceList", dto.Id);
+            // V-03 fix: Use FluentValidation validator
+            var vr = await _updateValidator.ValidateAsync(dto, ct);
+            if (!vr.IsValid)
+                return ServiceResult<PriceListDto>.Failure(
+                    string.Join(" | ", vr.Errors.Select(e => e.ErrorMessage)));
 
             var entity = await _priceListRepo.GetWithTiersAsync(dto.Id, ct);
             if (entity == null)
@@ -150,15 +181,14 @@ namespace MarcoERP.Application.Services.Sales
             }
             catch (Exception ex)
             {
-                return ServiceResult<PriceListDto>.Failure(ex.Message);
+                _logger.LogError(ex, "UpdateAsync failed for PriceList.");
+                return ServiceResult<PriceListDto>.Failure(ErrorSanitizer.SanitizeGeneric(ex, "تحديث قائمة الأسعار"));
             }
         }
 
         public async Task<ServiceResult> DeleteAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteAsync", "PriceList", id);
             var entity = await _priceListRepo.GetByIdAsync(id, ct);
             if (entity == null)
                 return ServiceResult.Failure("قائمة الأسعار غير موجودة.");
@@ -172,6 +202,7 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken ct = default)
         {
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "PriceList", id);
             var entity = await _priceListRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("قائمة الأسعار غير موجودة.");
             entity.Activate();
@@ -182,6 +213,7 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct = default)
         {
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "PriceList", id);
             var entity = await _priceListRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("قائمة الأسعار غير موجودة.");
             entity.Deactivate();

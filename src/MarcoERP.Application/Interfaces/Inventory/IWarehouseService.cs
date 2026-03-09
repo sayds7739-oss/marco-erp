@@ -23,18 +23,23 @@ namespace MarcoERP.Application.Interfaces.Inventory
         Task<ServiceResult<WarehouseDto>> GetByIdAsync(int id, CancellationToken ct = default);
 
         /// <summary>إنشاء مخزن جديد — Creates a new warehouse.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<WarehouseDto>> CreateAsync(CreateWarehouseDto dto, CancellationToken ct = default);
 
         /// <summary>تعديل مخزن — Updates an existing warehouse.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult<WarehouseDto>> UpdateAsync(UpdateWarehouseDto dto, CancellationToken ct = default);
 
         /// <summary>تعيين مخزن كافتراضي — Sets a warehouse as the default.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult> SetDefaultAsync(int id, CancellationToken ct = default);
 
         /// <summary>تفعيل مخزن — Activates a warehouse.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult> ActivateAsync(int id, CancellationToken ct = default);
 
         /// <summary>تعطيل مخزن — Deactivates a warehouse.</summary>
+        [RequiresPermission(PermissionKeys.InventoryManage)]
         Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct = default);
 
         // ── Stock Queries ───────────────────────────────────────

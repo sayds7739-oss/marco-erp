@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -62,9 +63,6 @@ namespace MarcoERP.Application.Services.Settings
 
         public async Task<ServiceResult> ApplyProfileAsync(string profileName, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.SettingsManage);
-            if (authCheck != null) return authCheck;
-
             if (string.IsNullOrWhiteSpace(profileName))
                 return ServiceResult.Failure("اسم البروفايل مطلوب.");
 
@@ -82,39 +80,52 @@ namespace MarcoERP.Application.Services.Settings
             if (allFeaturesResult.IsFailure)
                 return ServiceResult.Failure(allFeaturesResult.ErrorMessage);
 
-            // 4. Toggle features: enable those in profile, disable those not in profile
-            foreach (var feature in allFeaturesResult.Data)
-            {
-                bool shouldBeEnabled = profileFeatureSet.Contains(feature.FeatureKey);
+            // 4–7. Batch all feature changes + profile activation in ONE transaction commit
+            string toggleError = null;
 
-                if (feature.IsEnabled != shouldBeEnabled)
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                // 4. Toggle features: enable those in profile, disable those not in profile
+                foreach (var feature in allFeaturesResult.Data)
                 {
-                    // Safety: do not disable High risk features without explicit inclusion
-                    // High risk features that are currently enabled and NOT in the target profile
-                    // will still be toggled — the FeatureService.ToggleAsync records the change log
-                    var toggleDto = new ToggleFeatureDto
+                    bool shouldBeEnabled = profileFeatureSet.Contains(feature.FeatureKey);
+
+                    if (feature.IsEnabled != shouldBeEnabled)
                     {
-                        FeatureKey = feature.FeatureKey,
-                        IsEnabled = shouldBeEnabled
-                    };
+                        // Safety: do not disable High risk features without explicit inclusion
+                        var toggleDto = new ToggleFeatureDto
+                        {
+                            FeatureKey = feature.FeatureKey,
+                            IsEnabled = shouldBeEnabled
+                        };
 
-                    var toggleResult = await _featureService.ToggleAsync(toggleDto, ct);
-                    if (toggleResult.IsFailure)
-                        return ServiceResult.Failure($"فشل تبديل الميزة '{feature.FeatureKey}': {toggleResult.ErrorMessage}");
+                        var toggleResult = await _featureService.ToggleAsync(toggleDto, ct);
+                        if (toggleResult.IsFailure)
+                        {
+                            toggleError = $"فشل تبديل الميزة '{feature.FeatureKey}': {toggleResult.ErrorMessage}";
+                            return;
+                        }
+                    }
                 }
-            }
 
-            // 5. Deactivate current active profile, activate the new one
-            var currentActive = await _profileRepo.GetActiveProfileAsync(ct);
-            if (currentActive != null && currentActive.Id != targetProfile.Id)
-            {
-                currentActive.Deactivate();
-                _profileRepo.Update(currentActive);
-            }
+                if (toggleError != null) return;
 
-            targetProfile.Activate();
-            _profileRepo.Update(targetProfile);
-            await _unitOfWork.SaveChangesAsync(ct);
+                // 5. Deactivate current active profile, activate the new one
+                var currentActive = await _profileRepo.GetActiveProfileAsync(ct);
+                if (currentActive != null && currentActive.Id != targetProfile.Id)
+                {
+                    currentActive.Deactivate();
+                    _profileRepo.Update(currentActive);
+                }
+
+                targetProfile.Activate();
+                _profileRepo.Update(targetProfile);
+                await _unitOfWork.SaveChangesAsync(ct);
+
+            }, IsolationLevel.ReadCommitted, ct);
+
+            if (toggleError != null)
+                return ServiceResult.Failure(toggleError);
 
             return ServiceResult.Success();
         }

@@ -1,4 +1,8 @@
-# MarcoERP – Agent Control System
+> **SUPERSEDED — See [AGENT_POLICY.md](AGENT_POLICY.md) v2.0 (2026-03-06)**
+> This document has been merged into AGENT_POLICY.md v2.0. All content from this file
+> is preserved in the merged document. This file is retained for historical reference only.
+
+# MarcoERP – Agent Control System (SUPERSEDED)
 
 **Deliverable 7: AI Agent Permissions, Validation Checklists, and Impact Analysis**
 
@@ -396,3 +400,4 @@ The agent must immediately stop and report if:
 | Version | Date       | Change Description                    |
 |---------|------------|---------------------------------------|
 | 1.0     | 2026-02-08 | Initial Phase 1 governance release    |
+| —       | 2026-03-06 | SUPERSEDED: Merged into AGENT_POLICY.md v2.0 |

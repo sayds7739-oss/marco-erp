@@ -8,14 +8,21 @@ namespace MarcoERP.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<InventoryMovement> builder)
         {
-            builder.ToTable("InventoryMovements");
+            builder.ToTable("InventoryMovements", t =>
+            {
+                // FIN-CK-06: Base quantity must be positive
+                t.HasCheckConstraint("CK_InventoryMovements_BaseQuantity",
+                    DbProviderHelper.CheckExpr("{0} > 0", "QuantityInBaseUnit"));
+
+                // FIN-CK-07: Total cost must be non-negative
+                t.HasCheckConstraint("CK_InventoryMovements_TotalCost",
+                    DbProviderHelper.CheckExpr("{0} >= 0", "TotalCost"));
+            });
 
             builder.HasKey(m => m.Id);
             builder.Property(m => m.Id).UseIdentityColumn();
 
-            builder.Property(m => m.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(m => m.MovementType)
                 .IsRequired()
@@ -79,7 +86,7 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(m => new { m.SourceType, m.SourceId })
                 .HasDatabaseName("IX_InventoryMovements_Source")
-                .HasFilter("[SourceId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("SourceId"));
 
             builder.HasIndex(m => m.ReferenceNumber)
                 .HasDatabaseName("IX_InventoryMovements_Reference");

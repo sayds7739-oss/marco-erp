@@ -16,13 +16,16 @@ namespace MarcoERP.Persistence.Services
 {
     /// <summary>
     /// Persistence-layer backup service.
-    /// Executes raw SQL BACKUP/RESTORE commands against SQL Server.
+    /// SQL Server: Executes raw BACKUP/RESTORE commands.
+    /// PostgreSQL: Uses pg_dump / pg_restore via external process.
     /// </summary>
     public sealed class BackupService : IBackupService
     {
         private readonly MarcoDbContext _context;
         private readonly ICurrentUserService _currentUser;
         private readonly IDateTimeProvider _dateTime;
+
+        private bool IsPostgreSql => _context.Database.ProviderName?.Contains("Npgsql") == true;
 
         public BackupService(MarcoDbContext context, ICurrentUserService currentUser, IDateTimeProvider dateTime)
         {
@@ -55,16 +58,53 @@ namespace MarcoERP.Persistence.Services
                 if (!Directory.Exists(backupPath))
                     Directory.CreateDirectory(backupPath);
 
-                var fileName = $"{dbName}_{_dateTime.UtcNow:yyyyMMdd_HHmmss}.bak";
-                var fullPath = Path.Combine(backupPath, fileName);
+                string fullPath;
 
-                // Sanitise identifiers to prevent SQL injection
-                var safeDbName = dbName.Replace("]", "]]");
-                var safePath = fullPath.Replace("'", "''");
+                if (IsPostgreSql)
+                {
+                    // PostgreSQL: use pg_dump external process
+                    var fileName = $"{dbName}_{_dateTime.UtcNow:yyyyMMdd_HHmmss}.sql";
+                    fullPath = Path.Combine(backupPath, fileName);
 
-                // Execute BACKUP DATABASE
-                var sql = $"BACKUP DATABASE [{safeDbName}] TO DISK = N'{safePath}' WITH FORMAT, INIT, NAME = N'{safeDbName}-Full Backup'";
-                await _context.Database.ExecuteSqlRawAsync(sql, ct);
+                    var connStr = _context.Database.GetConnectionString();
+                    var connBuilder = new DbConnectionStringBuilder { ConnectionString = connStr };
+                    var host = connBuilder.ContainsKey("Host") ? connBuilder["Host"]?.ToString() : "localhost";
+                    var port = connBuilder.ContainsKey("Port") ? connBuilder["Port"]?.ToString() : "5432";
+                    var user = connBuilder.ContainsKey("Username") ? connBuilder["Username"]?.ToString() : "postgres";
+                    var pass = connBuilder.ContainsKey("Password") ? connBuilder["Password"]?.ToString() : "";
+
+                    var psi = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "pg_dump",
+                        Arguments = $"--host={host} --port={port} --username={user} --format=plain --file=\"{fullPath}\" {dbName}",
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                    };
+                    psi.Environment["PGPASSWORD"] = pass;
+
+                    using var process = System.Diagnostics.Process.Start(psi);
+                    if (process == null)
+                        return ServiceResult<BackupResultDto>.Failure("تعذر تشغيل pg_dump. تأكد من تثبيت PostgreSQL.");
+
+                    var stderr = await process.StandardError.ReadToEndAsync(ct);
+                    await process.WaitForExitAsync(ct);
+
+                    if (process.ExitCode != 0)
+                        return ServiceResult<BackupResultDto>.Failure($"فشل pg_dump: {stderr}");
+                }
+                else
+                {
+                    // SQL Server: BACKUP DATABASE
+                    var fileName = $"{dbName}_{_dateTime.UtcNow:yyyyMMdd_HHmmss}.bak";
+                    fullPath = Path.Combine(backupPath, fileName);
+
+                    var safeDbName = dbName.Replace("]", "]]");
+                    var safePath = fullPath.Replace("'", "''");
+
+                    var sql = $"BACKUP DATABASE [{safeDbName}] TO DISK = N'{safePath}' WITH FORMAT, INIT, NAME = N'{safeDbName}-Full Backup'";
+                    await _context.Database.ExecuteSqlRawAsync(sql, ct);
+                }
 
                 // Get file size
                 var fileInfo = new FileInfo(fullPath);
@@ -130,6 +170,55 @@ namespace MarcoERP.Persistence.Services
             if (!SafeDbNameRegex.IsMatch(dbName))
                 return ServiceResult.Failure("اسم قاعدة البيانات يحتوي على أحرف غير مسموح بها.");
 
+            if (IsPostgreSql)
+            {
+                return await RestorePostgreSqlAsync(backupFilePath, dbName, ct);
+            }
+
+            return await RestoreSqlServerAsync(backupFilePath, dbName, ct);
+        }
+
+        private async Task<ServiceResult> RestorePostgreSqlAsync(string backupFilePath, string dbName, CancellationToken ct)
+        {
+            try
+            {
+                var connStr = _context.Database.GetConnectionString();
+                var connBuilder = new DbConnectionStringBuilder { ConnectionString = connStr };
+                var host = connBuilder.ContainsKey("Host") ? connBuilder["Host"]?.ToString() : "localhost";
+                var port = connBuilder.ContainsKey("Port") ? connBuilder["Port"]?.ToString() : "5432";
+                var user = connBuilder.ContainsKey("Username") ? connBuilder["Username"]?.ToString() : "postgres";
+                var pass = connBuilder.ContainsKey("Password") ? connBuilder["Password"]?.ToString() : "";
+
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "psql",
+                    Arguments = $"--host={host} --port={port} --username={user} --dbname={dbName} --file=\"{backupFilePath}\"",
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+                psi.Environment["PGPASSWORD"] = pass;
+
+                using var process = System.Diagnostics.Process.Start(psi);
+                if (process == null)
+                    return ServiceResult.Failure("تعذر تشغيل psql. تأكد من تثبيت PostgreSQL.");
+
+                var stderr = await process.StandardError.ReadToEndAsync(ct);
+                await process.WaitForExitAsync(ct);
+
+                if (process.ExitCode != 0)
+                    return ServiceResult.Failure($"فشل الاستعادة: {stderr}");
+
+                return ServiceResult.Success();
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult.Failure($"فشل الاستعادة: {ex.Message}");
+            }
+        }
+
+        private async Task<ServiceResult> RestoreSqlServerAsync(string backupFilePath, string dbName, CancellationToken ct)
+        {
             // Sanitise identifiers to prevent SQL injection
             var safeDbName = dbName.Replace("]", "]]");
             var safePath = backupFilePath.Replace("'", "''");

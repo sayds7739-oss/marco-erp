@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -11,6 +11,7 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <ApplicationIcon />
     <Description>MarcoERP WPF UI - Presentation layer with sidebar navigation, dashboard, and MVVM pattern.</Description>
+    <UserSecretsId>b52e9205-5681-4feb-9f55-aaab558dd13d</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -33,6 +34,11 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.4" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.*" />
   </ItemGroup>
 
   <ItemGroup>

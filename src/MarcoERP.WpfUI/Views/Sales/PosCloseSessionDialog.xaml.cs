@@ -2,17 +2,21 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using MarcoERP.Application.DTOs.Sales;
+using MarcoERP.Application.Interfaces;
 
 namespace MarcoERP.WpfUI.Views.Sales
 {
     public partial class PosCloseSessionDialog : Window
     {
+        private readonly IDialogService _dialog;
+
         public decimal ActualClosingBalance { get; private set; }
         public string Notes { get; private set; }
 
-        public PosCloseSessionDialog(PosSessionDto session)
+        public PosCloseSessionDialog(PosSessionDto session, IDialogService dialogService = null)
         {
             InitializeComponent();
+            _dialog = dialogService;
 
             var expectedBalance = session.OpeningBalance + session.TotalCashReceived;
 
@@ -27,8 +31,11 @@ namespace MarcoERP.WpfUI.Views.Sales
         {
             if (!decimal.TryParse(ActualBalanceBox.Text, out var balance) || balance < 0)
             {
-                MessageBox.Show("الرصيد الفعلي يجب أن يكون قيمة صحيحة غير سالبة.", "تنبيه",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                if (_dialog != null)
+                    _dialog.ShowWarning("الرصيد الفعلي يجب أن يكون قيمة صحيحة غير سالبة.", "تنبيه");
+                else
+                    MessageBox.Show("الرصيد الفعلي يجب أن يكون قيمة صحيحة غير سالبة.", "تنبيه",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 

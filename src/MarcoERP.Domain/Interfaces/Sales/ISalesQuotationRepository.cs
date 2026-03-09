@@ -11,8 +11,11 @@ namespace MarcoERP.Domain.Interfaces.Sales
     /// </summary>
     public interface ISalesQuotationRepository : IRepository<SalesQuotation>
     {
-        /// <summary>Gets quotation with all lines eagerly loaded.</summary>
+        /// <summary>Gets quotation with all lines eagerly loaded (no tracking — read-only).</summary>
         Task<SalesQuotation> GetWithLinesAsync(int id, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets quotation with all lines eagerly loaded WITH change tracking (for updates).</summary>
+        Task<SalesQuotation> GetWithLinesTrackedAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>Gets quotation by number.</summary>
         Task<SalesQuotation> GetByNumberAsync(string quotationNumber, CancellationToken cancellationToken = default);

@@ -56,9 +56,18 @@ namespace MarcoERP.WpfUI.Services
             };
 
             var createResult = await _cashReceiptService.CreateAsync(createDto, ct);
-            return createResult.IsSuccess
-                ? new InvoiceTreasuryCreateResult(true, null)
-                : new InvoiceTreasuryCreateResult(false, createResult.ErrorMessage);
+            if (createResult.IsFailure)
+                return new InvoiceTreasuryCreateResult(false, createResult.ErrorMessage);
+
+            var postResult = await _cashReceiptService.PostAsync(createResult.Data.Id, ct);
+            if (postResult.IsFailure)
+            {
+                return new InvoiceTreasuryCreateResult(
+                    false,
+                    $"تم إنشاء سند قبض كمسودة (#{createResult.Data.ReceiptNumber}) لكن فشل الترحيل: {postResult.ErrorMessage}");
+            }
+
+            return new InvoiceTreasuryCreateResult(true, null);
         }
 
         public async Task<InvoiceTreasuryCreateResult> PromptAndCreatePurchasePaymentAsync(PurchaseInvoiceDto invoice, int supplierAccountId, CancellationToken ct = default)
@@ -89,9 +98,18 @@ namespace MarcoERP.WpfUI.Services
             };
 
             var createResult = await _cashPaymentService.CreateAsync(createDto, ct);
-            return createResult.IsSuccess
-                ? new InvoiceTreasuryCreateResult(true, null)
-                : new InvoiceTreasuryCreateResult(false, createResult.ErrorMessage);
+            if (createResult.IsFailure)
+                return new InvoiceTreasuryCreateResult(false, createResult.ErrorMessage);
+
+            var postResult = await _cashPaymentService.PostAsync(createResult.Data.Id, ct);
+            if (postResult.IsFailure)
+            {
+                return new InvoiceTreasuryCreateResult(
+                    false,
+                    $"تم إنشاء سند صرف كمسودة (#{createResult.Data.PaymentNumber}) لكن فشل الترحيل: {postResult.ErrorMessage}");
+            }
+
+            return new InvoiceTreasuryCreateResult(true, null);
         }
 
         public async Task<decimal> GetPostedPaidForSalesInvoiceAsync(int salesInvoiceId, CancellationToken ct = default)

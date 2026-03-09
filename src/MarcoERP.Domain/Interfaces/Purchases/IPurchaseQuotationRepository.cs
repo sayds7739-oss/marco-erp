@@ -11,8 +11,11 @@ namespace MarcoERP.Domain.Interfaces.Purchases
     /// </summary>
     public interface IPurchaseQuotationRepository : IRepository<PurchaseQuotation>
     {
-        /// <summary>Gets quotation with all lines eagerly loaded.</summary>
+        /// <summary>Gets quotation with all lines eagerly loaded (no tracking — read-only).</summary>
         Task<PurchaseQuotation> GetWithLinesAsync(int id, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets quotation with all lines eagerly loaded WITH change tracking (for updates).</summary>
+        Task<PurchaseQuotation> GetWithLinesTrackedAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>Gets quotation by number.</summary>
         Task<PurchaseQuotation> GetByNumberAsync(string quotationNumber, CancellationToken cancellationToken = default);

@@ -1,0 +1,215 @@
+<UserControl x:Class="MarcoERP.WpfUI.Views.Sales.CustomerImportView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:local="clr-namespace:MarcoERP.WpfUI.Views.Sales"
+             FlowDirection="RightToLeft">
+
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CancelCommand}" />
+    </UserControl.InputBindings>
+
+    <DockPanel Margin="16">
+
+        <!-- Header -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource CardPanel}" Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="استيراد العملاء من Excel" Style="{StaticResource PageTitle}" Margin="0,0,0,4" />
+                    <TextBlock Text="قم بتحميل ملف Excel يحتوي على بيانات العملاء لاستيرادها دفعة واحدة"
+                               FontSize="12" Opacity="0.6" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="تحميل القالب" Command="{Binding DownloadTemplateCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            materialDesign:ButtonAssist.CornerRadius="4" Padding="16,6" Margin="0,0,8,0">
+                        <Button.ToolTip>حمّل ملف Excel فارغ بالأعمدة المطلوبة</Button.ToolTip>
+                    </Button>
+                    <Button Content="اختيار ملف Excel" Command="{Binding SelectFileCommand}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            materialDesign:ButtonAssist.CornerRadius="4" Padding="16,6"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
+                        <Button.ToolTip>اختر ملف .xlsx لاستيراد العملاء</Button.ToolTip>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- File Info -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource CardPanel}" Padding="12" Margin="0,0,0,8"
+                Visibility="{Binding HasFile, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel Orientation="Horizontal">
+                <materialDesign:PackIcon Kind="FileExcel" Width="24" Height="24" VerticalAlignment="Center"
+                                         Foreground="#4CAF50" Margin="0,0,8,0" />
+                <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,16,0" />
+
+                <TextBlock Text="الإجمالي:" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <TextBlock Text="{Binding TotalRows}" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,16,0" />
+
+                <TextBlock Text="صالح:" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <TextBlock Text="{Binding ValidRows}" FontWeight="Bold" Foreground="{StaticResource SuccessBrush}"
+                           VerticalAlignment="Center" Margin="0,0,16,0" />
+
+                <TextBlock Text="يحتاج مراجعة:" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <TextBlock Text="{Binding InvalidRows}" FontWeight="Bold" Foreground="{StaticResource DangerBrush}"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- Error Display -->
+        <Border DockPanel.Dock="Top" Background="{StaticResource ErrorBackgroundBrush}" CornerRadius="4"
+                Padding="8" Margin="0,0,0,4"
+                Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" FontSize="12" />
+        </Border>
+
+        <!-- Status -->
+        <Border DockPanel.Dock="Top" Margin="0,0,0,4"
+                Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibilityConverter}}">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource SuccessBrush}" FontSize="12" />
+        </Border>
+
+        <!-- Import Result -->
+        <Border DockPanel.Dock="Top" Style="{StaticResource CardPanel}" Padding="16" Margin="0,0,0,8"
+                Visibility="{Binding IsImportDone, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel>
+                <TextBlock Text="نتيجة الاستيراد" FontWeight="Bold" FontSize="16" Margin="0,0,0,8" />
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="CheckCircle" Foreground="{StaticResource SuccessBrush}"
+                                             Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBlock VerticalAlignment="Center">
+                        <Run Text="تم استيراد " />
+                        <Run Text="{Binding ImportedCount, Mode=OneWay}" FontWeight="Bold" />
+                        <Run Text=" عميل بنجاح" />
+                    </TextBlock>
+                    <TextBlock VerticalAlignment="Center" Margin="24,0,0,0"
+                               Visibility="{Binding HasFailures, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Run Text="— فشل " />
+                        <Run Text="{Binding FailedCount, Mode=OneWay}" FontWeight="Bold" Foreground="{StaticResource DangerBrush}" />
+                        <Run Text=" عميل" />
+                    </TextBlock>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Action Bar -->
+        <Border DockPanel.Dock="Bottom" Padding="8" Margin="0,8,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <ProgressBar Grid.Column="0" IsIndeterminate="True"
+                             Style="{StaticResource MaterialDesignLinearProgressBar}"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
+                             VerticalAlignment="Center" Margin="0,0,16,0" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="إلغاء" Command="{Binding CancelCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}" Padding="16,6" Margin="0,0,8,0" />
+                    <Button Command="{Binding ImportCommand}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            materialDesign:ButtonAssist.CornerRadius="4" Padding="16,6"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
+                        <Button.Content>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Import" Width="18" Height="18" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBlock Text="استيراد العملاء الصالحين" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button.Content>
+                        <Button.ToolTip>
+                            <TextBlock>
+                                <Run Text="سيتم استيراد " />
+                                <Run Text="{Binding ValidRows, Mode=OneWay}" />
+                                <Run Text=" عميل صالح فقط" />
+                            </TextBlock>
+                        </Button.ToolTip>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Preview DataGrid -->
+        <Grid Visibility="{Binding IsPreviewed, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <DataGrid ItemsSource="{Binding PreviewRows}" AutoGenerateColumns="False"
+                      IsReadOnly="True" CanUserAddRows="False"
+                      materialDesign:DataGridAssist.CellPadding="10 6"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                      GridLinesVisibility="Horizontal" Background="White"
+                      RowStyle="{StaticResource {x:Type DataGridRow}}">
+                <DataGrid.Resources>
+                    <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsValid}" Value="False">
+                                <Setter Property="Background" Value="#20F44336" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.Resources>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="#" Binding="{Binding RowNumber}" Width="50" />
+                    <DataGridTextColumn Header="الحالة" Width="60">
+                        <DataGridTextColumn.Binding>
+                            <Binding Path="IsValid" Converter="{x:Static local:CustomerImportBoolToSymbolConverter.Instance}"
+                                     FallbackValue="—" />
+                        </DataGridTextColumn.Binding>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                <Setter Property="FontSize" Value="16" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsValid}" Value="True">
+                                        <Setter Property="Foreground" Value="Green" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsValid}" Value="False">
+                                        <Setter Property="Foreground" Value="Red" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="الكود" Binding="{Binding Code}" Width="100" />
+                    <DataGridTextColumn Header="الاسم (عربي)" Binding="{Binding NameAr}" Width="*" />
+                    <DataGridTextColumn Header="الاسم (إنجليزي)" Binding="{Binding NameEn}" Width="140" />
+                    <DataGridTextColumn Header="الهاتف" Binding="{Binding Phone}" Width="110" />
+                    <DataGridTextColumn Header="الجوال" Binding="{Binding Mobile}" Width="110" />
+                    <DataGridTextColumn Header="البريد" Binding="{Binding Email}" Width="150" />
+                    <DataGridTextColumn Header="الرقم الضريبي" Binding="{Binding TaxNumber}" Width="120" />
+                    <DataGridTextColumn Header="العنوان" Binding="{Binding Address}" Width="150" />
+                    <DataGridTextColumn Header="المدينة" Binding="{Binding City}" Width="100" />
+                    <DataGridTextColumn Header="حد الائتمان" Binding="{Binding CreditLimit, StringFormat=N2}" Width="110">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Left" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="نسبة الخصم %" Binding="{Binding DefaultDiscountPercent, StringFormat=N2}" Width="100" />
+                    <DataGridTextColumn Header="نوع العميل" Binding="{Binding CustomerTypeName}" Width="100" />
+                    <DataGridTextColumn Header="ملاحظات" Binding="{Binding Notes}" Width="150" />
+                    <DataGridTextColumn Header="الأخطاء" Width="250">
+                        <DataGridTextColumn.Binding>
+                            <Binding Path="Errors" Converter="{x:Static local:CustomerImportErrorListConverter.Instance}" />
+                        </DataGridTextColumn.Binding>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                <Setter Property="TextWrapping" Value="Wrap" />
+                                <Setter Property="FontSize" Value="11" />
+                                <Setter Property="ToolTip" Value="{Binding Errors, Converter={x:Static local:CustomerImportErrorListConverter.Instance}}" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+
+    </DockPanel>
+</UserControl>

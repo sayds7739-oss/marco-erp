@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Settings;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Settings;
 
 namespace MarcoERP.WpfUI.ViewModels.Settings
@@ -14,10 +15,12 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
     public sealed class AuditLogViewModel : BaseViewModel
     {
         private readonly IAuditLogService _auditLogService;
+        private readonly IDateTimeProvider _dateTime;
 
-        public AuditLogViewModel(IAuditLogService auditLogService)
+        public AuditLogViewModel(IAuditLogService auditLogService, IDateTimeProvider dateTime)
         {
             _auditLogService = auditLogService ?? throw new ArgumentNullException(nameof(auditLogService));
+            _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
 
             AuditLogs = new ObservableCollection<AuditLogDto>();
 
@@ -25,9 +28,9 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
             SearchCommand = new AsyncRelayCommand(SearchAsync);
             ClearFiltersCommand = new RelayCommand(ClearFilters);
 
-            // Default date range: last 30 days
-            StartDate = DateTime.Today.AddDays(-30);
-            EndDate = DateTime.Today;
+            // Default date range: last 7 days
+            StartDate = _dateTime.Today.AddDays(-7);
+            EndDate = _dateTime.Today;
         }
 
         // ── Collections ──────────────────────────────────────────
@@ -78,7 +81,8 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
             ClearError();
             try
             {
-                var result = await _auditLogService.GetAllAsync();
+                var endOfDay = EndDate.Date.AddDays(1).AddTicks(-1);
+                var result = await _auditLogService.GetByDateRangeAsync(StartDate.Date, endOfDay);
                 if (result.IsSuccess)
                 {
                     AuditLogs.Clear();
@@ -159,8 +163,8 @@ namespace MarcoERP.WpfUI.ViewModels.Settings
 
         private void ClearFilters()
         {
-            StartDate = DateTime.Today.AddDays(-30);
-            EndDate = DateTime.Today;
+            StartDate = _dateTime.Today.AddDays(-7);
+            EndDate = _dateTime.Today;
             EntityTypeFilter = null;
             UsernameFilter = null;
             StatusMessage = "تم مسح الفلاتر";

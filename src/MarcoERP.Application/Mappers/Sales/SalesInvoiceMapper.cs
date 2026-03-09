@@ -22,18 +22,29 @@ namespace MarcoERP.Application.Mappers.Sales
                 CustomerId = entity.CustomerId,
                 CustomerNameAr = entity.Customer?.NameAr,
                 WarehouseId = entity.WarehouseId,
+                WarehouseNameAr = entity.Warehouse?.NameAr,
                 Status = entity.Status.ToString(),
                 Subtotal = entity.Subtotal,
                 DiscountTotal = entity.DiscountTotal,
                 VatTotal = entity.VatTotal,
                 NetTotal = entity.NetTotal,
+                HeaderDiscountPercent = entity.HeaderDiscountPercent,
+                HeaderDiscountAmount = entity.HeaderDiscountAmount,
+                DeliveryFee = entity.DeliveryFee,
                 Notes = entity.Notes,
                 JournalEntryId = entity.JournalEntryId,
                 CogsJournalEntryId = entity.CogsJournalEntryId,
+                CommissionJournalEntryId = entity.CommissionJournalEntryId,
                 SalesRepresentativeId = entity.SalesRepresentativeId,
                 CounterpartyType = entity.CounterpartyType,
                 SupplierId = entity.SupplierId,
                 SupplierNameAr = entity.CounterpartySupplier?.NameAr,
+                PaidAmount = entity.PaidAmount,
+                BalanceDue = entity.BalanceDue,
+                PaymentStatus = entity.PaymentStatus.ToString(),
+                InvoiceType = entity.InvoiceType,
+                PaymentMethod = entity.PaymentMethod,
+                DueDate = entity.DueDate,
                 Lines = entity.Lines?.Select(ToLineDto).ToList() ?? new()
             };
         }
@@ -47,7 +58,10 @@ namespace MarcoERP.Application.Mappers.Sales
             {
                 Id = line.Id,
                 ProductId = line.ProductId,
+                ProductNameAr = line.Product?.NameAr,
+                ProductCode = line.Product?.Code,
                 UnitId = line.UnitId,
+                UnitNameAr = line.Unit?.NameAr,
                 Quantity = line.Quantity,
                 UnitPrice = line.UnitPrice,
                 ConversionFactor = line.ConversionFactor,
@@ -78,7 +92,13 @@ namespace MarcoERP.Application.Mappers.Sales
                 InvoiceDate = entity.InvoiceDate,
                 CustomerNameAr = counterpartyName,
                 Status = entity.Status.ToString(),
-                NetTotal = entity.NetTotal
+                InvoiceType = entity.InvoiceType,
+                PaymentMethod = entity.PaymentMethod,
+                DueDate = entity.DueDate,
+                NetTotal = entity.NetTotal,
+                PaidAmount = entity.PaidAmount,
+                BalanceDue = entity.BalanceDue,
+                PaymentStatus = entity.PaymentStatus.ToString()
             };
         }
     }

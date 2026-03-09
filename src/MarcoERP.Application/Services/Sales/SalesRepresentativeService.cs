@@ -14,6 +14,8 @@ using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Sales;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Sales;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Sales
 {
@@ -28,6 +30,8 @@ namespace MarcoERP.Application.Services.Sales
         private readonly IDateTimeProvider _dateTime;
         private readonly IValidator<CreateSalesRepresentativeDto> _createValidator;
         private readonly IValidator<UpdateSalesRepresentativeDto> _updateValidator;
+        private readonly ILogger<SalesRepresentativeService> _logger;
+        private readonly IFeatureService _featureService;
 
         public SalesRepresentativeService(
             ISalesRepresentativeRepository repRepo,
@@ -35,7 +39,9 @@ namespace MarcoERP.Application.Services.Sales
             ICurrentUserService currentUser,
             IDateTimeProvider dateTime,
             IValidator<CreateSalesRepresentativeDto> createValidator,
-            IValidator<UpdateSalesRepresentativeDto> updateValidator)
+            IValidator<UpdateSalesRepresentativeDto> updateValidator,
+            ILogger<SalesRepresentativeService> logger = null,
+            IFeatureService featureService = null)
         {
             _repRepo = repRepo ?? throw new ArgumentNullException(nameof(repRepo));
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
@@ -43,6 +49,8 @@ namespace MarcoERP.Application.Services.Sales
             _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<SalesRepresentativeService>.Instance;
+            _featureService = featureService;
         }
 
         public async Task<ServiceResult<IReadOnlyList<SalesRepresentativeDto>>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -82,8 +90,13 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult<SalesRepresentativeDto>> CreateAsync(CreateSalesRepresentativeDto dto, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check<SalesRepresentativeDto>(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "SalesRepresentative", 0);
+            // Feature Guard — block operation if Sales module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<SalesRepresentativeDto>(_featureService, FeatureKeys.Sales, cancellationToken);
+                if (guard != null) return guard;
+            }
 
             var vr = await _createValidator.ValidateAsync(dto, cancellationToken);
             if (!vr.IsValid)
@@ -121,9 +134,7 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult<SalesRepresentativeDto>> UpdateAsync(UpdateSalesRepresentativeDto dto, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check<SalesRepresentativeDto>(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "SalesRepresentative", dto.Id);
             var vr = await _updateValidator.ValidateAsync(dto, cancellationToken);
             if (!vr.IsValid)
                 return ServiceResult<SalesRepresentativeDto>.Failure(
@@ -159,9 +170,7 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "SalesRepresentative", id);
             var entity = await _repRepo.GetByIdAsync(id, cancellationToken);
             if (entity == null) return ServiceResult.Failure(NotFoundMessage);
 
@@ -173,9 +182,7 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "SalesRepresentative", id);
             var entity = await _repRepo.GetByIdAsync(id, cancellationToken);
             if (entity == null) return ServiceResult.Failure(NotFoundMessage);
 
@@ -187,9 +194,7 @@ namespace MarcoERP.Application.Services.Sales
 
         public async Task<ServiceResult> DeleteAsync(int id, CancellationToken cancellationToken = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.SalesCreate);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteAsync", "SalesRepresentative", id);
             var entity = await _repRepo.GetByIdAsync(id, cancellationToken);
             if (entity == null) return ServiceResult.Failure(NotFoundMessage);
 

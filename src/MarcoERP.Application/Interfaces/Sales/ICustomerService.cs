@@ -24,18 +24,23 @@ namespace MarcoERP.Application.Interfaces.Sales
         Task<ServiceResult<string>> GetNextCodeAsync(CancellationToken cancellationToken = default);
 
         /// <summary>Creates a new customer.</summary>
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult<CustomerDto>> CreateAsync(CreateCustomerDto dto, CancellationToken cancellationToken = default);
 
         /// <summary>Updates an existing customer.</summary>
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult<CustomerDto>> UpdateAsync(UpdateCustomerDto dto, CancellationToken cancellationToken = default);
 
         /// <summary>Activates a customer.</summary>
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult> ActivateAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>Deactivates a customer.</summary>
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult> DeactivateAsync(int id, CancellationToken cancellationToken = default);
 
         /// <summary>Soft-deletes a customer.</summary>
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult> DeleteAsync(int id, CancellationToken cancellationToken = default);
     }
 }

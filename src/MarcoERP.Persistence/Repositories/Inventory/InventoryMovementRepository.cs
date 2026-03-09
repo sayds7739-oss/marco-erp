@@ -18,6 +18,7 @@ namespace MarcoERP.Persistence.Repositories.Inventory
 
         public async Task<InventoryMovement> GetByIdAsync(int id, CancellationToken cancellationToken = default)
             => await _context.InventoryMovements
+                .AsNoTracking()
                 .Include(m => m.Product)
                 .Include(m => m.Warehouse)
                 .Include(m => m.Unit)
@@ -25,6 +26,7 @@ namespace MarcoERP.Persistence.Repositories.Inventory
 
         public async Task<IReadOnlyList<InventoryMovement>> GetAllAsync(CancellationToken cancellationToken = default)
             => await _context.InventoryMovements
+                .AsNoTracking()
                 .OrderByDescending(m => m.MovementDate)
                 .ThenByDescending(m => m.Id)
             .ToListAsync(cancellationToken);
@@ -32,7 +34,15 @@ namespace MarcoERP.Persistence.Repositories.Inventory
         public async Task AddAsync(InventoryMovement entity, CancellationToken cancellationToken = default)
             => await _context.InventoryMovements.AddAsync(entity, cancellationToken);
 
-        public void Update(InventoryMovement entity) => _context.InventoryMovements.Update(entity);
+        public void Update(InventoryMovement entity)
+        {
+            ArgumentNullException.ThrowIfNull(entity);
+            var local = _context.InventoryMovements.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && local != entity)
+                _context.Entry(local).CurrentValues.SetValues(entity);
+            else
+                _context.Entry(entity).State = EntityState.Modified;
+        }
         public void Remove(InventoryMovement entity) => _context.InventoryMovements.Remove(entity);
 
         public async Task<IReadOnlyList<InventoryMovement>> GetStockCardAsync(
@@ -41,6 +51,7 @@ namespace MarcoERP.Persistence.Repositories.Inventory
             CancellationToken ct = default)
         {
             var query = _context.InventoryMovements
+                .AsNoTracking()
                 .Include(m => m.Unit)
                 .Where(m => m.ProductId == productId && m.WarehouseId == warehouseId);
 
@@ -57,6 +68,7 @@ namespace MarcoERP.Persistence.Repositories.Inventory
             CancellationToken ct = default)
         {
             var query = _context.InventoryMovements
+                .AsNoTracking()
                 .Include(m => m.Warehouse)
                 .Include(m => m.Unit)
                 .Where(m => m.ProductId == productId);
@@ -72,11 +84,23 @@ namespace MarcoERP.Persistence.Repositories.Inventory
         public async Task<IReadOnlyList<InventoryMovement>> GetBySourceAsync(
             SourceType sourceType, int sourceId, CancellationToken ct = default)
             => await _context.InventoryMovements
+                .AsNoTracking()
                 .Include(m => m.Product)
                 .Include(m => m.Warehouse)
                 .Include(m => m.Unit)
                 .Where(m => m.SourceType == sourceType && m.SourceId == sourceId)
                 .OrderBy(m => m.Id)
+                .ToListAsync(ct);
+
+        public async Task<IReadOnlyList<InventoryMovement>> GetByDateRangeAndTypeAsync(
+            DateTime fromDate, DateTime toDate, MovementType movementType, CancellationToken ct = default)
+            => await _context.InventoryMovements
+                .AsNoTracking()
+                .Include(m => m.Product)
+                .Where(m => m.MovementType == movementType
+                         && m.MovementDate >= fromDate
+                         && m.MovementDate < toDate)
+                .OrderBy(m => m.MovementDate).ThenBy(m => m.Id)
                 .ToListAsync(ct);
     }
 }

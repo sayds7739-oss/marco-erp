@@ -12,7 +12,7 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasKey(a => a.Id);
             builder.Property(a => a.Id).UseIdentityColumn();
-            builder.Property(a => a.RowVersion).IsRowVersion().IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(a => a.AdjustmentNumber).IsRequired().HasMaxLength(30).IsUnicode(false);
             builder.Property(a => a.AdjustmentDate).IsRequired().HasColumnType("date");
@@ -52,7 +52,7 @@ namespace MarcoERP.Persistence.Configurations
                 .HasDatabaseName("IX_InventoryAdjustments_Status");
             builder.HasIndex(a => a.JournalEntryId)
                 .HasDatabaseName("IX_InventoryAdjustments_JournalEntryId")
-                .HasFilter("[JournalEntryId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("JournalEntryId"));
         }
     }
 }

@@ -23,12 +23,21 @@ namespace MarcoERP.Application.DTOs.Purchases
         public decimal DiscountTotal { get; set; }
         public decimal VatTotal { get; set; }
         public decimal NetTotal { get; set; }
+        public decimal HeaderDiscountPercent { get; set; }
+        public decimal HeaderDiscountAmount { get; set; }
+        public decimal DeliveryFee { get; set; }
         public string Notes { get; set; }
         public int? JournalEntryId { get; set; }
         public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? CounterpartyCustomerId { get; set; }
         public string CounterpartyCustomerNameAr { get; set; }
+        public InvoiceType InvoiceType { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
+        public DateTime? DueDate { get; set; }
+        public decimal PaidAmount { get; set; }
+        public decimal BalanceDue { get; set; }
+        public string PaymentStatus { get; set; }
         public List<PurchaseInvoiceLineDto> Lines { get; set; } = new();
     }
 
@@ -64,15 +73,22 @@ namespace MarcoERP.Application.DTOs.Purchases
         public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? CounterpartyCustomerId { get; set; }
+        public decimal HeaderDiscountPercent { get; set; }
+        public decimal HeaderDiscountAmount { get; set; }
+        public decimal DeliveryFee { get; set; }
+        public InvoiceType InvoiceType { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
+        public DateTime? DueDate { get; set; }
         public List<CreatePurchaseInvoiceLineDto> Lines { get; set; } = new();
     }
 
     /// <summary>DTO for creating a purchase invoice line.</summary>
     public sealed class CreatePurchaseInvoiceLineDto
     {
+        public int Id { get; set; }
         public int ProductId { get; set; }
         public int UnitId { get; set; }
-        public decimal Quantity { get; set; }
+        public decimal Quantity { get; set; } = 1m;
         public decimal UnitPrice { get; set; }
         public decimal DiscountPercent { get; set; }
     }
@@ -88,6 +104,12 @@ namespace MarcoERP.Application.DTOs.Purchases
         public int? SalesRepresentativeId { get; set; }
         public CounterpartyType CounterpartyType { get; set; }
         public int? CounterpartyCustomerId { get; set; }
+        public decimal HeaderDiscountPercent { get; set; }
+        public decimal HeaderDiscountAmount { get; set; }
+        public decimal DeliveryFee { get; set; }
+        public InvoiceType InvoiceType { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
+        public DateTime? DueDate { get; set; }
         public List<CreatePurchaseInvoiceLineDto> Lines { get; set; } = new();
     }
 
@@ -99,6 +121,12 @@ namespace MarcoERP.Application.DTOs.Purchases
         public DateTime InvoiceDate { get; set; }
         public string SupplierNameAr { get; set; }
         public string Status { get; set; }
+        public InvoiceType InvoiceType { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
+        public DateTime? DueDate { get; set; }
         public decimal NetTotal { get; set; }
+        public decimal PaidAmount { get; set; }
+        public decimal BalanceDue { get; set; }
+        public string PaymentStatus { get; set; }
     }
 }

@@ -1,0 +1,6 @@
+@MarcoERP.API_HostAddress = http://localhost:5277
+
+GET {{MarcoERP.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

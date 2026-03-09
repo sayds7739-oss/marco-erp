@@ -35,6 +35,8 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private readonly ISalesRepresentativeService _salesRepresentativeService;
         private readonly ISmartEntryQueryService _smartEntryQueryService;
         private readonly ILineCalculationService _lineCalculationService;
+        private readonly IDateTimeProvider _dateTime;
+        private readonly IDialogService _dialog;
 
         public ObservableCollection<SalesReturnListDto> Returns { get; } = new();
         public ObservableCollection<CustomerDto> Customers { get; } = new();
@@ -92,7 +94,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private string _formNumber;
         public string FormNumber { get => _formNumber; set => SetProperty(ref _formNumber, value); }
 
-        private DateTime _formDate = DateTime.Today;
+        private DateTime _formDate;
         public DateTime FormDate { get => _formDate; set => SetProperty(ref _formDate, value); }
 
         private int? _formCustomerId;
@@ -141,7 +143,15 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         public int? FormWarehouseId
         {
             get => _formWarehouseId;
-            set { SetProperty(ref _formWarehouseId, value); OnPropertyChanged(nameof(CanSave)); }
+            set
+            {
+                if (SetProperty(ref _formWarehouseId, value))
+                {
+                    if (value.HasValue && value.Value > 0)
+                        SessionSelections.LastWarehouseId = value.Value;
+                    OnPropertyChanged(nameof(CanSave));
+                }
+            }
         }
 
         private int? _formSalesRepresentativeId;
@@ -260,7 +270,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             ISupplierService supplierService,
             ISalesRepresentativeService salesRepresentativeService,
             ISmartEntryQueryService smartEntryQueryService,
-            ILineCalculationService lineCalculationService)
+            ILineCalculationService lineCalculationService,
+            IDateTimeProvider dateTime,
+            IDialogService dialog)
         {
             _returnService = returnService ?? throw new ArgumentNullException(nameof(returnService));
             _invoiceService = invoiceService ?? throw new ArgumentNullException(nameof(invoiceService));
@@ -271,6 +283,8 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             _salesRepresentativeService = salesRepresentativeService ?? throw new ArgumentNullException(nameof(salesRepresentativeService));
             _smartEntryQueryService = smartEntryQueryService ?? throw new ArgumentNullException(nameof(smartEntryQueryService));
             _lineCalculationService = lineCalculationService ?? throw new ArgumentNullException(nameof(lineCalculationService));
+            _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             LoadCommand = new AsyncRelayCommand(LoadReturnsAsync);
             NewCommand = new AsyncRelayCommand(PrepareNewAsync);
@@ -332,36 +346,61 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
 
         private async Task LoadLookupsAsync()
         {
-            var custResult = await _customerService.GetAllAsync();
+            var custTask = _customerService.GetAllAsync();
+            var suppTask = _supplierService.GetAllAsync();
+            var repTask = _salesRepresentativeService.GetActiveAsync();
+            var whTask = _warehouseService.GetAllAsync();
+            var prodTask = _productService.GetAllAsync();
+            var invTask = _invoiceService.GetAllAsync();
+
+            await Task.WhenAll(custTask, suppTask, repTask, whTask, prodTask, invTask);
+
+            var custResult = await custTask;
             Customers.Clear();
             if (custResult.IsSuccess)
                 foreach (var c in custResult.Data.Where(x => x.IsActive)) Customers.Add(c);
 
-            var suppResult = await _supplierService.GetAllAsync();
+            var suppResult = await suppTask;
             Suppliers.Clear();
             if (suppResult.IsSuccess)
                 foreach (var s in suppResult.Data.Where(x => x.IsActive)) Suppliers.Add(s);
 
-            var repResult = await _salesRepresentativeService.GetActiveAsync();
+            var repResult = await repTask;
             SalesRepresentatives.Clear();
             if (repResult.IsSuccess)
                 foreach (var rep in repResult.Data)
                     SalesRepresentatives.Add(rep);
 
-            var whResult = await _warehouseService.GetAllAsync();
+            var whResult = await whTask;
             Warehouses.Clear();
             if (whResult.IsSuccess)
                 foreach (var w in whResult.Data.Where(x => x.IsActive)) Warehouses.Add(w);
 
-            var prodResult = await _productService.GetAllAsync();
+            var prodResult = await prodTask;
             Products.Clear();
             if (prodResult.IsSuccess)
                 foreach (var p in prodResult.Data.Where(x => x.Status == "Active")) Products.Add(p);
 
-            var invResult = await _invoiceService.GetAllAsync();
+            var invResult = await invTask;
             PostedInvoices.Clear();
             if (invResult.IsSuccess)
                 foreach (var inv in invResult.Data.Where(x => x.Status == "Posted")) PostedInvoices.Add(inv);
+        }
+
+        private void ApplyDefaultWarehouse()
+        {
+            if (FormWarehouseId.HasValue && FormWarehouseId.Value > 0)
+                return;
+
+            if (Warehouses.Count == 1)
+            {
+                FormWarehouseId = Warehouses[0].Id;
+                return;
+            }
+
+            var lastId = SessionSelections.LastWarehouseId;
+            if (lastId.HasValue && Warehouses.Any(w => w.Id == lastId.Value))
+                FormWarehouseId = lastId.Value;
         }
 
         private async Task LoadReturnDetailAsync(int id)
@@ -391,13 +430,14 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             }
             catch { FormNumber = ""; }
 
-            FormDate = DateTime.Today;
+            FormDate = _dateTime.Today;
             FormCounterpartyType = CounterpartyType.Customer;
             FormCustomerId = null;
             FormSupplierId = null;
             FormSalesRepresentativeId = null;
             FormWarehouseId = null;
             FormOriginalInvoiceId = null; FormNotes = "";
+            ApplyDefaultWarehouse();
             FormLines.Clear(); AddLine(null); RefreshTotals();
             StatusMessage = "إنشاء مرتجع بيع جديد...";
         }
@@ -423,6 +463,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             {
                 var lines = FormLines.Select(l => new CreateSalesReturnLineDto
                 {
+                    Id = l.Id,
                     ProductId = l.ProductId, UnitId = l.UnitId, Quantity = l.Quantity,
                     UnitPrice = l.UnitPrice, DiscountPercent = l.DiscountPercent
                 }).ToList();
@@ -484,10 +525,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private async Task PostAsync()
         {
             if (CurrentReturn == null) return;
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل تريد ترحيل مرتجع البيع «{CurrentReturn.ReturnNumber}»؟\nبعد الترحيل لا يمكن التعديل.",
-                "تأكيد الترحيل", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الترحيل")) return;
             IsBusy = true; ClearError();
             try
             {
@@ -503,10 +543,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private async Task CancelReturnAsync()
         {
             if (CurrentReturn == null) return;
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل تريد إلغاء مرتجع البيع «{CurrentReturn.ReturnNumber}»؟",
-                "تأكيد الإلغاء", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الإلغاء")) return;
             IsBusy = true; ClearError();
             try
             {
@@ -521,10 +560,9 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private async Task DeleteDraftAsync()
         {
             if (CurrentReturn == null) return;
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل تريد حذف مسودة المرتجع «{CurrentReturn.ReturnNumber}»؟",
-                "تأكيد الحذف", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الحذف")) return;
             IsBusy = true; ClearError();
             try
             {
@@ -547,7 +585,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         {
             if (IsEditing)
             {
-                MessageBox.Show("يرجى إنهاء التعديل قبل التنقل.", "تنقل المرتجعات", MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialog.ShowInfo("يرجى إنهاء التعديل قبل التنقل.", "تنقل المرتجعات");
                 return;
             }
 
@@ -559,7 +597,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
 
             if (!_returnNumberToId.TryGetValue(JumpReturnNumber.Trim(), out var id))
             {
-                MessageBox.Show("رقم المرتجع غير موجود.", "تنقل المرتجعات", MessageBoxButton.OK, MessageBoxImage.Information);
+                _dialog.ShowInfo("رقم المرتجع غير موجود.", "تنقل المرتجعات");
                 return;
             }
 
@@ -591,6 +629,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
             {
                 FormLines.Add(new SalesReturnLineFormItem(this)
                 {
+                    Id = line.Id,
                     ProductId = line.ProductId, UnitId = line.UnitId,
                     Quantity = line.Quantity, UnitPrice = line.UnitPrice, DiscountPercent = line.DiscountPercent
                 });
@@ -601,7 +640,7 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
         private void ClearForm()
         {
             FormNumber = "";
-            FormDate = DateTime.Today;
+            FormDate = _dateTime.Today;
             FormCounterpartyType = CounterpartyType.Customer;
             FormCustomerId = null;
             FormSupplierId = null;
@@ -617,7 +656,12 @@ namespace MarcoERP.WpfUI.ViewModels.Sales
     public sealed class SalesReturnLineFormItem : BaseViewModel
     {
         private readonly IInvoiceLineFormHost _parent;
-        public SalesReturnLineFormItem(IInvoiceLineFormHost parent) { _parent = parent; }
+        public int Id { get; set; }
+        public SalesReturnLineFormItem(IInvoiceLineFormHost parent)
+        {
+            _parent = parent;
+            _quantity = 1m;
+        }
 
         private int _productId;
         public int ProductId

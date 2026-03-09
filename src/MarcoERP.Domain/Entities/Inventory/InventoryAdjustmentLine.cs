@@ -8,8 +8,9 @@ namespace MarcoERP.Domain.Entities.Inventory
     /// Represents a single line item on an inventory adjustment (بند تسوية مخزنية).
     /// Compares system quantity vs actual (physical count) quantity.
     /// Difference = Actual - System (positive = surplus, negative = shortage).
+    /// Immutable financial record — cannot be deleted (RECORD_PROTECTION_POLICY).
     /// </summary>
-    public sealed class InventoryAdjustmentLine : BaseEntity
+    public sealed class InventoryAdjustmentLine : BaseEntity, IImmutableFinancialRecord
     {
         // ── Constructors ────────────────────────────────────────
 
@@ -20,6 +21,37 @@ namespace MarcoERP.Domain.Entities.Inventory
         /// Creates a new adjustment line with calculated difference.
         /// </summary>
         public InventoryAdjustmentLine(
+            int productId,
+            int unitId,
+            decimal systemQuantity,
+            decimal actualQuantity,
+            decimal conversionFactor,
+            decimal unitCost,
+            int existingId = 0)
+        {
+            if (productId <= 0)
+                throw new InventoryDomainException("الصنف مطلوب.");
+            if (unitId <= 0)
+                throw new InventoryDomainException("الوحدة مطلوبة.");
+            if (conversionFactor <= 0)
+                throw new InventoryDomainException("معامل التحويل يجب أن يكون أكبر من صفر.");
+
+            ProductId = productId;
+            UnitId = unitId;
+            SystemQuantity = systemQuantity;
+            ActualQuantity = actualQuantity;
+            ConversionFactor = conversionFactor;
+            UnitCost = unitCost;
+            if (existingId > 0)
+                Id = existingId;
+
+            // ── Calculated fields ───────────────────────────────
+            DifferenceQuantity = actualQuantity - systemQuantity;
+            DifferenceInBaseUnit = Math.Round(DifferenceQuantity * conversionFactor, 4);
+            CostDifference = Math.Round(DifferenceInBaseUnit * unitCost, 4);
+        }
+
+        public void UpdateDetails(
             int productId,
             int unitId,
             decimal systemQuantity,
@@ -41,7 +73,6 @@ namespace MarcoERP.Domain.Entities.Inventory
             ConversionFactor = conversionFactor;
             UnitCost = unitCost;
 
-            // ── Calculated fields ───────────────────────────────
             DifferenceQuantity = actualQuantity - systemQuantity;
             DifferenceInBaseUnit = Math.Round(DifferenceQuantity * conversionFactor, 4);
             CostDifference = Math.Round(DifferenceInBaseUnit * unitCost, 4);

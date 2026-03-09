@@ -7,8 +7,9 @@ namespace MarcoERP.Domain.Entities.Accounting
     /// <summary>
     /// Represents one line (سطر) in a journal entry.
     /// Each line targets exactly one account and has either a debit or credit (never both).
+    /// Immutable financial record — cannot be deleted (RECORD_PROTECTION_POLICY).
     /// </summary>
-    public sealed class JournalEntryLine : BaseEntity
+    public sealed class JournalEntryLine : BaseEntity, IImmutableFinancialRecord
     {
         // ── Constructors ────────────────────────────────────────
 
@@ -65,7 +66,7 @@ namespace MarcoERP.Domain.Entities.Accounting
         public DateTime CreatedAt { get; private set; }
 
         /// <summary>Username of creator.</summary>
-        public string CreatedBy { get; set; }
+        public string CreatedBy { get; private set; }
 
         // ── Factory Method ──────────────────────────────────────
 

@@ -14,7 +14,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(cr => cr.Id);
             builder.Property(cr => cr.Id).UseIdentityColumn();
 
-            builder.Property(cr => cr.RowVersion).IsRowVersion().IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(cr => cr.ReceiptNumber)
                 .IsRequired()
@@ -62,13 +62,13 @@ namespace MarcoERP.Persistence.Configurations
                 .HasForeignKey(cr => cr.CashboxId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Contra Account FK (required — no navigation on Account)
-            builder.HasOne<MarcoERP.Domain.Entities.Accounting.Account>().WithMany()
+            // Contra Account FK (required)
+            builder.HasOne(cr => cr.Account).WithMany()
                 .HasForeignKey(cr => cr.AccountId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Optional Customer FK
-            builder.HasOne<Customer>().WithMany()
+            builder.HasOne(cr => cr.Customer).WithMany()
                 .HasForeignKey(cr => cr.CustomerId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .IsRequired(false);
@@ -86,9 +86,10 @@ namespace MarcoERP.Persistence.Configurations
                 .IsRequired(false);
 
             // ── Indexes ─────────────────────────────────────────
-            builder.HasIndex(cr => cr.ReceiptNumber)
+            builder.HasIndex(cr => new { cr.CompanyId, cr.ReceiptNumber })
                 .IsUnique()
-                .HasDatabaseName("IX_CashReceipts_ReceiptNumber");
+                .HasFilter(DbProviderHelper.SoftDeleteFilter())
+                .HasDatabaseName("IX_CashReceipts_CompanyId_ReceiptNumber");
 
             builder.HasIndex(cr => cr.ReceiptDate)
                 .HasDatabaseName("IX_CashReceipts_ReceiptDate");
@@ -101,15 +102,15 @@ namespace MarcoERP.Persistence.Configurations
 
             builder.HasIndex(cr => cr.CustomerId)
                 .HasDatabaseName("IX_CashReceipts_CustomerId")
-                .HasFilter("[CustomerId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("CustomerId"));
 
             builder.HasIndex(cr => cr.SalesInvoiceId)
                 .HasDatabaseName("IX_CashReceipts_SalesInvoiceId")
-                .HasFilter("[SalesInvoiceId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("SalesInvoiceId"));
 
             builder.HasIndex(cr => cr.JournalEntryId)
                 .HasDatabaseName("IX_CashReceipts_JournalEntryId")
-                .HasFilter("[JournalEntryId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("JournalEntryId"));
         }
     }
 }

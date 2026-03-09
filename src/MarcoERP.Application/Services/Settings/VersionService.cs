@@ -41,9 +41,6 @@ namespace MarcoERP.Application.Services.Settings
 
         public async Task<ServiceResult> RegisterNewVersionAsync(string version, string description, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.SettingsManage);
-            if (authCheck != null) return authCheck;
-
             if (string.IsNullOrWhiteSpace(version))
                 return ServiceResult.Failure("رقم الإصدار مطلوب.");
 

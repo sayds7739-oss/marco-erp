@@ -14,10 +14,15 @@ namespace MarcoERP.Application.Interfaces.Sales
         Task<ServiceResult<IReadOnlyList<PriceListListDto>>> GetAllAsync(CancellationToken ct = default);
         Task<ServiceResult<PriceListDto>> GetByIdAsync(int id, CancellationToken ct = default);
         Task<ServiceResult<string>> GetNextCodeAsync(CancellationToken ct = default);
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult<PriceListDto>> CreateAsync(CreatePriceListDto dto, CancellationToken ct = default);
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult<PriceListDto>> UpdateAsync(UpdatePriceListDto dto, CancellationToken ct = default);
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult> DeleteAsync(int id, CancellationToken ct = default);
+        [RequiresPermission(PermissionKeys.PriceListManage)]
         Task<ServiceResult> ActivateAsync(int id, CancellationToken ct = default);
+        [RequiresPermission(PermissionKeys.PriceListManage)]
         Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct = default);
 
         /// <summary>

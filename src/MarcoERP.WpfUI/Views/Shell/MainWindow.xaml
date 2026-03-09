@@ -48,7 +48,10 @@
             </Style.Triggers>
         </Style>
 
-        <Style x:Key="OpenTabButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+        <Style x:Key="OpenTabButtonStyle" TargetType="Button">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="Height" Value="34" />
             <Setter Property="MinWidth" Value="140" />
             <Setter Property="MaxWidth" Value="260" />
@@ -132,12 +135,14 @@
         </Style>
 
         <DataTemplate x:Key="NavHeaderTemplate" DataType="{x:Type nav:NavigationItem}">
-            <TextBlock Text="{Binding Title}"
-                       Foreground="{StaticResource MutedTextBrush}" FontSize="12"
-                       Margin="10,10,0,2" FontWeight="Bold"
-                       Visibility="{Binding DataContext.IsSidebarExpanded,
-                                    RelativeSource={RelativeSource AncestorType=Window},
-                                    Converter={StaticResource BoolToVisibility}}" />
+            <Border Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="{Binding Title}"
+                           Foreground="{StaticResource MutedTextBrush}" FontSize="12"
+                           Margin="10,10,0,2" FontWeight="Bold"
+                           Visibility="{Binding DataContext.IsSidebarExpanded,
+                                        RelativeSource={RelativeSource AncestorType=Window},
+                                        Converter={StaticResource BoolToVisibility}}" />
+            </Border>
         </DataTemplate>
 
         <DataTemplate x:Key="NavSeparatorTemplate" DataType="{x:Type nav:NavigationItem}">
@@ -199,6 +204,8 @@
         <KeyBinding Gesture="Ctrl+Tab" Command="{Binding ActivateNextTabCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+Tab" Command="{Binding ActivatePreviousTabCommand}" />
         <KeyBinding Gesture="Ctrl+W" Command="{Binding CloseActiveTabCommand}" />
+        <KeyBinding Gesture="Ctrl+Z" Command="{Binding ExecuteShortcutCommand}" CommandParameter="Undo" />
+        <KeyBinding Gesture="Ctrl+Y" Command="{Binding ExecuteShortcutCommand}" CommandParameter="Redo" />
         <!-- Phase 7B: Hidden Governance trigger -->
         <KeyBinding Gesture="Ctrl+Shift+Alt+G" Command="{x:Null}" />
     </Window.InputBindings>
@@ -248,26 +255,45 @@
             </Border.Style>
             <DockPanel>
                 <!-- Logo Area -->
-                <Border DockPanel.Dock="Top" Padding="10,8" Background="#263238">
+                <Border DockPanel.Dock="Top" Padding="10,12" Background="#1A2332">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <materialDesign:PackIcon Kind="Domain" Width="26" Height="26"
-                                                 Foreground="White" VerticalAlignment="Center" />
-                        <TextBlock Text="MarcoERP" FontSize="17" FontWeight="Bold"
-                                   Foreground="White" Margin="8,0,0,0" VerticalAlignment="Center"
-                                   FlowDirection="LeftToRight"
-                                   Visibility="{Binding DataContext.IsSidebarExpanded,
-                                                RelativeSource={RelativeSource AncestorType=Window},
-                                                Converter={StaticResource BoolToVisibility}}" />
+                        <Border Width="36" Height="36" CornerRadius="8"
+                                VerticalAlignment="Center">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#5C6BC0" Offset="0" />
+                                    <GradientStop Color="#3F51B5" Offset="1" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <materialDesign:PackIcon Kind="Domain" Width="22" Height="22"
+                                                     Foreground="White"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Margin="10,0,0,0" VerticalAlignment="Center"
+                                    Visibility="{Binding DataContext.IsSidebarExpanded,
+                                                 RelativeSource={RelativeSource AncestorType=Window},
+                                                 Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="MarcoERP" FontSize="18" FontWeight="Bold"
+                                       Foreground="White" FlowDirection="LeftToRight" />
+                            <TextBlock Text="Enterprise Resource Planning" FontSize="8.5"
+                                       Foreground="#78909C" FlowDirection="LeftToRight"
+                                       Margin="0,-1,0,0" />
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!-- User Info -->
-                <Border DockPanel.Dock="Top" Padding="8,6" Background="#1a252f">
+                <Border DockPanel.Dock="Top" Padding="10,8" Background="#1E2D3D">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="Account" Width="18" Height="18"
-                                                 Foreground="#90CAF9" VerticalAlignment="Center" />
+                        <Border Width="30" Height="30" CornerRadius="15" Background="#37474F"
+                                VerticalAlignment="Center">
+                            <materialDesign:PackIcon Kind="Account" Width="16" Height="16"
+                                                     Foreground="#90CAF9"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
                         <TextBlock Text="{Binding CurrentUserDisplay}"
-                                   Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="6,0,0,0"
+                                   Foreground="#B0BEC5" FontSize="12" FontWeight="SemiBold"
+                                   Margin="8,0,0,0"
                                    VerticalAlignment="Center"
                                    Visibility="{Binding DataContext.IsSidebarExpanded,
                                                 RelativeSource={RelativeSource AncestorType=Window},
@@ -276,11 +302,12 @@
                 </Border>
 
                 <!-- Sidebar Toggle Button -->
-                <Border DockPanel.Dock="Bottom" Padding="4" Background="#1a252f">
+                <Border DockPanel.Dock="Bottom" Padding="4,6" Background="#1A2332"
+                        BorderBrush="#37474F" BorderThickness="0,1,0,0">
                     <Button Style="{StaticResource MaterialDesignFlatButton}"
                             Foreground="{StaticResource SecondaryTextBrush}" Command="{Binding ToggleSidebarCommand}"
                             HorizontalAlignment="Center" ToolTip="طي/بسط القائمة">
-                        <materialDesign:PackIcon Kind="Menu" />
+                        <materialDesign:PackIcon Kind="Menu" Width="20" Height="20" />
                     </Button>
                 </Border>
 
@@ -304,7 +331,7 @@
                 <!-- Top Bar (header row) -->
                 <RowDefinition Height="42" />
                 <!-- Tab Strip -->
-                <RowDefinition Height="38" />
+                <RowDefinition Height="Auto" />
                 <!-- Content -->
                 <RowDefinition Height="*" />
                 <!-- Status Bar -->
@@ -313,12 +340,20 @@
 
             <!-- ═══════════════ TOP HEADER BAR ═══════════════ -->
             <Border Grid.Row="0" Background="White" Padding="16,0"
-                    BorderBrush="#E0E0E0" BorderThickness="0,0,0,0">
+                    BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.06" Color="Black" Direction="270" />
+                </Border.Effect>
                 <DockPanel>
-                    <TextBlock Text="{Binding PageTitle}"
-                               FontSize="16" FontWeight="SemiBold"
-                               VerticalAlignment="Center"
-                               Foreground="{StaticResource PrimaryBrush}" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <materialDesign:PackIcon Kind="ChevronRight" Width="16" Height="16"
+                                                 Foreground="{StaticResource SubtitleBrush}" VerticalAlignment="Center"
+                                                 Margin="0,0,4,0" />
+                        <TextBlock Text="{Binding PageTitle}"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource PrimaryBrush}" />
+                    </StackPanel>
 
                     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
                                 HorizontalAlignment="Left" VerticalAlignment="Center">
@@ -342,14 +377,15 @@
                         </materialDesign:PopupBox>
 
                         <!-- Search Box (Opens Command Palette) -->
-                        <Border Background="{StaticResource BackgroundBrush}" CornerRadius="16" Padding="8,6" Margin="0,0,12,0" MinWidth="200"
-                                Cursor="Hand" MouseLeftButtonDown="SearchBox_MouseDown">
+                        <Border Background="#F0F2F5" CornerRadius="20" Padding="12,7" Margin="0,0,12,0" MinWidth="220"
+                                Cursor="Hand" MouseLeftButtonDown="SearchBox_MouseDown"
+                                BorderBrush="#E0E0E0" BorderThickness="1">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Magnify" Width="16" Height="16"
                                                          Foreground="{StaticResource SubtitleBrush}" VerticalAlignment="Center" />
                                 <TextBlock Text="بحث سريع... (Ctrl+K)" FontSize="12"
                                            Foreground="{StaticResource MutedTextBrush}"
-                                           VerticalAlignment="Center" Margin="6,0,0,0" />
+                                           VerticalAlignment="Center" Margin="8,0,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -448,107 +484,210 @@
                 </DockPanel>
             </Border>
 
-            <!-- ═══════════════ PROFESSIONAL TAB STRIP ═══════════════ -->
-            <Border Grid.Row="1" Background="#F0F2F5" Padding="6,4,6,0"
-                    BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
-                              Padding="0">
-                    <ItemsControl ItemsSource="{Binding OpenTabs}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Button Style="{StaticResource OpenTabButtonStyle}"
-                                        Command="{Binding DataContext.ActivateTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                        CommandParameter="{Binding}">
-                                    <Button.ContextMenu>
-                                        <ContextMenu>
-                                            <MenuItem Header="إغلاق"
-                                                      Command="{Binding DataContext.CloseTabCommand, Source={x:Reference Name=MainContent}}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <materialDesign:PackIcon Kind="Close" Width="16" Height="16" />
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <MenuItem Header="إغلاق الباقي"
-                                                      Command="{Binding DataContext.CloseOtherTabsCommand, Source={x:Reference Name=MainContent}}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <materialDesign:PackIcon Kind="CloseBoxMultipleOutline" Width="16" Height="16" />
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                            <Separator />
-                                            <MenuItem Header="إغلاق الكل"
-                                                      Command="{Binding DataContext.CloseAllTabsCommand, Source={x:Reference Name=MainContent}}"
-                                                      CommandParameter="{Binding}">
-                                                <MenuItem.Icon>
-                                                    <materialDesign:PackIcon Kind="BookmarkRemoveOutline" Width="16" Height="16" />
-                                                </MenuItem.Icon>
-                                            </MenuItem>
-                                        </ContextMenu>
-                                    </Button.ContextMenu>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <!-- Tab Icon -->
-                                        <materialDesign:PackIcon Grid.Column="0"
-                                                                 Kind="{Binding IconKind}"
-                                                                 Width="15" Height="15"
-                                                                 VerticalAlignment="Center"
-                                                                 Margin="0,0,6,0"
-                                                                 Opacity="0.7">
-                                            <materialDesign:PackIcon.Style>
-                                                <Style TargetType="materialDesign:PackIcon">
-                                                    <Setter Property="Foreground" Value="{Binding IconBrush}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IconBrush}" Value="{x:Null}">
-                                                            <Setter Property="Foreground" Value="{StaticResource SubtitleBrush}" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </materialDesign:PackIcon.Style>
-                                        </materialDesign:PackIcon>
-                                        <!-- Tab Title -->
-                                        <TextBlock Grid.Column="1" Text="{Binding DisplayTitle}"
-                                                   FontSize="13" FontWeight="SemiBold"
-                                                   VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   Margin="0,0,8,0" />
-                                        <!-- Close Button -->
-                                        <Button Grid.Column="2"
-                                                Style="{StaticResource TabCloseButtonStyle}"
-                                                Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="{Binding}"
-                                                ToolTip="إغلاق (Ctrl+W)" />
-                                    </Grid>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </Border>
+            <!-- ═══════════════ PROFESSIONAL TAB CONTROL ═══════════════ -->
+            <TabControl Grid.Row="1"
+                        ItemsSource="{Binding OpenTabs}"
+                        SelectedItem="{Binding ActiveTab}"
+                        Background="#F0F2F5"
+                        BorderBrush="#E0E0E0"
+                        BorderThickness="0,0,0,1"
+                        Padding="6,4,6,0">
+                <TabControl.Style>
+                    <Style TargetType="TabControl">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ActiveTab}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TabControl.Style>
+                <TabControl.ItemContainerStyle>
+                    <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+                        <Setter Property="Height" Value="34" />
+                        <Setter Property="MinWidth" Value="140" />
+                        <Setter Property="MaxWidth" Value="260" />
+                        <Setter Property="Margin" Value="2,0,0,0" />
+                        <Setter Property="Padding" Value="10,0,4,0" />
+                        <Setter Property="Background" Value="#E8ECEF" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                        <Setter Property="Foreground" Value="#37474F" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TabItem">
+                                    <Border x:Name="TabBorder"
+                                            Background="{TemplateBinding Background}"
+                                            CornerRadius="8,8,0,0"
+                                            Padding="{TemplateBinding Padding}"
+                                            SnapsToDevicePixels="True"
+                                            BorderThickness="0,0,0,2.5"
+                                            BorderBrush="Transparent">
+                                        <ContentPresenter ContentSource="Header"
+                                                          HorizontalAlignment="Stretch"
+                                                          VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="TabBorder" Property="Background" Value="#DEE2E6" />
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="TabBorder" Property="Background" Value="White" />
+                                            <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+                                            <Setter Property="Foreground" Value="#1A237E" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Setter Property="ContextMenu">
+                            <Setter.Value>
+                                <ContextMenu>
+                                    <MenuItem Header="إغلاق"
+                                              Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              CommandParameter="{Binding}">
+                                        <MenuItem.Icon>
+                                            <materialDesign:PackIcon Kind="Close" Width="16" Height="16" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="إغلاق الباقي"
+                                              Command="{Binding DataContext.CloseOtherTabsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              CommandParameter="{Binding}">
+                                        <MenuItem.Icon>
+                                            <materialDesign:PackIcon Kind="CloseBoxMultipleOutline" Width="16" Height="16" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="إغلاق الكل"
+                                              Command="{Binding DataContext.CloseAllTabsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              CommandParameter="{Binding}">
+                                        <MenuItem.Icon>
+                                            <materialDesign:PackIcon Kind="BookmarkRemoveOutline" Width="16" Height="16" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TabControl.ItemContainerStyle>
+                <TabControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <!-- Tab Icon -->
+                            <materialDesign:PackIcon Grid.Column="0"
+                                                     Kind="{Binding IconKind}"
+                                                     Width="15" Height="15"
+                                                     VerticalAlignment="Center"
+                                                     Margin="0,0,6,0"
+                                                     Opacity="0.7">
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Setter Property="Foreground" Value="{Binding IconBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IconBrush}" Value="{x:Null}">
+                                                <Setter Property="Foreground" Value="{StaticResource SubtitleBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
+                            <!-- Tab Title -->
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding Title}"
+                                       FontSize="13" FontWeight="SemiBold"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       Margin="0,0,8,0" />
+                            <!-- Close Button -->
+                            <Button Grid.Column="2"
+                                    Width="20" Height="20"
+                                    Padding="0" Background="Transparent"
+                                    BorderThickness="0" Cursor="Hand"
+                                    Focusable="False"
+                                    Command="{Binding DataContext.CloseTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip="إغلاق (Ctrl+W)">
+                                <materialDesign:PackIcon Kind="Close" Width="12" Height="12"
+                                                         Foreground="#90A4AE" />
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="CloseBorder" Background="{TemplateBinding Background}"
+                                                            CornerRadius="4" Width="20" Height="20">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="CloseBorder" Property="Background" Value="#D32F2F" />
+                                                            <Setter Property="Foreground" Value="White" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </Grid>
+                    </DataTemplate>
+                </TabControl.ItemTemplate>
+                <TabControl.ContentTemplate>
+                    <DataTemplate>
+                        <Border Padding="8,4,8,8" Background="White" CornerRadius="0,0,4,4">
+                            <ContentPresenter Content="{Binding View}" />
+                        </Border>
+                    </DataTemplate>
+                </TabControl.ContentTemplate>
+            </TabControl>
 
-            <!-- Content Area -->
-            <Border x:Name="MainContent" Grid.Row="2" Padding="8,0,8,8" Background="White">
+            <!-- Content Area (Now Hidden - TabControl manages content) -->
+            <Border x:Name="MainContent" Grid.Row="2" Visibility="Collapsed">
                 <ContentControl Content="{Binding CurrentView}" />
             </Border>
 
             <!-- Status Bar -->
-            <Border Grid.Row="3" Background="#263238" Padding="12,0">
+            <Border Grid.Row="3" Padding="12,4" Height="28">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#1A2332" Offset="0" />
+                        <GradientStop Color="#263238" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
                 <DockPanel>
-                    <TextBlock Text="{Binding StatusMessage}"
-                               Foreground="{StaticResource SecondaryTextBrush}" FontSize="11"
-                               VerticalAlignment="Center" />
-                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
-                                HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <!-- Right side: Performance + Version + governance trigger -->
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <!-- Memory Usage -->
+                        <materialDesign:PackIcon Kind="Memory" Width="10" Height="10"
+                                                 Foreground="#78909C" VerticalAlignment="Center" Margin="0,0,3,0" />
+                        <TextBlock Text="{Binding MemoryUsageMb, StringFormat={}{0:F1} MB}"
+                                   Foreground="#78909C" FontSize="10" VerticalAlignment="Center"
+                                   FlowDirection="LeftToRight" />
+                        <TextBlock Text="|" Foreground="#455A64" FontSize="10" Margin="8,0" VerticalAlignment="Center" />
+                        <!-- Load Time -->
+                        <materialDesign:PackIcon Kind="TimerOutline" Width="10" Height="10"
+                                                 Foreground="#78909C" VerticalAlignment="Center" Margin="0,0,3,0" />
+                        <TextBlock Text="{Binding ActiveViewLoadTimeMs, StringFormat={}{0}ms}"
+                                   Foreground="#78909C" FontSize="10" VerticalAlignment="Center"
+                                   FlowDirection="LeftToRight" />
+                        <TextBlock Text="|" Foreground="#455A64" FontSize="10" Margin="8,0" VerticalAlignment="Center" />
+                        <!-- Record Count -->
+                        <materialDesign:PackIcon Kind="DatabaseOutline" Width="10" Height="10"
+                                                 Foreground="#78909C" VerticalAlignment="Center" Margin="0,0,3,0" />
+                        <TextBlock Text="{Binding ActiveViewRecordCount}"
+                                   Foreground="#78909C" FontSize="10" VerticalAlignment="Center"
+                                   FlowDirection="LeftToRight" />
+                        <TextBlock Text="|" Foreground="#455A64" FontSize="10" Margin="8,0" VerticalAlignment="Center" />
+                        <!-- Version -->
                         <TextBlock x:Name="lblVersion" Text="v0.2.0"
-                                   Foreground="{StaticResource StatusTextBrush}" FontSize="11"
+                                   Foreground="{StaticResource StatusTextBrush}" FontSize="10"
                                    VerticalAlignment="Center"
                                    FlowDirection="LeftToRight" />
                         <!-- Phase 7B: Hidden governance trigger icon -->
@@ -556,11 +695,15 @@
                                 Background="Transparent" Padding="4,0" Margin="6,0,0,0"
                                 MouseLeftButtonDown="GovernanceTrigger_Click"
                                 ToolTip="">
-                            <materialDesign:PackIcon Kind="ShieldOutline" Width="12" Height="12"
+                            <materialDesign:PackIcon Kind="ShieldOutline" Width="11" Height="11"
                                                      Foreground="{StaticResource DarkSurfaceBrush}" Opacity="0.3"
                                                      VerticalAlignment="Center" />
                         </Border>
                     </StackPanel>
+                    <!-- Left side: Status message -->
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Foreground="{StaticResource SecondaryTextBrush}" FontSize="10"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </DockPanel>
             </Border>
         </Grid>
@@ -570,12 +713,12 @@
                 Visibility="{Binding IsCommandPaletteOpen, Converter={StaticResource BoolToVisibility}}"
                 Background="{StaticResource OverlayBrush}"
                 MouseLeftButtonDown="CommandPaletteOverlay_MouseDown">
-            <Border Background="White" CornerRadius="12" Width="500"
+            <Border Background="White" CornerRadius="14" Width="520"
                     VerticalAlignment="Top" Margin="0,80,0,0"
-                    MaxHeight="450" Padding="0"
+                    MaxHeight="480" Padding="0"
                     MouseLeftButtonDown="CommandPaletteInner_MouseDown">
                 <Border.Effect>
-                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.3" />
+                    <DropShadowEffect BlurRadius="30" ShadowDepth="6" Opacity="0.25" />
                 </Border.Effect>
                 <StackPanel>
                     <Border Padding="16,12" Width="490" Height="55">

@@ -26,12 +26,14 @@ namespace MarcoERP.Persistence.Repositories
         public async Task<FiscalYear> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.FiscalYears
+                .AsNoTracking()
                 .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
         }
 
         public async Task<IReadOnlyList<FiscalYear>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _context.FiscalYears
+                .AsNoTracking()
                 .OrderByDescending(f => f.Year)
                 .ToListAsync(cancellationToken);
         }
@@ -43,7 +45,22 @@ namespace MarcoERP.Persistence.Repositories
 
         public void Update(FiscalYear entity)
         {
-            _context.FiscalYears.Update(entity);
+            if (entity == null) return;
+
+            var local = _context.FiscalYears.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && !ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+                return;
+            }
+            if (local != null)
+            {
+                if (_context.Entry(local).State == EntityState.Unchanged)
+                    _context.Entry(local).State = EntityState.Modified;
+                return;
+            }
+
+            _context.Entry(entity).State = EntityState.Modified;
         }
 
         public void Remove(FiscalYear entity)

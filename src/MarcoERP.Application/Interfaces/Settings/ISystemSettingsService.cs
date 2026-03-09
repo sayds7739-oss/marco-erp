@@ -22,9 +22,11 @@ namespace MarcoERP.Application.Interfaces.Settings
         Task<ServiceResult<SystemSettingDto>> GetByKeyAsync(string key, CancellationToken ct = default);
 
         /// <summary>Updates a single setting value.</summary>
+        [RequiresPermission(PermissionKeys.SettingsManage)]
         Task<ServiceResult> UpdateAsync(UpdateSystemSettingDto dto, CancellationToken ct = default);
 
         /// <summary>Batch-updates multiple settings.</summary>
+        [RequiresPermission(PermissionKeys.SettingsManage)]
         Task<ServiceResult> UpdateBatchAsync(IEnumerable<UpdateSystemSettingDto> dtos, CancellationToken ct = default);
     }
 }

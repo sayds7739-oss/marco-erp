@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using MarcoERP.Application.DTOs.Treasury;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Treasury;
 
 namespace MarcoERP.WpfUI.ViewModels.Treasury
@@ -17,13 +18,19 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
     {
         private readonly IBankReconciliationService _reconciliationService;
         private readonly IBankAccountService _bankAccountService;
+        private readonly IDateTimeProvider _dateTime;
+        private readonly IDialogService _dialog;
 
         public BankReconciliationViewModel(
             IBankReconciliationService reconciliationService,
-            IBankAccountService bankAccountService)
+            IBankAccountService bankAccountService,
+            IDateTimeProvider dateTime,
+            IDialogService dialog)
         {
             _reconciliationService = reconciliationService ?? throw new ArgumentNullException(nameof(reconciliationService));
             _bankAccountService = bankAccountService ?? throw new ArgumentNullException(nameof(bankAccountService));
+            _dateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             AllReconciliations = new ObservableCollection<BankReconciliationDto>();
             BankAccounts = new ObservableCollection<BankAccountDto>();
@@ -95,7 +102,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
             set => SetProperty(ref _formBankAccountId, value);
         }
 
-        private DateTime _formDate = DateTime.Today;
+        private DateTime _formDate;
         public DateTime FormDate
         {
             get => _formDate;
@@ -282,7 +289,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
             ClearError();
 
             FormBankAccountId = SelectedBankAccount?.Id ?? 0;
-            FormDate = DateTime.Today;
+            FormDate = _dateTime.Today;
             FormStatementBalance = "0";
             FormSystemBalance = 0;
             FormDifference = 0;
@@ -378,7 +385,7 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
                 var dto = new CreateBankReconciliationItemDto
                 {
                     BankReconciliationId = SelectedReconciliation.Id,
-                    TransactionDate = DateTime.Today,
+                    TransactionDate = _dateTime.Today,
                     Description = ItemDescription,
                     Amount = amount,
                     Reference = ItemReference
@@ -413,11 +420,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         {
             if (SelectedReconciliation == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 "هل أنت متأكد من اكتمال التسوية؟ لن تتمكن من تعديلها بعد ذلك.",
-                "تأكيد الاكتمال",
-                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الاكتمال")) return;
 
             IsBusy = true;
             ClearError();
@@ -450,11 +455,9 @@ namespace MarcoERP.WpfUI.ViewModels.Treasury
         {
             if (SelectedReconciliation == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 "هل أنت متأكد من حذف هذه التسوية؟",
-                "تأكيد الحذف",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الحذف")) return;
 
             IsBusy = true;
             ClearError();

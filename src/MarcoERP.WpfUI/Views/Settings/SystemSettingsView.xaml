@@ -3,8 +3,60 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:local="clr-namespace:MarcoERP.WpfUI.Common"
+             xmlns:conv="clr-namespace:MarcoERP.WpfUI.Converters"
              FlowDirection="RightToLeft" Background="{StaticResource BackgroundBrush}"
              local:LoadedCommandBehavior.Command="{Binding LoadCommand}">
+
+    <UserControl.Resources>
+        <conv:StringBoolConverter x:Key="StringBoolConverter"/>
+
+        <!-- String editor: standard TextBox -->
+        <DataTemplate x:Key="StringEditorTemplate">
+            <TextBox VerticalAlignment="Center"
+                     Text="{Binding SettingValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     materialDesign:HintAssist.Hint="القيمة"
+                     FlowDirection="LeftToRight" FontSize="13" Padding="10,8" />
+        </DataTemplate>
+
+        <!-- Bool editor: ToggleButton with label -->
+        <DataTemplate x:Key="BoolEditorTemplate">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <ToggleButton Style="{StaticResource MaterialDesignSwitchToggleButton}"
+                              IsChecked="{Binding SettingValue, Converter={StaticResource StringBoolConverter}, Mode=TwoWay}"
+                              Margin="0,0,10,0" />
+                <TextBlock VerticalAlignment="Center" FontSize="13"
+                           Foreground="{StaticResource SubtitleBrush}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="معطل"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SettingValue}" Value="true">
+                                    <Setter Property="Text" Value="مفعّل"/>
+                                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- Numeric editor: TextBox with input restriction hint -->
+        <DataTemplate x:Key="NumericEditorTemplate">
+            <TextBox VerticalAlignment="Center"
+                     Text="{Binding SettingValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                     materialDesign:HintAssist.Hint="رقم"
+                     FlowDirection="LeftToRight" FontSize="13" Padding="10,8"
+                     InputScope="Number" />
+        </DataTemplate>
+
+        <local:SettingEditorTemplateSelector x:Key="SettingEditorSelector"
+            StringTemplate="{StaticResource StringEditorTemplate}"
+            BoolTemplate="{StaticResource BoolEditorTemplate}"
+            NumericTemplate="{StaticResource NumericEditorTemplate}" />
+    </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -64,45 +116,86 @@
 
         <!-- ── Settings List ─────────────────────────── -->
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="16,8">
-            <ItemsControl ItemsSource="{Binding FilteredSettings}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="White" CornerRadius="8" Margin="0,0,0,10" Padding="18,14"
-                                BorderBrush="#E8E8E8" BorderThickness="1">
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.06" Color="Black" />
-                            </Border.Effect>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="320"/>
-                                </Grid.ColumnDefinitions>
+            <StackPanel>
+                <ItemsControl ItemsSource="{Binding FilteredSettings}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="White" CornerRadius="8" Margin="0,0,0,10" Padding="18,14"
+                                    BorderBrush="#E8E8E8" BorderThickness="1">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.06" Color="Black" />
+                                </Border.Effect>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="320"/>
+                                    </Grid.ColumnDefinitions>
 
-                                <!-- Setting Description + Key -->
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,20,0">
-                                    <TextBlock Text="{Binding Description}" FontWeight="SemiBold" FontSize="14"
-                                               TextWrapping="Wrap" Foreground="#333" />
-                                    <TextBlock Text="{Binding SettingKey}" Foreground="{StaticResource MutedTextBrush}"
-                                               FontSize="11" FlowDirection="LeftToRight"
-                                               HorizontalAlignment="Left" Margin="0,4,0,0" />
-                                    <Border CornerRadius="4" Padding="6,2" Margin="0,6,0,0"
-                                            HorizontalAlignment="Left" Background="{StaticResource BackgroundBrush}">
-                                        <TextBlock Text="{Binding GroupName}" Foreground="{StaticResource PrimaryBrush}"
-                                                   FontSize="11" FontWeight="SemiBold" />
-                                    </Border>
-                                </StackPanel>
+                                    <!-- Setting Description + Key -->
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,20,0">
+                                        <TextBlock Text="{Binding Description}" FontWeight="SemiBold" FontSize="14"
+                                                   TextWrapping="Wrap" Foreground="#333" />
+                                        <TextBlock Text="{Binding SettingKey}" Foreground="{StaticResource MutedTextBrush}"
+                                                   FontSize="11" FlowDirection="LeftToRight"
+                                                   HorizontalAlignment="Left" Margin="0,4,0,0" />
+                                        <Border CornerRadius="4" Padding="6,2" Margin="0,6,0,0"
+                                                HorizontalAlignment="Left" Background="{StaticResource BackgroundBrush}">
+                                            <TextBlock Text="{Binding GroupName}" Foreground="{StaticResource PrimaryBrush}"
+                                                       FontSize="11" FontWeight="SemiBold" />
+                                        </Border>
+                                    </StackPanel>
 
-                                <!-- Value Editor -->
-                                <TextBox Grid.Column="1" VerticalAlignment="Center"
-                                         Text="{Binding SettingValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                         materialDesign:HintAssist.Hint="القيمة"
-                                         FlowDirection="LeftToRight" FontSize="13" Padding="10,8" />
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                                    <!-- Value Editor (type-aware) -->
+                                    <ContentControl Grid.Column="1" Content="{Binding}"
+                                                    ContentTemplateSelector="{StaticResource SettingEditorSelector}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Border Background="White" CornerRadius="8" Margin="0,0,0,10" Padding="18,14"
+                        BorderBrush="#E8E8E8" BorderThickness="1">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.06" Color="Black" />
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="AlertOutline" Width="20" Height="20" Foreground="{StaticResource DangerBrush}" Margin="0,0,8,0" />
+                                <TextBlock Text="مسح البيانات التشغيلية" FontWeight="Bold" FontSize="14" Foreground="#333" />
+                            </StackPanel>
+                            <TextBlock Text="يتم حذف البيانات التشغيلية من قاعدة البيانات داخل معاملة واحدة (Transaction) مع إمكانية الإبقاء على بيانات رئيسية محددة."
+                                       TextWrapping="Wrap" Margin="0,6,0,10" Foreground="{StaticResource SubtitleBrush}" FontSize="12" />
+
+                            <WrapPanel>
+                                <CheckBox Content="الإبقاء على العملاء" IsChecked="{Binding KeepCustomers}" Margin="0,0,16,6" />
+                                <CheckBox Content="الإبقاء على الموردين" IsChecked="{Binding KeepSuppliers}" Margin="0,0,16,6" />
+                                <CheckBox Content="الإبقاء على الأصناف" IsChecked="{Binding KeepProducts}" Margin="0,0,16,6" />
+                                <CheckBox Content="الإبقاء على مندوبي المبيعات" IsChecked="{Binding KeepSalesRepresentatives}" Margin="0,0,16,6" />
+                            </WrapPanel>
+
+                            <TextBlock Text="{Binding PurgeSummary}" Foreground="{StaticResource SubtitleBrush}" FontSize="11" Margin="0,8,0,0" />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Command="{Binding PurgeDataCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="{StaticResource DangerBrush}" Foreground="White"
+                                Margin="16,0,0,0" Padding="14,8" VerticalAlignment="Top">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="DatabaseRemove" VerticalAlignment="Center" />
+                                <TextBlock Text="مسح البيانات" Margin="6,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+            </StackPanel>
         </ScrollViewer>
 
         <!-- ── Status Bar ─────────────────────────────── -->

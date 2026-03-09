@@ -14,9 +14,12 @@ using MarcoERP.Domain.Entities.Accounting;
 using MarcoERP.Domain.Entities.Accounting.Policies;
 using MarcoERP.Domain.Entities.Treasury;
 using MarcoERP.Domain.Enums;
+using MarcoERP.Application.Interfaces.Settings;
+using MarcoERP.Domain.Exceptions;
 using MarcoERP.Domain.Exceptions.Treasury;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Sales;
+using MarcoERP.Domain.Interfaces.Settings;
 using MarcoERP.Domain.Interfaces.Treasury;
 using Microsoft.Extensions.Logging;
 
@@ -45,6 +48,10 @@ namespace MarcoERP.Application.Services.Treasury
         private readonly IValidator<CreateCashReceiptDto> _createValidator;
         private readonly IValidator<UpdateCashReceiptDto> _updateValidator;
         private readonly ILogger<CashReceiptService> _logger;
+        private readonly ISystemSettingRepository _systemSettingRepository;
+        private readonly JournalEntryFactory _journalFactory;
+        private readonly FiscalPeriodValidator _fiscalValidator;
+        private readonly IFeatureService _featureService;
 
         private const string ReceiptNotFoundMessage = "سند القبض غير موجود.";
 
@@ -52,7 +59,10 @@ namespace MarcoERP.Application.Services.Treasury
             CashReceiptRepositories repos,
             CashReceiptServices services,
             CashReceiptValidators validators,
-            ILogger<CashReceiptService> logger)
+            JournalEntryFactory journalFactory,
+            FiscalPeriodValidator fiscalValidator,
+            ILogger<CashReceiptService> logger,
+            IFeatureService featureService = null)
         {
             if (repos == null) throw new ArgumentNullException(nameof(repos));
             if (services == null) throw new ArgumentNullException(nameof(services));
@@ -69,10 +79,14 @@ namespace MarcoERP.Application.Services.Treasury
             _unitOfWork = services.UnitOfWork;
             _currentUser = services.CurrentUser;
             _dateTime = services.DateTime;
+            _systemSettingRepository = services.SystemSettingRepo;
 
             _createValidator = validators.CreateValidator;
             _updateValidator = validators.UpdateValidator;
+            _journalFactory = journalFactory ?? throw new ArgumentNullException(nameof(journalFactory));
+            _fiscalValidator = fiscalValidator ?? throw new ArgumentNullException(nameof(fiscalValidator));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _featureService = featureService;
         }
 
         // ── Queries ─────────────────────────────────────────────
@@ -102,8 +116,14 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult<CashReceiptDto>> CreateAsync(CreateCashReceiptDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<CashReceiptDto>(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
+            // Feature Guard — block operation if Treasury module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<CashReceiptDto>(_featureService, FeatureKeys.Treasury, ct);
+                if (guard != null) return guard;
+            }
+
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "CashReceipt", 0);
 
             var vr = await _createValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
@@ -165,19 +185,26 @@ namespace MarcoERP.Application.Services.Treasury
             {
                 return ServiceResult<CashReceiptDto>.Failure(ex.Message);
             }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult<CashReceiptDto>.Failure("تم تعديل سند القبض بواسطة مستخدم آخر. يرجى إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult<CashReceiptDto>.Failure("تعذر حفظ سند القبض بسبب تعارض بيانات فريدة. يرجى إعادة المحاولة.");
+            }
         }
 
         public async Task<ServiceResult<CashReceiptDto>> UpdateAsync(UpdateCashReceiptDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<CashReceiptDto>(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "CashReceipt", dto.Id);
 
             var vr = await _updateValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<CashReceiptDto>.Failure(
                     string.Join(" | ", vr.Errors.Select(e => e.ErrorMessage)));
 
-            var receipt = await _receiptRepo.GetWithDetailsAsync(dto.Id, ct);
+            var receipt = await _receiptRepo.GetWithDetailsTrackedAsync(dto.Id, ct);
             if (receipt == null)
                 return ServiceResult<CashReceiptDto>.Failure(ReceiptNotFoundMessage);
 
@@ -188,9 +215,8 @@ namespace MarcoERP.Application.Services.Treasury
             {
                 receipt.UpdateHeader(
                     dto.ReceiptDate, dto.CashboxId, dto.AccountId,
-                    dto.Amount, dto.Description, dto.CustomerId, dto.Notes);
+                    dto.Amount, dto.Description, dto.CustomerId, dto.SalesInvoiceId, dto.Notes);
 
-                _receiptRepo.Update(receipt);
                 await _unitOfWork.SaveChangesAsync(ct);
 
                 var saved = await _receiptRepo.GetWithDetailsAsync(receipt.Id, ct);
@@ -209,10 +235,9 @@ namespace MarcoERP.Application.Services.Treasury
         /// </summary>
         public async Task<ServiceResult<CashReceiptDto>> PostAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<CashReceiptDto>(_currentUser, PermissionKeys.TreasuryPost);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "PostAsync", "CashReceipt", id);
 
-            var receipt = await _receiptRepo.GetWithDetailsAsync(id, ct);
+            var receipt = await _receiptRepo.GetWithDetailsTrackedAsync(id, ct);
             if (receipt == null)
                 return ServiceResult<CashReceiptDto>.Failure(ReceiptNotFoundMessage);
 
@@ -228,6 +253,20 @@ namespace MarcoERP.Application.Services.Treasury
             {
                 return ServiceResult<CashReceiptDto>.Failure(ex.Message);
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "InvalidOperationException while posting cash receipt.");
+                return ServiceResult<CashReceiptDto>.Failure(
+                    ErrorSanitizer.Sanitize(ex, "ترحيل سند القبض"));
+            }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult<CashReceiptDto>.Failure("تعذر ترحيل سند القبض بسبب تعارض تحديث متزامن. يرجى إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult<CashReceiptDto>.Failure("تعذر ترحيل سند القبض بسبب تعارض بيانات فريدة. يرجى إعادة المحاولة.");
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "خطأ غير متوقع أثناء ترحيل سند القبض {ReceiptId}", id);
@@ -237,10 +276,9 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult> CancelAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.TreasuryPost);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CancelAsync", "CashReceipt", id);
 
-            var receipt = await _receiptRepo.GetWithDetailsAsync(id, ct);
+            var receipt = await _receiptRepo.GetWithDetailsTrackedAsync(id, ct);
             if (receipt == null)
                 return ServiceResult.Failure(ReceiptNotFoundMessage);
 
@@ -249,13 +287,27 @@ namespace MarcoERP.Application.Services.Treasury
 
             try
             {
-                var context = await GetCancelContextAsync(receipt.ReceiptDate, ct);
+                var context = await _fiscalValidator.ValidateForCancelAsync(receipt.ReceiptDate, ct);
                 await ExecuteCancelAsync(receipt, context, ct);
                 return ServiceResult.Success();
             }
             catch (TreasuryDomainException ex)
             {
                 return ServiceResult.Failure(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "InvalidOperationException while cancelling cash receipt.");
+                return ServiceResult.Failure(
+                    ErrorSanitizer.Sanitize(ex, "إلغاء سند القبض"));
+            }
+            catch (ConcurrencyConflictException)
+            {
+                return ServiceResult.Failure("تعذر إلغاء سند القبض بسبب تعارض تحديث متزامن. يرجى إعادة المحاولة.");
+            }
+            catch (DuplicateRecordException)
+            {
+                return ServiceResult.Failure("تعذر إلغاء سند القبض بسبب تعارض بيانات فريدة. يرجى إعادة المحاولة.");
             }
             catch (Exception ex)
             {
@@ -270,30 +322,51 @@ namespace MarcoERP.Application.Services.Treasury
 
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                var accounts = await ResolveAccountsAsync(receipt, ct);
-                var context = await GetPostingContextAsync(receipt.ReceiptDate, ct);
+                var reloaded = await _receiptRepo.GetWithDetailsTrackedAsync(receipt.Id, ct);
+                if (reloaded == null)
+                    throw new TreasuryDomainException(ReceiptNotFoundMessage);
+                if (reloaded.Status != InvoiceStatus.Draft)
+                    throw new TreasuryDomainException("لا يمكن ترحيل سند قبض مرحّل بالفعل أو ملغى.");
 
-                var journalEntry = await CreateJournalEntryAsync(receipt, accounts, context, ct);
+                // CRITICAL: Re-validate invoice balance inside transaction to prevent double-payment
+                if (reloaded.SalesInvoiceId.HasValue)
+                {
+                    var linkedInvoice = await _invoiceRepo.GetWithLinesTrackedAsync(reloaded.SalesInvoiceId.Value, ct);
+                    if (linkedInvoice == null)
+                        throw new TreasuryDomainException("الفاتورة المرتبطة غير موجودة.");
+                    if (linkedInvoice.Status != InvoiceStatus.Posted)
+                        throw new TreasuryDomainException("الفاتورة المرتبطة غير مرحلة.");
+                    if (reloaded.Amount > linkedInvoice.BalanceDue)
+                        throw new TreasuryDomainException(
+                            $"مبلغ سند القبض ({reloaded.Amount:N2}) يتجاوز الرصيد المستحق على الفاتورة ({linkedInvoice.BalanceDue:N2}).");
+                }
+
+                var accounts = await ResolveAccountsAsync(reloaded, ct);
+                var context = await _fiscalValidator.ValidateForPostingAsync(reloaded.ReceiptDate, ct);
+
+                var journalEntry = await CreateJournalEntryAsync(reloaded, accounts, context, ct);
 
                 await _unitOfWork.SaveChangesAsync(ct);
 
-                receipt.Post(journalEntry.Id);
-                _receiptRepo.Update(receipt);
+                reloaded.Post(journalEntry.Id);
+
+                // CSH-03: Increase cashbox balance (money received)
+                accounts.Cashbox.IncreaseBalance(reloaded.Amount);
+                _cashboxRepo.Update(accounts.Cashbox);
 
                 // Apply payment to linked invoice if present
-                if (receipt.SalesInvoiceId.HasValue)
+                if (reloaded.SalesInvoiceId.HasValue)
                 {
-                    var invoice = await _invoiceRepo.GetByIdAsync(receipt.SalesInvoiceId.Value, ct);
+                    var invoice = await _invoiceRepo.GetWithLinesTrackedAsync(reloaded.SalesInvoiceId.Value, ct);
                     if (invoice != null)
                     {
-                        invoice.ApplyPayment(receipt.Amount);
-                        _invoiceRepo.Update(invoice);
+                        invoice.ApplyPayment(reloaded.Amount);
                     }
                 }
 
                 await _unitOfWork.SaveChangesAsync(ct);
 
-                saved = await _receiptRepo.GetWithDetailsAsync(receipt.Id, ct);
+                saved = await _receiptRepo.GetWithDetailsAsync(reloaded.Id, ct);
             }, IsolationLevel.Serializable, ct);
 
             return saved ?? receipt;
@@ -326,84 +399,35 @@ namespace MarcoERP.Application.Services.Treasury
             };
         }
 
-        private async Task<CashReceiptPostingContext> GetPostingContextAsync(DateTime receiptDate, CancellationToken ct)
-        {
-            var fiscalYear = await _fiscalYearRepo.GetActiveYearAsync(ct);
-            if (fiscalYear == null)
-                throw new TreasuryDomainException("لا توجد سنة مالية نشطة.");
-
-            if (!fiscalYear.ContainsDate(receiptDate))
-                throw new TreasuryDomainException(
-                    $"تاريخ السند {receiptDate:yyyy-MM-dd} لا يقع ضمن السنة المالية النشطة.");
-
-            var yearWithPeriods = await _fiscalYearRepo.GetWithPeriodsAsync(fiscalYear.Id, ct);
-            var period = yearWithPeriods.GetPeriod(receiptDate.Month);
-            if (period == null)
-                throw new TreasuryDomainException("لا توجد فترة مالية للشهر المحدد.");
-            if (!period.IsOpen)
-                throw new TreasuryDomainException(
-                    $"الفترة المالية ({period.PeriodNumber}/{period.Year}) مُقفلة.");
-
-            return new CashReceiptPostingContext
-            {
-                FiscalYear = yearWithPeriods,
-                Period = period,
-                Now = _dateTime.UtcNow,
-                Username = _currentUser.Username ?? "System"
-            };
-        }
-
         private async Task<JournalEntry> CreateJournalEntryAsync(
             CashReceipt receipt,
             CashReceiptAccounts accounts,
-            CashReceiptPostingContext context,
+            PostingContext context,
             CancellationToken ct)
         {
-            var journalEntry = JournalEntry.CreateDraft(
+            var lines = new[]
+            {
+                new JournalLineSpec(accounts.CashboxAccount.Id, receipt.Amount, 0,
+                    $"قبض نقدي — {accounts.Cashbox.NameAr}"),
+                new JournalLineSpec(accounts.ContraAccount.Id, 0, receipt.Amount,
+                    $"سند قبض {receipt.ReceiptNumber} — {accounts.ContraAccount.AccountNameAr}")
+            };
+
+            return await _journalFactory.CreateAndPostAsync(
                 receipt.ReceiptDate,
                 $"سند قبض رقم {receipt.ReceiptNumber} — {receipt.Description}",
                 SourceType.CashReceipt,
                 context.FiscalYear.Id,
                 context.Period.Id,
+                lines,
+                context.Username,
+                context.Now,
                 referenceNumber: receipt.ReceiptNumber,
-                sourceId: receipt.Id);
-
-            journalEntry.AddLine(accounts.CashboxAccount.Id, receipt.Amount, 0, context.Now,
-                $"قبض نقدي — {accounts.Cashbox.NameAr}");
-
-            journalEntry.AddLine(accounts.ContraAccount.Id, 0, receipt.Amount, context.Now,
-                $"سند قبض {receipt.ReceiptNumber} — {accounts.ContraAccount.AccountNameAr}");
-
-            var journalNumber = _journalNumberGen.NextNumber(context.FiscalYear.Id);
-            journalEntry.Post(journalNumber, context.Username, context.Now);
-
-            await _journalRepo.AddAsync(journalEntry, ct);
-            return journalEntry;
+                sourceId: receipt.Id,
+                ct: ct);
         }
 
-        private async Task<CashReceiptCancelContext> GetCancelContextAsync(DateTime receiptDate, CancellationToken ct)
-        {
-            var fiscalYear = await _fiscalYearRepo.GetByYearAsync(receiptDate.Year, ct);
-            if (fiscalYear == null)
-                throw new TreasuryDomainException($"لا توجد سنة مالية للعام {receiptDate.Year}.");
-
-            fiscalYear = await _fiscalYearRepo.GetWithPeriodsAsync(fiscalYear.Id, ct);
-            if (fiscalYear.Status != FiscalYearStatus.Active)
-                throw new TreasuryDomainException($"السنة المالية {fiscalYear.Year} ليست فعّالة.");
-
-            var period = fiscalYear.GetPeriod(receiptDate.Month);
-            if (period == null || !period.IsOpen)
-                throw new TreasuryDomainException($"الفترة المالية لـ {receiptDate:yyyy-MM} مُقفلة.");
-
-            return new CashReceiptCancelContext
-            {
-                FiscalYear = fiscalYear,
-                Period = period,
-                Today = receiptDate
-            };
-        }
-
-        private async Task ExecuteCancelAsync(CashReceipt receipt, CashReceiptCancelContext context, CancellationToken ct)
+        private async Task ExecuteCancelAsync(CashReceipt receipt, CancelContext context, CancellationToken ct)
         {
             await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
@@ -415,18 +439,22 @@ namespace MarcoERP.Application.Services.Treasury
                     ct);
 
                 receipt.Cancel();
-                _receiptRepo.Update(receipt);
+
+                // CSH-03: Decrease cashbox balance (receipt cancelled — money reversed)
+                var cashbox = await _cashboxRepo.GetByIdAsync(receipt.CashboxId, ct)
+                    ?? throw new TreasuryDomainException("الصندوق المرتبط بالسند غير موجود. لا يمكن إلغاء السند.");
+                cashbox.DecreaseBalanceAllowNegative(receipt.Amount);
+                _cashboxRepo.Update(cashbox);
 
                 // Reverse payment on linked invoice if present
                 if (receipt.SalesInvoiceId.HasValue)
                 {
-                    var invoice = await _invoiceRepo.GetByIdAsync(receipt.SalesInvoiceId.Value, ct);
+                    var invoice = await _invoiceRepo.GetWithLinesTrackedAsync(receipt.SalesInvoiceId.Value, ct);
                     if (invoice != null && invoice.PaidAmount > 0)
                     {
                         // Use Math.Min to handle partial-reversal edge cases safely
                         var reversalAmount = Math.Min(receipt.Amount, invoice.PaidAmount);
                         invoice.ReversePayment(reversalAmount);
-                        _invoiceRepo.Update(invoice);
                     }
                 }
 
@@ -439,7 +467,7 @@ namespace MarcoERP.Application.Services.Treasury
             int journalId,
             string description,
             string notFoundMessage,
-            CashReceiptCancelContext context,
+            CancelContext context,
             CancellationToken ct)
         {
             var originalJournal = await _journalRepo.GetWithLinesAsync(journalId, ct);
@@ -452,7 +480,7 @@ namespace MarcoERP.Application.Services.Treasury
                 context.FiscalYear.Id,
                 context.Period.Id);
 
-            var reversalNumber = _journalNumberGen.NextNumber(context.FiscalYear.Id);
+            var reversalNumber = await _journalNumberGen.NextNumberAsync(context.FiscalYear.Id, ct);
             var username = _currentUser.Username ?? "System";
             var now = _dateTime.UtcNow;
             reversalEntry.Post(reversalNumber, username, now);
@@ -465,10 +493,9 @@ namespace MarcoERP.Application.Services.Treasury
 
         public async Task<ServiceResult> DeleteDraftAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.TreasuryCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteDraftAsync", "CashReceipt", id);
 
-            var receipt = await _receiptRepo.GetByIdAsync(id, ct);
+            var receipt = await _receiptRepo.GetWithDetailsTrackedAsync(id, ct);
             if (receipt == null)
                 return ServiceResult.Failure(ReceiptNotFoundMessage);
 
@@ -476,17 +503,8 @@ namespace MarcoERP.Application.Services.Treasury
                 return ServiceResult.Failure("لا يمكن حذف إلا سندات القبض المسودة.");
 
             receipt.SoftDelete(_currentUser.Username, _dateTime.UtcNow);
-            _receiptRepo.Update(receipt);
             await _unitOfWork.SaveChangesAsync(ct);
             return ServiceResult.Success();
-        }
-
-        private sealed class CashReceiptPostingContext
-        {
-            public FiscalYear FiscalYear { get; init; } = default!;
-            public FiscalPeriod Period { get; init; } = default!;
-            public DateTime Now { get; init; }
-            public string Username { get; init; } = string.Empty;
         }
 
         private sealed class CashReceiptAccounts
@@ -496,12 +514,6 @@ namespace MarcoERP.Application.Services.Treasury
             public Account ContraAccount { get; init; } = default!;
         }
 
-        private sealed class CashReceiptCancelContext
-        {
-            public FiscalYear FiscalYear { get; init; } = default!;
-            public FiscalPeriod Period { get; init; } = default!;
-            public DateTime Today { get; init; }
-        }
     }
 
     public sealed class CashReceiptRepositories
@@ -534,13 +546,15 @@ namespace MarcoERP.Application.Services.Treasury
             IJournalNumberGenerator journalNumberGen,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
-            IDateTimeProvider dateTime)
+            IDateTimeProvider dateTime,
+            ISystemSettingRepository systemSettingRepo)
         {
             FiscalYearRepo = fiscalYearRepo ?? throw new ArgumentNullException(nameof(fiscalYearRepo));
             JournalNumberGen = journalNumberGen ?? throw new ArgumentNullException(nameof(journalNumberGen));
             UnitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             CurrentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
             DateTime = dateTime ?? throw new ArgumentNullException(nameof(dateTime));
+            SystemSettingRepo = systemSettingRepo ?? throw new ArgumentNullException(nameof(systemSettingRepo));
         }
 
         public IFiscalYearRepository FiscalYearRepo { get; }
@@ -548,6 +562,7 @@ namespace MarcoERP.Application.Services.Treasury
         public IUnitOfWork UnitOfWork { get; }
         public ICurrentUserService CurrentUser { get; }
         public IDateTimeProvider DateTime { get; }
+        public ISystemSettingRepository SystemSettingRepo { get; }
     }
 
     public sealed class CashReceiptValidators

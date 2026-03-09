@@ -31,12 +31,18 @@ namespace MarcoERP.Persistence.Repositories.Treasury
 
         public async Task<CashPayment> GetByIdAsync(int id, CancellationToken cancellationToken = default)
             => await _context.CashPayments
+                .AsNoTracking()
                 .Include(cp => cp.Cashbox)
+                .Include(cp => cp.Account)
+                .Include(cp => cp.Supplier)
             .FirstOrDefaultAsync(cp => cp.Id == id, cancellationToken);
 
         public async Task<IReadOnlyList<CashPayment>> GetAllAsync(CancellationToken cancellationToken = default)
             => await _context.CashPayments
+                .AsNoTracking()
                 .Include(cp => cp.Cashbox)
+                .Include(cp => cp.Account)
+                .Include(cp => cp.Supplier)
                 .OrderByDescending(cp => cp.PaymentDate)
                 .ThenByDescending(cp => cp.PaymentNumber)
             .ToListAsync(cancellationToken);
@@ -44,19 +50,51 @@ namespace MarcoERP.Persistence.Repositories.Treasury
         public async Task AddAsync(CashPayment entity, CancellationToken cancellationToken = default)
             => await _context.CashPayments.AddAsync(entity, cancellationToken);
 
-        public void Update(CashPayment entity) => _context.CashPayments.Update(entity);
-        public void Remove(CashPayment entity) => _context.CashPayments.Remove(entity);
+        public void Update(CashPayment entity)
+        {
+            if (entity == null) return;
+
+            var local = _context.CashPayments.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && !ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+                return;
+            }
+            if (local != null)
+            {
+                if (_context.Entry(local).State == EntityState.Unchanged)
+                    _context.Entry(local).State = EntityState.Modified;
+                return;
+            }
+
+            _context.Entry(entity).State = EntityState.Modified;
+        }
+        public void Remove(CashPayment entity) => throw new NotSupportedException(
+            "Hard delete is not supported for financial aggregate 'CashPayment'. Use lifecycle operations (Cancel/SoftDelete draft) instead.");
 
         // ── ICashPaymentRepository ───────────────────────────────
 
         public async Task<CashPayment> GetWithDetailsAsync(int id, CancellationToken ct = default)
             => await _context.CashPayments
+                .AsNoTracking()
                 .Include(cp => cp.Cashbox)
+                .Include(cp => cp.Account)
+                .Include(cp => cp.Supplier)
+                .FirstOrDefaultAsync(cp => cp.Id == id, ct);
+
+        public async Task<CashPayment> GetWithDetailsTrackedAsync(int id, CancellationToken ct = default)
+            => await _context.CashPayments
+                .Include(cp => cp.Cashbox)
+                .Include(cp => cp.Account)
+                .Include(cp => cp.Supplier)
                 .FirstOrDefaultAsync(cp => cp.Id == id, ct);
 
         public async Task<CashPayment> GetByNumberAsync(string paymentNumber, CancellationToken ct = default)
             => await _context.CashPayments
+                .AsNoTracking()
                 .Include(cp => cp.Cashbox)
+                .Include(cp => cp.Account)
+                .Include(cp => cp.Supplier)
                 .FirstOrDefaultAsync(cp => cp.PaymentNumber == paymentNumber, ct);
 
         public async Task<bool> NumberExistsAsync(string paymentNumber, CancellationToken ct = default)
@@ -64,21 +102,30 @@ namespace MarcoERP.Persistence.Repositories.Treasury
 
         public async Task<IReadOnlyList<CashPayment>> GetByStatusAsync(InvoiceStatus status, CancellationToken ct = default)
             => await _context.CashPayments
+                .AsNoTracking()
                 .Include(cp => cp.Cashbox)
+                .Include(cp => cp.Account)
+                .Include(cp => cp.Supplier)
                 .Where(cp => cp.Status == status)
                 .OrderByDescending(cp => cp.PaymentDate)
                 .ToListAsync(ct);
 
         public async Task<IReadOnlyList<CashPayment>> GetByCashboxAsync(int cashboxId, CancellationToken ct = default)
             => await _context.CashPayments
+                .AsNoTracking()
                 .Include(cp => cp.Cashbox)
+                .Include(cp => cp.Account)
+                .Include(cp => cp.Supplier)
                 .Where(cp => cp.CashboxId == cashboxId)
                 .OrderByDescending(cp => cp.PaymentDate)
                 .ToListAsync(ct);
 
         public async Task<IReadOnlyList<CashPayment>> GetBySupplierAsync(int supplierId, CancellationToken ct = default)
             => await _context.CashPayments
+                .AsNoTracking()
                 .Include(cp => cp.Cashbox)
+                .Include(cp => cp.Account)
+                .Include(cp => cp.Supplier)
                 .Where(cp => cp.SupplierId == supplierId)
                 .OrderByDescending(cp => cp.PaymentDate)
                 .ToListAsync(ct);
@@ -92,6 +139,7 @@ namespace MarcoERP.Persistence.Repositories.Treasury
             var prefix = $"CP-{_dateTime.UtcNow:yyyyMM}-";
 
             var lastNumber = await _context.CashPayments
+                .AsNoTracking()
                 .Where(cp => cp.PaymentNumber.StartsWith(prefix))
                 .OrderByDescending(cp => cp.PaymentNumber)
                 .Select(cp => cp.PaymentNumber)

@@ -19,6 +19,10 @@ namespace MarcoERP.Application.DTOs.Inventory
         public decimal CostPrice { get; set; }
         public decimal DefaultSalePrice { get; set; }
         public decimal WeightedAverageCost { get; set; }
+        public decimal WholesalePrice { get; set; }
+        public decimal RetailPrice { get; set; }
+        public string ImagePath { get; set; }
+        public decimal MaximumStock { get; set; }
         public decimal MinimumStock { get; set; }
         public decimal ReorderLevel { get; set; }
         public decimal VatRate { get; set; }
@@ -52,6 +56,10 @@ namespace MarcoERP.Application.DTOs.Inventory
         public int BaseUnitId { get; set; }
         public decimal CostPrice { get; set; }
         public decimal DefaultSalePrice { get; set; }
+        public decimal WholesalePrice { get; set; }
+        public decimal RetailPrice { get; set; }
+        public string ImagePath { get; set; }
+        public decimal MaximumStock { get; set; }
         public decimal MinimumStock { get; set; }
         public decimal ReorderLevel { get; set; }
         public decimal VatRate { get; set; }
@@ -79,6 +87,10 @@ namespace MarcoERP.Application.DTOs.Inventory
         public int CategoryId { get; set; }
         public decimal CostPrice { get; set; }
         public decimal DefaultSalePrice { get; set; }
+        public decimal WholesalePrice { get; set; }
+        public decimal RetailPrice { get; set; }
+        public string ImagePath { get; set; }
+        public decimal MaximumStock { get; set; }
         public decimal MinimumStock { get; set; }
         public decimal ReorderLevel { get; set; }
         public decimal VatRate { get; set; }

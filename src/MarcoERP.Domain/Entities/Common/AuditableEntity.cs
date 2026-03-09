@@ -9,15 +9,15 @@ namespace MarcoERP.Domain.Entities.Common
     public abstract class AuditableEntity : BaseEntity
     {
         /// <summary>UTC timestamp of record creation.</summary>
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedAt { get; internal set; }
 
         /// <summary>Username of the creator.</summary>
-        public string CreatedBy { get; set; }
+        public string CreatedBy { get; internal set; }
 
         /// <summary>UTC timestamp of last modification (null if never modified).</summary>
-        public DateTime? ModifiedAt { get; set; }
+        public DateTime? ModifiedAt { get; internal set; }
 
         /// <summary>Username of last modifier (null if never modified).</summary>
-        public string ModifiedBy { get; set; }
+        public string ModifiedBy { get; internal set; }
     }
 }

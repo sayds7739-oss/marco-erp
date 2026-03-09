@@ -16,7 +16,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(ps => ps.Id);
             builder.Property(ps => ps.Id).UseIdentityColumn();
 
-            builder.Property(ps => ps.RowVersion).IsRowVersion().IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(ps => ps.SessionNumber).IsRequired().HasMaxLength(30).IsUnicode(false);
             builder.Property(ps => ps.Status).IsRequired().HasConversion<int>();
@@ -36,14 +36,24 @@ namespace MarcoERP.Persistence.Configurations
             builder.Property(ps => ps.CreatedBy).IsRequired().HasMaxLength(100);
             builder.Property(ps => ps.ModifiedBy).HasMaxLength(100);
 
+            // ── Soft Delete Fields ──────────────────────────────
+            builder.Property(ps => ps.IsDeleted)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            builder.Property(ps => ps.DeletedAt);
+
+            builder.Property(ps => ps.DeletedBy)
+                .HasMaxLength(100);
+
             // Relationships
-            builder.HasOne<User>().WithMany()
+            builder.HasOne(ps => ps.User).WithMany()
                 .HasForeignKey(ps => ps.UserId).OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne<Cashbox>().WithMany()
+            builder.HasOne(ps => ps.Cashbox).WithMany()
                 .HasForeignKey(ps => ps.CashboxId).OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne<Warehouse>().WithMany()
+            builder.HasOne(ps => ps.Warehouse).WithMany()
                 .HasForeignKey(ps => ps.WarehouseId).OnDelete(DeleteBehavior.Restrict);
 
             builder.HasMany(ps => ps.Payments).WithOne(p => p.PosSession)

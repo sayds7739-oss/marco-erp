@@ -15,6 +15,7 @@ namespace MarcoERP.Domain.Enums
         Security,
         Settings,
         Governance,
+        POS,
         /// <summary>Cross-cutting concerns (UnitOfWork, CurrentUser, DateTimeProvider, Validators).</summary>
         Common
     }

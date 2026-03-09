@@ -1,4 +1,5 @@
 using System;
+using MarcoERP.Domain.Exceptions;
 
 namespace MarcoERP.Domain.Entities.Common
 {
@@ -18,15 +19,22 @@ namespace MarcoERP.Domain.Entities.Common
         public string DeletedBy { get; private set; }
 
         /// <summary>
+        /// Monotonically increasing version for offline sync.
+        /// Auto-incremented by SyncVersionInterceptor on every insert/update/soft-delete.
+        /// Clients send their last known SyncVersion to pull only newer changes.
+        /// </summary>
+        public long SyncVersion { get; internal set; }
+
+        /// <summary>
         /// Marks the entity as soft-deleted.
         /// </summary>
         public virtual void SoftDelete(string deletedBy, DateTime deletedAt)
         {
             if (string.IsNullOrWhiteSpace(deletedBy))
-                throw new InvalidOperationException("DeletedBy is required for soft delete.");
+                throw new CommonDomainException("DeletedBy is required for soft delete.");
 
             if (deletedAt == default)
-                throw new InvalidOperationException("DeletedAt is required for soft delete.");
+                throw new CommonDomainException("DeletedAt is required for soft delete.");
 
             IsDeleted = true;
             DeletedAt = deletedAt;

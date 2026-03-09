@@ -1,17 +1,26 @@
 namespace MarcoERP.Domain.Enums
 {
     /// <summary>
-    /// Payment method used in POS transactions.
+    /// Payment method used in transactions.
     /// </summary>
     public enum PaymentMethod
     {
-        /// <summary>Cash payment.</summary>
+        /// <summary>نقدي.</summary>
         Cash = 0,
 
-        /// <summary>Card (credit/debit) payment.</summary>
+        /// <summary>بطاقة ائتمان/خصم مباشر.</summary>
         Card = 1,
 
-        /// <summary>On account — charged to customer AR.</summary>
-        OnAccount = 2
+        /// <summary>على الحساب (آجل).</summary>
+        OnAccount = 2,
+
+        /// <summary>شيك.</summary>
+        Check = 3,
+
+        /// <summary>تحويل بنكي.</summary>
+        BankTransfer = 4,
+
+        /// <summary>محفظة إلكترونية (فودافون كاش، إنستا باي، إلخ).</summary>
+        EWallet = 5
     }
 }

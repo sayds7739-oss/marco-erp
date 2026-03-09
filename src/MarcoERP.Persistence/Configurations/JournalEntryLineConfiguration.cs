@@ -13,7 +13,16 @@ namespace MarcoERP.Persistence.Configurations
         public void Configure(EntityTypeBuilder<JournalEntryLine> builder)
         {
             // ── Table ───────────────────────────────────────────
-            builder.ToTable("JournalEntryLines");
+            builder.ToTable("JournalEntryLines", t =>
+            {
+                // FIN-CK-01: Journal amounts must be non-negative
+                t.HasCheckConstraint("CK_JournalEntryLines_NonNegative",
+                    DbProviderHelper.CheckExpr("{0} >= 0 AND {1} >= 0", "DebitAmount", "CreditAmount"));
+
+                // FIN-CK-02: A line cannot have both debit and credit
+                t.HasCheckConstraint("CK_JournalEntryLines_SingleSide",
+                    DbProviderHelper.CheckExpr("NOT ({0} > 0 AND {1} > 0)", "DebitAmount", "CreditAmount"));
+            });
 
             // ── Primary Key ─────────────────────────────────────
             builder.HasKey(l => l.Id);
@@ -21,9 +30,7 @@ namespace MarcoERP.Persistence.Configurations
                 .UseIdentityColumn();
 
             // ── Concurrency Token ───────────────────────────────
-            builder.Property(l => l.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             // ── Properties ──────────────────────────────────────
             builder.Property(l => l.JournalEntryId)

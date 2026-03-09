@@ -30,11 +30,20 @@ namespace MarcoERP.Application.Validators.Inventory
             RuleFor(x => x.DefaultSalePrice)
                 .GreaterThanOrEqualTo(0).WithMessage("سعر البيع لا يمكن أن يكون سالباً.");
 
-            RuleFor(x => x.CostPrice)
-                .GreaterThanOrEqualTo(0).WithMessage("سعر التكلفة لا يمكن أن يكون سالباً.");
+            RuleFor(x => x.WholesalePrice)
+                .GreaterThanOrEqualTo(0).WithMessage("سعر الجملة لا يمكن أن يكون سالباً.");
+
+            RuleFor(x => x.RetailPrice)
+                .GreaterThanOrEqualTo(0).WithMessage("سعر التجزئة لا يمكن أن يكون سالباً.");
 
             RuleFor(x => x.MinimumStock)
                 .GreaterThanOrEqualTo(0).WithMessage("الحد الأدنى لا يمكن أن يكون سالباً.");
+
+            RuleFor(x => x.MaximumStock)
+                .GreaterThanOrEqualTo(0).WithMessage("الحد الأقصى لا يمكن أن يكون سالباً.");
+
+            RuleFor(x => x.ReorderLevel)
+                .GreaterThanOrEqualTo(0).WithMessage("نقطة إعادة الطلب لا يمكن أن تكون سالبة.");
 
             RuleFor(x => x.VatRate)
                 .InclusiveBetween(0, 100).WithMessage("نسبة الضريبة يجب أن تكون بين 0 و 100.");
@@ -43,6 +52,9 @@ namespace MarcoERP.Application.Validators.Inventory
                 .MaximumLength(50);
 
             RuleFor(x => x.Description)
+                .MaximumLength(500);
+
+            RuleFor(x => x.ImagePath)
                 .MaximumLength(500);
 
             RuleForEach(x => x.Units).SetValidator(new CreateProductUnitDtoValidator());
@@ -84,17 +96,33 @@ namespace MarcoERP.Application.Validators.Inventory
             RuleFor(x => x.CategoryId)
                 .GreaterThan(0).WithMessage("تصنيف الصنف مطلوب.");
 
+            RuleFor(x => x.CostPrice)
+                .GreaterThanOrEqualTo(0).WithMessage("سعر التكلفة لا يمكن أن يكون سالباً.");
+
             RuleFor(x => x.DefaultSalePrice)
                 .GreaterThanOrEqualTo(0).WithMessage("سعر البيع لا يمكن أن يكون سالباً.");
 
+            RuleFor(x => x.WholesalePrice)
+                .GreaterThanOrEqualTo(0).WithMessage("سعر الجملة لا يمكن أن يكون سالباً.");
+
+            RuleFor(x => x.RetailPrice)
+                .GreaterThanOrEqualTo(0).WithMessage("سعر التجزئة لا يمكن أن يكون سالباً.");
+
             RuleFor(x => x.MinimumStock)
                 .GreaterThanOrEqualTo(0);
+
+            RuleFor(x => x.MaximumStock)
+                .GreaterThanOrEqualTo(0).WithMessage("الحد الأقصى لا يمكن أن يكون سالباً.");
+
+            RuleFor(x => x.ReorderLevel)
+                .GreaterThanOrEqualTo(0).WithMessage("نقطة إعادة الطلب لا يمكن أن تكون سالبة.");
 
             RuleFor(x => x.VatRate)
                 .InclusiveBetween(0, 100);
 
             RuleFor(x => x.Barcode).MaximumLength(50);
             RuleFor(x => x.Description).MaximumLength(500);
+            RuleFor(x => x.ImagePath).MaximumLength(500);
 
             RuleForEach(x => x.Units).SetValidator(new CreateProductUnitDtoValidator());
         }

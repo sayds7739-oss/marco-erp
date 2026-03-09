@@ -74,9 +74,10 @@ namespace MarcoERP.Application.DTOs.Sales
     /// <summary>DTO for creating a sales return line.</summary>
     public sealed class CreateSalesReturnLineDto
     {
+        public int Id { get; set; }
         public int ProductId { get; set; }
         public int UnitId { get; set; }
-        public decimal Quantity { get; set; }
+        public decimal Quantity { get; set; } = 1m;
         public decimal UnitPrice { get; set; }
         public decimal DiscountPercent { get; set; }
     }

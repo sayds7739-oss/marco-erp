@@ -21,24 +21,31 @@ namespace MarcoERP.Application.Interfaces.Treasury
         Task<ServiceResult<BankReconciliationDto>> GetByIdAsync(int id, CancellationToken ct = default);
 
         /// <summary>إنشاء تسوية جديدة — Creates a new reconciliation.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult<BankReconciliationDto>> CreateAsync(CreateBankReconciliationDto dto, CancellationToken ct = default);
 
         /// <summary>تعديل تسوية — Updates a reconciliation header.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult<BankReconciliationDto>> UpdateAsync(UpdateBankReconciliationDto dto, CancellationToken ct = default);
 
         /// <summary>إضافة بند تسوية — Adds an item to a reconciliation.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult<BankReconciliationDto>> AddItemAsync(CreateBankReconciliationItemDto dto, CancellationToken ct = default);
 
         /// <summary>حذف بند تسوية — Removes an item from a reconciliation.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult> RemoveItemAsync(int reconciliationId, int itemId, CancellationToken ct = default);
 
         /// <summary>اكتمال التسوية — Completes the reconciliation.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryPost)]
         Task<ServiceResult> CompleteAsync(int id, CancellationToken ct = default);
 
         /// <summary>إعادة فتح التسوية — Reopens a completed reconciliation.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryPost)]
         Task<ServiceResult> ReopenAsync(int id, CancellationToken ct = default);
 
         /// <summary>حذف تسوية — Deletes an incomplete reconciliation.</summary>
+        [RequiresPermission(PermissionKeys.TreasuryCreate)]
         Task<ServiceResult> DeleteAsync(int id, CancellationToken ct = default);
     }
 }

@@ -89,7 +89,7 @@
                         <Run Text=" صنف بنجاح" />
                     </TextBlock>
                     <TextBlock VerticalAlignment="Center" Margin="24,0,0,0"
-                               Visibility="{Binding FailedCount, Converter={StaticResource NullToVisibilityConverter}}">
+                               Visibility="{Binding HasFailures, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Run Text="— فشل " />
                         <Run Text="{Binding FailedCount, Mode=OneWay}" FontWeight="Bold" Foreground="{StaticResource DangerBrush}" />
                         <Run Text=" صنف" />
@@ -157,15 +157,31 @@
                     <DataGridTextColumn Header="#" Binding="{Binding RowNumber}" Width="50" />
                     <DataGridTextColumn Header="الحالة" Width="60">
                         <DataGridTextColumn.Binding>
-                            <Binding Path="IsValid" Converter="{StaticResource BooleanToVisibilityConverter}"
-                                     ConverterParameter="✓|✗" FallbackValue="—" />
+                            <Binding Path="IsValid" Converter="{x:Static local:BoolToSymbolConverter.Instance}"
+                                     FallbackValue="—" />
                         </DataGridTextColumn.Binding>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                <Setter Property="FontSize" Value="16" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsValid}" Value="True">
+                                        <Setter Property="Foreground" Value="Green" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsValid}" Value="False">
+                                        <Setter Property="Foreground" Value="Red" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="الكود" Binding="{Binding Code}" Width="100" />
                     <DataGridTextColumn Header="الاسم (عربي)" Binding="{Binding NameAr}" Width="*" />
                     <DataGridTextColumn Header="الاسم (إنجليزي)" Binding="{Binding NameEn}" Width="140" />
                     <DataGridTextColumn Header="التصنيف" Binding="{Binding CategoryName}" Width="120" />
                     <DataGridTextColumn Header="الوحدة" Binding="{Binding BaseUnitName}" Width="100" />
+                    <DataGridTextColumn Header="الوحدة الجزئية" Binding="{Binding MinorUnitName}" Width="100" />
+                    <DataGridTextColumn Header="معامل التحويل" Binding="{Binding MinorUnitConversionFactor, StringFormat=N2}" Width="90" />
                     <DataGridTextColumn Header="سعر التكلفة" Binding="{Binding CostPrice, StringFormat=N2}" Width="100">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
@@ -191,6 +207,7 @@
                                 <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
                                 <Setter Property="TextWrapping" Value="Wrap" />
                                 <Setter Property="FontSize" Value="11" />
+                                <Setter Property="ToolTip" Value="{Binding Errors, Converter={x:Static local:ErrorListConverter.Instance}}" />
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>

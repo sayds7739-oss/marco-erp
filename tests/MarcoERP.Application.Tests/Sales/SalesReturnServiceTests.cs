@@ -17,6 +17,7 @@ using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Inventory;
 using MarcoERP.Domain.Interfaces.Sales;
 using MarcoERP.Domain.Entities.Accounting.Policies;
+using MarcoERP.Domain.Interfaces.Settings;
 
 namespace MarcoERP.Application.Tests.Sales
 {
@@ -36,6 +37,7 @@ namespace MarcoERP.Application.Tests.Sales
         private readonly Mock<IDateTimeProvider> _dateTimeMock = new();
         private readonly Mock<IValidator<CreateSalesReturnDto>> _createValidatorMock = new();
         private readonly Mock<IValidator<UpdateSalesReturnDto>> _updateValidatorMock = new();
+        private readonly Mock<ISystemSettingRepository> _systemSettingRepoMock = new();
         private readonly SalesReturnService _sut;
 
         public SalesReturnServiceTests()
@@ -54,6 +56,11 @@ namespace MarcoERP.Application.Tests.Sales
 
             _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(1);
+            _unitOfWorkMock.Setup(u => u.ExecuteInTransactionAsync(
+                    It.IsAny<Func<Task>>(),
+                    It.IsAny<System.Data.IsolationLevel>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns((Func<Task> op, System.Data.IsolationLevel _, CancellationToken __) => op());
 
             _sut = new SalesReturnService(
                 new SalesReturnRepositories(
@@ -72,7 +79,10 @@ namespace MarcoERP.Application.Tests.Sales
                     _dateTimeMock.Object),
                 new SalesReturnValidators(
                     _createValidatorMock.Object,
-                    _updateValidatorMock.Object));
+                    _updateValidatorMock.Object),
+                new JournalEntryFactory(_journalRepoMock.Object, _journalNumberGenMock.Object),
+                new FiscalPeriodValidator(_fiscalYearRepoMock.Object, _systemSettingRepoMock.Object, _dateTimeMock.Object, _currentUserMock.Object),
+                new StockManager(_whProductRepoMock.Object, _movementRepoMock.Object));
         }
 
         private static Product CreateProduct(int id = 1, decimal wac = 10m, decimal vatRate = 14m)

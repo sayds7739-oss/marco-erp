@@ -1,0 +1,84 @@
+{
+  "Database": "MarcoERP",
+  "GeneratedAtUtc": "2026-02-14T15:40:06.3870673Z",
+  "Scenarios": [
+    {
+      "Scenario": "Update quantity only",
+      "InsertCount": 0,
+      "UpdateCount": 1,
+      "DeleteCount": 0,
+      "Sql": [
+        "SET NOCOUNT ON;\r\nUPDATE [SalesInvoiceLines] SET [BaseQuantity] = @p0, [NetTotal] = @p1, [Quantity] = @p2, [SubTotal] = @p3, [TotalWithVat] = @p4, [VatAmount] = @p5\r\nOUTPUT INSERTED.[RowVersion]\r\nWHERE [Id] = @p6 AND [RowVersion] = @p7;\r\nUPDATE [SalesInvoices] SET [NetTotal] = @p8, [Subtotal] = @p9, [VatTotal] = @p10\r\nOUTPUT INSERTED.[RowVersion]\r\nWHERE [Id] = @p11 AND [RowVersion] = @p12;\r\n"
+      ],
+      "Error": null
+    },
+    {
+      "Scenario": "Remove one line",
+      "InsertCount": 0,
+      "UpdateCount": 0,
+      "DeleteCount": 1,
+      "Sql": [
+        "SET NOCOUNT ON;\r\nDELETE FROM [SalesInvoiceLines]\r\nOUTPUT 1\r\nWHERE [Id] = @p0 AND [RowVersion] = @p1;\r\nUPDATE [SalesInvoices] SET [NetTotal] = @p2, [Subtotal] = @p3, [VatTotal] = @p4\r\nOUTPUT INSERTED.[RowVersion]\r\nWHERE [Id] = @p5 AND [RowVersion] = @p6;\r\n"
+      ],
+      "Error": null
+    },
+    {
+      "Scenario": "Add one line",
+      "InsertCount": 1,
+      "UpdateCount": 0,
+      "DeleteCount": 0,
+      "Sql": [
+        "SET NOCOUNT ON;\r\nINSERT INTO [SalesInvoiceLines] ([BaseQuantity], [ConversionFactor], [DiscountAmount], [DiscountPercent], [NetTotal], [ProductId], [Quantity], [SalesInvoiceId], [SubTotal], [TotalWithVat], [UnitId], [UnitPrice], [VatAmount], [VatRate])\r\nOUTPUT INSERTED.[Id], INSERTED.[RowVersion]\r\nVALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13);\r\nUPDATE [SalesInvoices] SET [NetTotal] = @p14, [Subtotal] = @p15, [VatTotal] = @p16\r\nOUTPUT INSERTED.[RowVersion]\r\nWHERE [Id] = @p17 AND [RowVersion] = @p18;\r\n"
+      ],
+      "Error": null
+    },
+    {
+      "Scenario": "Save twice without changes",
+      "InsertCount": 0,
+      "UpdateCount": 0,
+      "DeleteCount": 0,
+      "Sql": [],
+      "Error": null
+    }
+  ],
+  "EdgeCases": [
+    {
+      "Name": "DTO missing LineId",
+      "Outcome": "Succeeded",
+      "Message": "Persisted lines count=2",
+      "InsertCount": 0,
+      "UpdateCount": 0,
+      "DeleteCount": 1
+    },
+    {
+      "Name": "DTO duplicate LineId",
+      "Outcome": "FailedAsExpected",
+      "Message": "\u062A\u0643\u0631\u0627\u0631 \u0645\u0639\u0631\u0641 \u0628\u0646\u062F \u0627\u0644\u0641\u0627\u062A\u0648\u0631\u0629 \u063A\u064A\u0631 \u0645\u0633\u0645\u0648\u062D.",
+      "InsertCount": 0,
+      "UpdateCount": 0,
+      "DeleteCount": 0
+    },
+    {
+      "Name": "DTO same product twice with different Id",
+      "Outcome": "Succeeded",
+      "Message": "Accepted and persisted as two separate lines",
+      "InsertCount": 0,
+      "UpdateCount": 1,
+      "DeleteCount": 0
+    },
+    {
+      "Name": "Save without modification",
+      "Outcome": "Succeeded",
+      "Message": "No line DML emitted",
+      "InsertCount": 0,
+      "UpdateCount": 0,
+      "DeleteCount": 0
+    }
+  ],
+  "Concurrency": {
+    "RowVersionStableOnUnchangedLine": true,
+    "RowVersionChangedOnEditedLine": true,
+    "NoFalsePositiveConcurrencyConflict": true,
+    "NoLostUpdate": true
+  }
+}

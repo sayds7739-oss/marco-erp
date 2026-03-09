@@ -248,9 +248,48 @@ namespace MarcoERP.Domain.Entities.Sales
         {
             EnsureDraft("لا يمكن تعديل بنود عرض سعر غير مسودة.");
 
-            _lines.Clear();
-            if (newLines != null)
-                _lines.AddRange(newLines);
+            var incomingLines = (newLines ?? Enumerable.Empty<SalesQuotationLine>()).ToList();
+            var existingById = _lines
+                .Where(l => l.Id > 0)
+                .ToDictionary(l => l.Id);
+
+            var incomingIds = new HashSet<int>();
+            var newIncomingLines = new List<SalesQuotationLine>();
+
+            foreach (var incoming in incomingLines)
+            {
+                if (incoming.Id > 0)
+                {
+                    if (!incomingIds.Add(incoming.Id))
+                        throw new SalesQuotationDomainException("تكرار معرف بند عرض السعر غير مسموح.");
+
+                    if (!existingById.TryGetValue(incoming.Id, out var existingLine))
+                        throw new SalesQuotationDomainException("لا يمكن تحديث بند غير موجود في عرض السعر.");
+
+                    existingLine.UpdateDetails(
+                        incoming.ProductId,
+                        incoming.UnitId,
+                        incoming.Quantity,
+                        incoming.UnitPrice,
+                        incoming.ConversionFactor,
+                        incoming.DiscountPercent,
+                        incoming.VatRate);
+                }
+                else
+                {
+                    newIncomingLines.Add(incoming);
+                }
+            }
+
+            var linesToRemove = existingById.Values
+                .Where(l => !incomingIds.Contains(l.Id))
+                .ToList();
+
+            foreach (var line in linesToRemove)
+                _lines.Remove(line);
+
+            _lines.RemoveAll(l => l.Id == 0);
+            _lines.AddRange(newIncomingLines);
 
             RecalculateTotals();
         }

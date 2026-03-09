@@ -45,13 +45,13 @@ namespace MarcoERP.Persistence.Configurations
 
             // AUD-02: OldValues/NewValues/ChangedColumns per DATABASE_POLICY
             builder.Property(a => a.OldValues)
-                .HasColumnType("nvarchar(max)");
+                .HasColumnType(DbProviderHelper.MaxStringType());
 
             builder.Property(a => a.NewValues)
-                .HasColumnType("nvarchar(max)");
+                .HasColumnType(DbProviderHelper.MaxStringType());
 
             builder.Property(a => a.ChangedColumns)
-                .HasColumnType("nvarchar(max)");
+                .HasColumnType(DbProviderHelper.MaxStringType());
 
             // ── Indexes ─────────────────────────────────────────
             builder.HasIndex(a => new { a.EntityType, a.EntityId })

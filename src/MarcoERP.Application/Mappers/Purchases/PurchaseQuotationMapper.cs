@@ -18,6 +18,7 @@ namespace MarcoERP.Application.Mappers.Purchases
                 SupplierId = entity.SupplierId,
                 SupplierNameAr = entity.Supplier?.NameAr,
                 WarehouseId = entity.WarehouseId,
+                WarehouseNameAr = entity.Warehouse?.NameAr,
                 Status = entity.Status.ToString(),
                 Subtotal = entity.Subtotal,
                 DiscountTotal = entity.DiscountTotal,
@@ -37,7 +38,10 @@ namespace MarcoERP.Application.Mappers.Purchases
             {
                 Id = line.Id,
                 ProductId = line.ProductId,
+                ProductNameAr = line.Product?.NameAr,
+                ProductCode = line.Product?.Code,
                 UnitId = line.UnitId,
+                UnitNameAr = line.Unit?.NameAr,
                 Quantity = line.Quantity,
                 UnitPrice = line.UnitPrice,
                 ConversionFactor = line.ConversionFactor,

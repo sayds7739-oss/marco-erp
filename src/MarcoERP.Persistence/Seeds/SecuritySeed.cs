@@ -34,16 +34,25 @@ namespace MarcoERP.Persistence.Seeds
         // Inventory
         public const string InventoryView = "inventory.view";
         public const string InventoryManage = "inventory.manage";
+        public const string InventoryAdjustmentView = "inventoryadjustment.view";
+        public const string InventoryAdjustmentCreate = "inventoryadjustment.create";
+        public const string InventoryAdjustmentPost = "inventoryadjustment.post";
 
         // Sales
         public const string SalesView = "sales.view";
         public const string SalesCreate = "sales.create";
         public const string SalesPost = "sales.post";
+        public const string SalesQuotationView = "salesquotation.view";
+        public const string SalesQuotationCreate = "salesquotation.create";
+        public const string PriceListView = "pricelist.view";
+        public const string PriceListManage = "pricelist.manage";
 
         // Purchases
         public const string PurchasesView = "purchases.view";
         public const string PurchasesCreate = "purchases.create";
         public const string PurchasesPost = "purchases.post";
+        public const string PurchaseQuotationView = "purchasequotation.view";
+        public const string PurchaseQuotationCreate = "purchasequotation.create";
 
         // Treasury
         public const string TreasuryView = "treasury.view";
@@ -59,11 +68,19 @@ namespace MarcoERP.Persistence.Seeds
         public const string RolesManage = "roles.manage";
         public const string AuditLogView = "auditlog.view";
 
+        // Opening Balance
+        public const string OpeningBalanceView = "openingbalance.view";
+        public const string OpeningBalanceManage = "openingbalance.manage";
+
         // POS
         public const string PosAccess = "pos.access";
 
         // Governance (Phase 7) — NOT assigned to any default role
         public const string GovernanceAccess = "governance.access";
+
+        // Recycle Bin
+        public const string RecycleBinView = "recyclebin.view";
+        public const string RecycleBinRestore = "recyclebin.restore";
 
         /// <summary>All defined permission keys (including governance.access).</summary>
         public static readonly string[] AllPermissions = new[]
@@ -72,13 +89,19 @@ namespace MarcoERP.Persistence.Seeds
             JournalView, JournalCreate, JournalPost, JournalReverse,
             FiscalYearManage, FiscalPeriodManage,
             InventoryView, InventoryManage,
+            InventoryAdjustmentView, InventoryAdjustmentCreate, InventoryAdjustmentPost,
             SalesView, SalesCreate, SalesPost,
+            SalesQuotationView, SalesQuotationCreate,
+            PriceListView, PriceListManage,
             PurchasesView, PurchasesCreate, PurchasesPost,
+            PurchaseQuotationView, PurchaseQuotationCreate,
             TreasuryView, TreasuryCreate, TreasuryPost,
             ReportsView,
             SettingsManage, UsersManage, RolesManage, AuditLogView,
+            OpeningBalanceView, OpeningBalanceManage,
             PosAccess,
-            GovernanceAccess
+            GovernanceAccess,
+            RecycleBinView, RecycleBinRestore
         };
 
         /// <summary>
@@ -108,6 +131,7 @@ namespace MarcoERP.Persistence.Seeds
                     JournalView, JournalCreate, JournalPost, JournalReverse,
                     FiscalYearManage, FiscalPeriodManage,
                     TreasuryView, TreasuryCreate, TreasuryPost,
+                    OpeningBalanceView, OpeningBalanceManage,
                     ReportsView
                 })
                     accountant.AddPermission(perm);
@@ -116,6 +140,8 @@ namespace MarcoERP.Persistence.Seeds
                 foreach (var perm in new[]
                 {
                     SalesView, SalesCreate, SalesPost,
+                    SalesQuotationView, SalesQuotationCreate,
+                    PriceListView, PriceListManage,
                     ReportsView, PosAccess,
                     TreasuryView, TreasuryCreate, TreasuryPost
                 })
@@ -125,7 +151,9 @@ namespace MarcoERP.Persistence.Seeds
                 foreach (var perm in new[]
                 {
                     InventoryView, InventoryManage,
-                    PurchasesView, PurchasesCreate, PurchasesPost
+                    InventoryAdjustmentView, InventoryAdjustmentCreate, InventoryAdjustmentPost,
+                    PurchasesView, PurchasesCreate, PurchasesPost,
+                    PurchaseQuotationView, PurchaseQuotationCreate
                 })
                     storekeeper.AddPermission(perm);
 
@@ -133,7 +161,9 @@ namespace MarcoERP.Persistence.Seeds
                 foreach (var perm in new[]
                 {
                     AccountsView, JournalView, InventoryView, SalesView,
-                    PurchasesView, TreasuryView, ReportsView
+                    PurchasesView, TreasuryView, ReportsView,
+                    SalesQuotationView, PurchaseQuotationView,
+                    PriceListView, InventoryAdjustmentView
                 })
                     viewer.AddPermission(perm);
 
@@ -160,80 +190,26 @@ namespace MarcoERP.Persistence.Seeds
 
             if (!await context.Users.AnyAsync())
             {
-                // Create default users with BCrypt hashes
-                // admin: Admin@123456
-                // super: LOLO9090..
-                
+                // Create default admin user — password is provided from configuration (never hardcoded).
+                // P-03 Fix: mustChangePassword = true forces password change on first login.
                 var adminUser = new User(
                     username: "admin",
-                    passwordHash: adminPasswordHash, // Admin@123456
+                    passwordHash: adminPasswordHash,
                     fullNameAr: "مدير النظام",
                     fullNameEn: "System Administrator",
                     email: "admin@marco-erp.local",
                     phone: null,
                     roleId: administratorRole.Id,
-                    mustChangePassword: false);
+                    mustChangePassword: true);
 
-                // Super user with LOLO9090..
-                var superPasswordHash = BCrypt.Net.BCrypt.HashPassword("LOLO9090..", workFactor: 12);
-                var superUser = new User(
-                    username: "super",
-                    passwordHash: superPasswordHash,
-                    fullNameAr: "المدير الأعلى",
-                    fullNameEn: "Super Administrator",
-                    email: "super@marco-erp.local",
-                    phone: null,
-                    roleId: administratorRole.Id,
-                    mustChangePassword: false);
-
-                await context.Users.AddRangeAsync(adminUser, superUser);
+                await context.Users.AddAsync(adminUser);
                 await context.SaveChangesAsync();
             }
             else
             {
-                // Update/ensure correct passwords for existing users
-                var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "admin");
-                if (adminUser != null)
-                {
-                    // Verify password is Admin@123456
-                    if (!BCrypt.Net.BCrypt.Verify("Admin@123456", adminUser.PasswordHash))
-                    {
-                        adminUser.ChangePassword(adminPasswordHash);
-                    }
-                    // Ensure active and unlocked
-                    if (!adminUser.IsActive) adminUser.Activate();
-                    if (adminUser.IsLocked) adminUser.Unlock();
-                }
-
-                // Ensure super user exists
-                var superUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "super");
-                if (superUser == null)
-                {
-                    var superPasswordHash = BCrypt.Net.BCrypt.HashPassword("LOLO9090..", workFactor: 12);
-                    superUser = new User(
-                        username: "super",
-                        passwordHash: superPasswordHash,
-                        fullNameAr: "المدير الأعلى",
-                        fullNameEn: "Super Administrator",
-                        email: "super@marco-erp.local",
-                        phone: null,
-                        roleId: administratorRole.Id,
-                        mustChangePassword: false);
-                    await context.Users.AddAsync(superUser);
-                }
-                else
-                {
-                    // Update super user password if needed
-                    if (!BCrypt.Net.BCrypt.Verify("LOLO9090..", superUser.PasswordHash))
-                    {
-                        var superPasswordHash = BCrypt.Net.BCrypt.HashPassword("LOLO9090..", workFactor: 12);
-                        superUser.ChangePassword(superPasswordHash);
-                    }
-                    // Ensure active and unlocked
-                    if (!superUser.IsActive) superUser.Activate();
-                    if (superUser.IsLocked) superUser.Unlock();
-                }
-
+                // Admin user already exists — do NOT auto-activate or auto-unlock.
+                // If admin was intentionally locked/deactivated, that decision must be respected.
+                // Only save if other seed changes (e.g., new permissions) were made above.
                 await context.SaveChangesAsync();
             }
         }

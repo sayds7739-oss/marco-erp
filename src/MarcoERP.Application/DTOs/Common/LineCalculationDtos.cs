@@ -62,4 +62,18 @@ namespace MarcoERP.Application.DTOs.Common
         public decimal VatTotal { get; set; }
         public decimal NetTotal { get; set; }
     }
+
+    /// <summary>
+    /// Output values for header-level discount application.
+    /// Phase 9C: Extracted from ViewModel inline calculation.
+    /// </summary>
+    public sealed class HeaderDiscountResult
+    {
+        /// <summary>Total discount (line-level + header-level combined).</summary>
+        public decimal TotalDiscount { get; set; }
+        /// <summary>VAT total after proportional adjustment for header discount.</summary>
+        public decimal VatTotal { get; set; }
+        /// <summary>Net total after header discount and delivery fee.</summary>
+        public decimal NetTotal { get; set; }
+    }
 }

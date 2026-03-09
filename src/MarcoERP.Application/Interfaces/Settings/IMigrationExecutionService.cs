@@ -22,6 +22,7 @@ namespace MarcoERP.Application.Interfaces.Settings
         /// Executes all pending migrations with safety protocol:
         /// 1. Create backup  2. Record MigrationExecution  3. MigrateAsync  4. Mark result.
         /// </summary>
+        [RequiresPermission(PermissionKeys.SettingsManage)]
         Task<ServiceResult> ExecuteMigrationsAsync(CancellationToken ct = default);
 
         /// <summary>

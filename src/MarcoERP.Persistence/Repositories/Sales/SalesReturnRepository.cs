@@ -32,6 +32,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<SalesReturn> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.SalesReturns
+                .AsNoTracking()
                 .Include(sr => sr.Customer)
                 .FirstOrDefaultAsync(sr => sr.Id == id, cancellationToken);
         }
@@ -39,7 +40,11 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<SalesReturn>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _context.SalesReturns
+                .AsNoTracking()
                 .Include(sr => sr.Customer)
+                .Include(sr => sr.Warehouse)
+                .Include(sr => sr.CounterpartySupplier)
+                .Include(sr => sr.SalesRepresentative)
                 .OrderByDescending(sr => sr.ReturnDate)
                 .ThenByDescending(sr => sr.ReturnNumber)
                 .ToListAsync(cancellationToken);
@@ -52,12 +57,28 @@ namespace MarcoERP.Persistence.Repositories.Sales
 
         public void Update(SalesReturn entity)
         {
-            _context.SalesReturns.Update(entity);
+            if (entity == null) return;
+
+            var local = _context.SalesReturns.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && !ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+                return;
+            }
+            if (local != null)
+            {
+                if (_context.Entry(local).State == EntityState.Unchanged)
+                    _context.Entry(local).State = EntityState.Modified;
+                return;
+            }
+
+            _context.Entry(entity).State = EntityState.Modified;
         }
 
         public void Remove(SalesReturn entity)
         {
-            _context.SalesReturns.Remove(entity);
+            throw new NotSupportedException(
+                "Hard delete is not supported for financial aggregate 'SalesReturn'. Use lifecycle operations (Cancel/SoftDelete draft) instead.");
         }
 
         // ── ISalesReturnRepository ──────────────────────────────
@@ -65,15 +86,34 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<SalesReturn> GetWithLinesAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.SalesReturns
+                .AsNoTracking()
                 .Include(sr => sr.Customer)
+                .Include(sr => sr.Warehouse)
+                .Include(sr => sr.CounterpartySupplier)
+                .Include(sr => sr.SalesRepresentative)
                 .Include(sr => sr.OriginalInvoice)
-                .Include(sr => sr.Lines)
+                .Include(sr => sr.Lines).ThenInclude(l => l.Product)
+                .Include(sr => sr.Lines).ThenInclude(l => l.Unit)
+                .FirstOrDefaultAsync(sr => sr.Id == id, cancellationToken);
+        }
+
+        public async Task<SalesReturn> GetWithLinesTrackedAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return await _context.SalesReturns
+                .Include(sr => sr.Customer)
+                .Include(sr => sr.Warehouse)
+                .Include(sr => sr.CounterpartySupplier)
+                .Include(sr => sr.SalesRepresentative)
+                .Include(sr => sr.OriginalInvoice)
+                .Include(sr => sr.Lines).ThenInclude(l => l.Product)
+                .Include(sr => sr.Lines).ThenInclude(l => l.Unit)
                 .FirstOrDefaultAsync(sr => sr.Id == id, cancellationToken);
         }
 
         public async Task<SalesReturn> GetByNumberAsync(string returnNumber, CancellationToken cancellationToken = default)
         {
             return await _context.SalesReturns
+                .AsNoTracking()
                 .Include(sr => sr.Customer)
                 .FirstOrDefaultAsync(sr => sr.ReturnNumber == returnNumber, cancellationToken);
         }
@@ -87,6 +127,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<SalesReturn>> GetByStatusAsync(InvoiceStatus status, CancellationToken cancellationToken = default)
         {
             return await _context.SalesReturns
+                .AsNoTracking()
                 .Include(sr => sr.Customer)
                 .Where(sr => sr.Status == status)
                 .OrderByDescending(sr => sr.ReturnDate)
@@ -96,6 +137,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<SalesReturn>> GetByCustomerAsync(int customerId, CancellationToken cancellationToken = default)
         {
             return await _context.SalesReturns
+                .AsNoTracking()
                 .Include(sr => sr.Customer)
                 .Where(sr => sr.CustomerId == customerId)
                 .OrderByDescending(sr => sr.ReturnDate)
@@ -105,7 +147,9 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<SalesReturn>> GetByOriginalInvoiceAsync(int invoiceId, CancellationToken cancellationToken = default)
         {
             return await _context.SalesReturns
+                .AsNoTracking()
                 .Include(sr => sr.Customer)
+                .Include(sr => sr.Lines)
                 .Where(sr => sr.OriginalInvoiceId == invoiceId)
                 .OrderByDescending(sr => sr.ReturnDate)
                 .ToListAsync(cancellationToken);
@@ -120,6 +164,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
             var prefix = $"SR-{_dateTime.UtcNow:yyyyMM}-";
 
             var lastNumber = await _context.SalesReturns
+                .AsNoTracking()
                 .Where(sr => sr.ReturnNumber.StartsWith(prefix))
                 .OrderByDescending(sr => sr.ReturnNumber)
                 .Select(sr => sr.ReturnNumber)

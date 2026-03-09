@@ -598,8 +598,8 @@ namespace MarcoERP.Application.Tests.Accounting
 
             // Setup number generator
             _numberGeneratorMock
-                .Setup(n => n.NextNumber(fy.Id))
-                .Returns("JV-2024-00001");
+                .Setup(n => n.NextNumberAsync(fy.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync("JV-2024-00001");
 
             // Act
             var result = await _sut.PostAsync(1, CancellationToken.None);
@@ -709,8 +709,8 @@ namespace MarcoERP.Application.Tests.Accounting
                 .ReturnsAsync(reversalFy);
 
             _numberGeneratorMock
-                .Setup(n => n.NextNumber(reversalFy.Id))
-                .Returns("JV-2024-00002");
+                .Setup(n => n.NextNumberAsync(reversalFy.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync("JV-2024-00002");
 
             var dto = new ReverseJournalEntryDto
             {

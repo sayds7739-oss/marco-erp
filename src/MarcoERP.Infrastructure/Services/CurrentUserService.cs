@@ -19,6 +19,7 @@ namespace MarcoERP.Infrastructure.Services
         private string _roleNameAr;
         private string _fullNameAr;
         private List<string> _permissions = new();
+        private bool _isSystemAdmin;
 
         /// <inheritdoc />
         public string Username => _username ?? "System";
@@ -45,8 +46,8 @@ namespace MarcoERP.Infrastructure.Services
         public bool HasPermission(string permissionKey)
         {
             if (string.IsNullOrWhiteSpace(permissionKey)) return false;
-            // Administrators have all permissions
-            if (_roleId == 1) return true;
+            // System administrators have all permissions — determined by role name or wildcard
+            if (_isSystemAdmin) return true;
             return _permissions.Contains(permissionKey);
         }
 
@@ -71,6 +72,9 @@ namespace MarcoERP.Infrastructure.Services
             _roleNameAr = roleNameAr?.Trim();
             _permissions = permissions?.ToList() ?? new List<string>();
             _isAuthenticated = !string.IsNullOrWhiteSpace(_username);
+            // Determine super-admin by wildcard permission (primary) or well-known role name (fallback)
+            _isSystemAdmin = _permissions.Contains("*")
+                          || string.Equals(_roleNameAr, "مدير النظام", System.StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -84,7 +88,8 @@ namespace MarcoERP.Infrastructure.Services
             _roleId = 0;
             _roleNameAr = null;
             _fullNameAr = null;
-            _permissions.Clear();
+            _permissions = new List<string>();
+            _isSystemAdmin = false;
         }
     }
 }

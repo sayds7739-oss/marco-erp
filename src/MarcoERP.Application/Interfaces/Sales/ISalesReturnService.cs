@@ -21,18 +21,23 @@ namespace MarcoERP.Application.Interfaces.Sales
         Task<ServiceResult<string>> GetNextNumberAsync(CancellationToken ct = default);
 
         /// <summary>Creates a new draft sales return.</summary>
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult<SalesReturnDto>> CreateAsync(CreateSalesReturnDto dto, CancellationToken ct = default);
 
         /// <summary>Updates a draft sales return.</summary>
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult<SalesReturnDto>> UpdateAsync(UpdateSalesReturnDto dto, CancellationToken ct = default);
 
         /// <summary>Posts a return: reversal revenue journal + reversal COGS journal, stock re-addition.</summary>
+        [RequiresPermission(PermissionKeys.SalesPost)]
         Task<ServiceResult<SalesReturnDto>> PostAsync(int id, CancellationToken ct = default);
 
         /// <summary>Cancels a posted return.</summary>
+        [RequiresPermission(PermissionKeys.SalesPost)]
         Task<ServiceResult> CancelAsync(int id, CancellationToken ct = default);
 
         /// <summary>Deletes a draft return.</summary>
+        [RequiresPermission(PermissionKeys.SalesCreate)]
         Task<ServiceResult> DeleteDraftAsync(int id, CancellationToken ct = default);
     }
 }

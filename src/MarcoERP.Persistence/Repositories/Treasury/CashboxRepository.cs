@@ -21,15 +21,43 @@ namespace MarcoERP.Persistence.Repositories.Treasury
         // ── IRepository<Cashbox> ─────────────────────────────────
 
         public async Task<Cashbox> GetByIdAsync(int id, CancellationToken ct = default)
-            => await _context.Cashboxes.FirstOrDefaultAsync(c => c.Id == id, ct);
+            => await _context.Cashboxes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == id, ct);
 
         public async Task<IReadOnlyList<Cashbox>> GetAllAsync(CancellationToken ct = default)
-            => await _context.Cashboxes.OrderBy(c => c.Code).ToListAsync(ct);
+            => await _context.Cashboxes
+                .AsNoTracking()
+                .OrderBy(c => c.Code)
+                .ToListAsync(ct);
 
         public async Task AddAsync(Cashbox entity, CancellationToken ct = default)
             => await _context.Cashboxes.AddAsync(entity, ct);
 
-        public void Update(Cashbox entity) => _context.Cashboxes.Update(entity);
+        public void Update(Cashbox entity)
+        {
+            if (entity == null) return;
+
+            // Check if already tracked to avoid dual-tracking conflicts.
+            // This happens when the entity is loaded tracked via Include (in
+            // CashPayment/CashReceipt) and then separately loaded AsNoTracking
+            // via GetByIdAsync in posting flows.
+            var local = _context.Cashboxes.Local.FirstOrDefault(c => c.Id == entity.Id);
+            if (local != null && !ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+                return;
+            }
+            if (local != null)
+            {
+                var existing = _context.Entry(local);
+                if (existing.State == EntityState.Unchanged)
+                    existing.State = EntityState.Modified;
+                return;
+            }
+
+            _context.Cashboxes.Update(entity);
+        }
         public void Remove(Cashbox entity) => _context.Cashboxes.Remove(entity);
 
         // ── ICashboxRepository ───────────────────────────────────
@@ -43,10 +71,16 @@ namespace MarcoERP.Persistence.Repositories.Treasury
         }
 
         public async Task<Cashbox> GetDefaultAsync(CancellationToken ct = default)
-            => await _context.Cashboxes.FirstOrDefaultAsync(c => c.IsDefault, ct);
+            => await _context.Cashboxes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.IsDefault, ct);
 
         public async Task<IReadOnlyList<Cashbox>> GetActiveAsync(CancellationToken ct = default)
-            => await _context.Cashboxes.Where(c => c.IsActive).OrderBy(c => c.Code).ToListAsync(ct);
+            => await _context.Cashboxes
+                .AsNoTracking()
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Code)
+                .ToListAsync(ct);
 
         /// <summary>
         /// Generates the next cashbox code in format CBX-####.
@@ -57,6 +91,8 @@ namespace MarcoERP.Persistence.Repositories.Treasury
             const string prefix = "CBX-";
 
             var lastCode = await _context.Cashboxes
+                .IgnoreQueryFilters()
+                .AsNoTracking()
                 .Where(c => c.Code.StartsWith(prefix))
                 .OrderByDescending(c => c.Code)
                 .Select(c => c.Code)

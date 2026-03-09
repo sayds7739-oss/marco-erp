@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net462;net6.0</TargetFrameworks>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <TargetFrameworks>$(TargetFrameworks);net6.0-windows7.0</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)'!='net462'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <WindowsFormsReplacement>true</WindowsFormsReplacement>
+    <WindowsFormsReplacement Condition="'$(TargetFramework)'=='net462' or '$(TargetFramework)'=='net6.0-windows7.0'">false</WindowsFormsReplacement>
+  </PropertyGroup>
+
+  <!--Explicit import Directory.Build.props (for old-style csproj)-->
+  <Import Project="..\Directory.Build.props" Condition="'$(UsingMicrosoftNETSdk)' != 'true'"/>
+  
+  <Import Project="$(SlnDir)\UsedPackages.version" />
+  <ItemGroup Condition="'$(TargetFramework)'!='net462'">
+    <PackageReference Include="System.Drawing.Common" Version="$(SystemDrawingCommonVersion)"/>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="$(CodeAnalysisCSharpVersion)" />
+    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" Version="$(CodeAnalysisVisualBasicVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(WindowsFormsReplacement) == 'false'">
+    <Compile Remove="$(SourceCode)\WindowsForms\**" />
+    <Compile Remove="$(SourceCode)\DotNetClasses\UITypeEditor.cs"/>
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(WindowsFormsReplacement)'=='false'">
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <None Include="$(SourceCode)\WindowsForms\**">
+      <Link>WindowsForms/%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </None>
+    <None Include="$(SourceCode)\DotNetClasses\UITypeEditor.cs">
+      <Link>DotNetClasses\UITypeEditor.cs</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE.md">
+      <Pack>True</Pack>
+      <Visible>false</Visible>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+</Project>

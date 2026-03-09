@@ -31,12 +31,14 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<PosSession> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             return await _context.PosSessions
+                .AsNoTracking()
                 .FirstOrDefaultAsync(ps => ps.Id == id, cancellationToken);
         }
 
         public async Task<IReadOnlyList<PosSession>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             return await _context.PosSessions
+                .AsNoTracking()
                 .OrderByDescending(ps => ps.OpenedAt)
                 .ToListAsync(cancellationToken);
         }
@@ -48,7 +50,22 @@ namespace MarcoERP.Persistence.Repositories.Sales
 
         public void Update(PosSession entity)
         {
-            _context.PosSessions.Update(entity);
+            if (entity == null) return;
+
+            var local = _context.PosSessions.Local.FirstOrDefault(e => e.Id == entity.Id);
+            if (local != null && !ReferenceEquals(local, entity))
+            {
+                _context.Entry(local).CurrentValues.SetValues(entity);
+                return;
+            }
+            if (local != null)
+            {
+                if (_context.Entry(local).State == EntityState.Unchanged)
+                    _context.Entry(local).State = EntityState.Modified;
+                return;
+            }
+
+            _context.Entry(entity).State = EntityState.Modified;
         }
 
         public void Remove(PosSession entity)
@@ -61,6 +78,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<PosSession> GetWithPaymentsAsync(int id, CancellationToken ct = default)
         {
             return await _context.PosSessions
+                .AsNoTracking()
                 .Include(ps => ps.Payments)
                 .FirstOrDefaultAsync(ps => ps.Id == id, ct);
         }
@@ -68,6 +86,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<PosSession> GetOpenSessionByUserAsync(int userId, CancellationToken ct = default)
         {
             return await _context.PosSessions
+                .AsNoTracking()
                 .FirstOrDefaultAsync(ps => ps.UserId == userId && ps.Status == PosSessionStatus.Open, ct);
         }
 
@@ -80,6 +99,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<PosSession>> GetByStatusAsync(PosSessionStatus status, CancellationToken ct = default)
         {
             return await _context.PosSessions
+                .AsNoTracking()
                 .Where(ps => ps.Status == status)
                 .OrderByDescending(ps => ps.OpenedAt)
                 .ToListAsync(ct);
@@ -88,6 +108,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
         public async Task<IReadOnlyList<PosSession>> GetByDateRangeAsync(DateTime fromDate, DateTime toDate, CancellationToken ct = default)
         {
             return await _context.PosSessions
+                .AsNoTracking()
                 .Where(ps => ps.OpenedAt >= fromDate && ps.OpenedAt <= toDate)
                 .OrderByDescending(ps => ps.OpenedAt)
                 .ToListAsync(ct);
@@ -99,6 +120,7 @@ namespace MarcoERP.Persistence.Repositories.Sales
             var prefix = $"POS-{today}-";
 
             var lastNumber = await _context.PosSessions
+                .AsNoTracking()
                 .Where(ps => ps.SessionNumber.StartsWith(prefix))
                 .OrderByDescending(ps => ps.SessionNumber)
                 .Select(ps => ps.SessionNumber)

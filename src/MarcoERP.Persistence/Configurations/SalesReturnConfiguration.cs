@@ -14,7 +14,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(sr => sr.Id);
             builder.Property(sr => sr.Id).UseIdentityColumn();
 
-            builder.Property(sr => sr.RowVersion).IsRowVersion().IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(sr => sr.ReturnNumber).IsRequired().HasMaxLength(30).IsUnicode(false);
             builder.Property(sr => sr.ReturnDate).IsRequired().HasColumnType("date");
@@ -23,6 +23,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.Property(sr => sr.DiscountTotal).IsRequired().HasPrecision(18, 4);
             builder.Property(sr => sr.VatTotal).IsRequired().HasPrecision(18, 4);
             builder.Property(sr => sr.NetTotal).IsRequired().HasPrecision(18, 4);
+            builder.Property(sr => sr.DeliveryFee).IsRequired().HasPrecision(18, 4).HasDefaultValue(0m);
             builder.Property(sr => sr.Notes).HasMaxLength(1000);
 
             // Counterparty type
@@ -53,7 +54,7 @@ namespace MarcoERP.Persistence.Configurations
                 .HasForeignKey(sr => sr.SupplierId).OnDelete(DeleteBehavior.Restrict)
                 .IsRequired(false);
 
-            builder.HasOne<Warehouse>().WithMany()
+            builder.HasOne(sr => sr.Warehouse).WithMany()
                 .HasForeignKey(sr => sr.WarehouseId).OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(sr => sr.OriginalInvoice).WithMany()
@@ -78,31 +79,32 @@ namespace MarcoERP.Persistence.Configurations
                 .HasForeignKey(l => l.SalesReturnId).OnDelete(DeleteBehavior.Restrict);
 
             // Indexes
-            builder.HasIndex(sr => sr.ReturnNumber).IsUnique()
-                .HasDatabaseName("IX_SalesReturns_ReturnNumber");
+            builder.HasIndex(sr => new { sr.CompanyId, sr.ReturnNumber }).IsUnique()
+                .HasDatabaseName("IX_SalesReturns_Company_ReturnNumber")
+                .HasFilter(DbProviderHelper.SoftDeleteFilter());
             builder.HasIndex(sr => sr.ReturnDate)
                 .HasDatabaseName("IX_SalesReturns_ReturnDate");
             builder.HasIndex(sr => sr.CustomerId)
                 .HasDatabaseName("IX_SalesReturns_CustomerId");
             builder.HasIndex(sr => sr.SupplierId)
                 .HasDatabaseName("IX_SalesReturns_SupplierId")
-                .HasFilter("[SupplierId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("SupplierId"));
             builder.HasIndex(sr => sr.WarehouseId)
                 .HasDatabaseName("IX_SalesReturns_WarehouseId");
             builder.HasIndex(sr => sr.OriginalInvoiceId)
                 .HasDatabaseName("IX_SalesReturns_OriginalInvoiceId")
-                .HasFilter("[OriginalInvoiceId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("OriginalInvoiceId"));
             builder.HasIndex(sr => sr.Status)
                 .HasDatabaseName("IX_SalesReturns_Status");
             builder.HasIndex(sr => sr.JournalEntryId)
                 .HasDatabaseName("IX_SalesReturns_JournalEntryId")
-                .HasFilter("[JournalEntryId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("JournalEntryId"));
             builder.HasIndex(sr => sr.CogsJournalEntryId)
                 .HasDatabaseName("IX_SalesReturns_CogsJournalEntryId")
-                .HasFilter("[CogsJournalEntryId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("CogsJournalEntryId"));
             builder.HasIndex(sr => sr.SalesRepresentativeId)
                 .HasDatabaseName("IX_SalesReturns_SalesRepresentativeId")
-                .HasFilter("[SalesRepresentativeId] IS NOT NULL");
+                .HasFilter(DbProviderHelper.IsNotNullFilter("SalesRepresentativeId"));
         }
     }
 }

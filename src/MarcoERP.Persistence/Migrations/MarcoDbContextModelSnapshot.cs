@@ -504,7 +504,8 @@ namespace MarcoERP.Persistence.Migrations
 
                     b.HasIndex("DraftCode")
                         .IsUnique()
-                        .HasDatabaseName("IX_JournalEntries_DraftCode");
+                        .HasDatabaseName("IX_JournalEntries_DraftCode")
+                        .HasFilter("[DraftCode] IS NOT NULL AND [IsDeleted] = 0");
 
                     b.HasIndex("FiscalPeriodId")
                         .HasDatabaseName("IX_JournalEntries_FiscalPeriodId");
@@ -518,7 +519,7 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("JournalNumber")
                         .IsUnique()
                         .HasDatabaseName("IX_JournalEntries_JournalNumber")
-                        .HasFilter("[JournalNumber] IS NOT NULL");
+                        .HasFilter("[JournalNumber] IS NOT NULL AND [IsDeleted] = 0");
 
                     b.HasIndex("ReversedEntryId")
                         .IsUnique()
@@ -604,7 +605,177 @@ namespace MarcoERP.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_JournalEntryLines_Entry_LineNumber");
 
-                    b.ToTable("JournalEntryLines", (string)null);
+                    b.ToTable("JournalEntryLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_JournalEntryLines_NonNegative", "[DebitAmount] >= 0 AND [CreditAmount] >= 0");
+
+                            t.HasCheckConstraint("CK_JournalEntryLines_SingleSide", "NOT ([DebitAmount] > 0 AND [CreditAmount] > 0)");
+                        });
+                });
+
+            modelBuilder.Entity("MarcoERP.Domain.Entities.Accounting.OpeningBalance", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("BalanceDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("FiscalYearId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("JournalEntryId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("PostedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PostedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalCredit")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TotalDebit")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BalanceDate")
+                        .HasDatabaseName("IX_OpeningBalances_BalanceDate");
+
+                    b.HasIndex("FiscalYearId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_OpeningBalances_FiscalYearId");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_OpeningBalances_Status");
+
+                    b.ToTable("OpeningBalances", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OpeningBalances_PostedBalanced", "[Status] <> 1 OR [TotalDebit] = [TotalCredit]");
+                        });
+                });
+
+            modelBuilder.Entity("MarcoERP.Domain.Entities.Accounting.OpeningBalanceLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccountId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BankAccountId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CashboxId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("CreditAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("DebitAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int>("LineType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("OpeningBalanceId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int?>("SupplierId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int?>("WarehouseId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId")
+                        .HasDatabaseName("IX_OpeningBalanceLines_AccountId");
+
+                    b.HasIndex("BankAccountId");
+
+                    b.HasIndex("CashboxId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("LineType")
+                        .HasDatabaseName("IX_OpeningBalanceLines_LineType");
+
+                    b.HasIndex("OpeningBalanceId")
+                        .HasDatabaseName("IX_OpeningBalanceLines_OpeningBalanceId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("OpeningBalanceLines", (string)null);
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Common.Company", b =>
@@ -991,7 +1162,12 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("ProductId", "WarehouseId", "MovementDate")
                         .HasDatabaseName("IX_InventoryMovements_StockCard");
 
-                    b.ToTable("InventoryMovements", (string)null);
+                    b.ToTable("InventoryMovements", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_InventoryMovements_BaseQuantity", "[QuantityInBaseUnit] > 0");
+
+                            t.HasCheckConstraint("CK_InventoryMovements_TotalCost", "[TotalCost] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Inventory.Product", b =>
@@ -1052,10 +1228,18 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("ImagePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
+
+                    b.Property<decimal>("MaximumStock")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<decimal>("MinimumStock")
                         .HasPrecision(18, 4)
@@ -1081,6 +1265,10 @@ namespace MarcoERP.Persistence.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
 
+                    b.Property<decimal>("RetailPrice")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1094,6 +1282,10 @@ namespace MarcoERP.Persistence.Migrations
                         .HasColumnType("decimal(5,2)");
 
                     b.Property<decimal>("WeightedAverageCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("WholesalePrice")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
 
@@ -1405,9 +1597,30 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<decimal>("DeliveryFee")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
                     b.Property<decimal>("DiscountTotal")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("HeaderDiscountAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("HeaderDiscountPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
 
                     b.Property<DateTime>("InvoiceDate")
                         .HasColumnType("date");
@@ -1417,6 +1630,11 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(30)
                         .IsUnicode(false)
                         .HasColumnType("varchar(30)");
+
+                    b.Property<int>("InvoiceType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -1446,6 +1664,11 @@ namespace MarcoERP.Persistence.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)")
                         .HasDefaultValue(0m);
+
+                    b.Property<int>("PaymentMethod")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("PaymentStatus")
                         .HasColumnType("int");
@@ -1486,11 +1709,6 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("InvoiceDate")
                         .HasDatabaseName("IX_PurchaseInvoices_InvoiceDate");
 
-                    b.HasIndex("InvoiceNumber")
-                        .IsUnique()
-                        .HasDatabaseName("IX_PurchaseInvoices_InvoiceNumber")
-                        .HasFilter("[IsDeleted] = 0");
-
                     b.HasIndex("JournalEntryId")
                         .HasDatabaseName("IX_PurchaseInvoices_JournalEntryId")
                         .HasFilter("[JournalEntryId] IS NOT NULL");
@@ -1509,7 +1727,15 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("WarehouseId")
                         .HasDatabaseName("IX_PurchaseInvoices_WarehouseId");
 
-                    b.ToTable("PurchaseInvoices", (string)null);
+                    b.HasIndex("CompanyId", "InvoiceNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PurchaseInvoices_Company_InvoiceNumber")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("PurchaseInvoices", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseInvoices_PaidAmount", "[PaidAmount] >= 0 AND [PaidAmount] <= [NetTotal]");
+                        });
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Purchases.PurchaseInvoiceLine", b =>
@@ -1588,7 +1814,12 @@ namespace MarcoERP.Persistence.Migrations
 
                     b.HasIndex("UnitId");
 
-                    b.ToTable("PurchaseInvoiceLines", (string)null);
+                    b.ToTable("PurchaseInvoiceLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseInvoiceLines_Quantity", "[Quantity] > 0");
+
+                            t.HasCheckConstraint("CK_PurchaseInvoiceLines_UnitPrice", "[UnitPrice] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Purchases.PurchaseQuotation", b =>
@@ -1694,10 +1925,6 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("QuotationDate")
                         .HasDatabaseName("IX_PurchaseQuotations_QuotationDate");
 
-                    b.HasIndex("QuotationNumber")
-                        .IsUnique()
-                        .HasDatabaseName("IX_PurchaseQuotations_QuotationNumber");
-
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_PurchaseQuotations_Status");
 
@@ -1706,6 +1933,11 @@ namespace MarcoERP.Persistence.Migrations
 
                     b.HasIndex("WarehouseId")
                         .HasDatabaseName("IX_PurchaseQuotations_WarehouseId");
+
+                    b.HasIndex("CompanyId", "QuotationNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PurchaseQuotations_CompanyId_QuotationNumber")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("PurchaseQuotations", (string)null);
                 });
@@ -1825,6 +2057,12 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<decimal>("DeliveryFee")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
                     b.Property<decimal>("DiscountTotal")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
@@ -1908,10 +2146,6 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("ReturnDate")
                         .HasDatabaseName("IX_PurchaseReturns_ReturnDate");
 
-                    b.HasIndex("ReturnNumber")
-                        .IsUnique()
-                        .HasDatabaseName("IX_PurchaseReturns_ReturnNumber");
-
                     b.HasIndex("SalesRepresentativeId")
                         .HasDatabaseName("IX_PurchaseReturns_SalesRepresentativeId")
                         .HasFilter("[SalesRepresentativeId] IS NOT NULL");
@@ -1925,6 +2159,11 @@ namespace MarcoERP.Persistence.Migrations
 
                     b.HasIndex("WarehouseId")
                         .HasDatabaseName("IX_PurchaseReturns_WarehouseId");
+
+                    b.HasIndex("CompanyId", "ReturnNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PurchaseReturns_Company_ReturnNumber")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("PurchaseReturns", (string)null);
                 });
@@ -2005,7 +2244,12 @@ namespace MarcoERP.Persistence.Migrations
 
                     b.HasIndex("UnitId");
 
-                    b.ToTable("PurchaseReturnLines", (string)null);
+                    b.ToTable("PurchaseReturnLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseReturnLines_Quantity", "[Quantity] > 0");
+
+                            t.HasCheckConstraint("CK_PurchaseReturnLines_UnitPrice", "[UnitPrice] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Purchases.Supplier", b =>
@@ -2023,6 +2267,18 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("BankAccountName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BankAccountNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("BankName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("City")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -2032,10 +2288,22 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("CommercialRegister")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<int>("CompanyId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1);
+
+                    b.Property<string>("ContactPerson")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -2045,12 +2313,27 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<decimal>("CreditLimit")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int?>("DaysAllowed")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("DeletedBy")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("IBAN")
+                        .HasMaxLength(34)
+                        .HasColumnType("nvarchar(34)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -2090,6 +2373,10 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<decimal>("PreviousBalance")
                         .ValueGeneratedOnAdd()
                         .HasPrecision(18, 4)
@@ -2104,6 +2391,10 @@ namespace MarcoERP.Persistence.Migrations
                     b.Property<string>("TaxNumber")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -2158,10 +2449,22 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("CommercialRegister")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<int>("CompanyId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1);
+
+                    b.Property<string>("ContactPerson")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -2177,8 +2480,15 @@ namespace MarcoERP.Persistence.Migrations
                         .HasColumnType("decimal(18,4)")
                         .HasDefaultValue(0m);
 
+                    b.Property<int>("CustomerType")
+                        .HasColumnType("int");
+
                     b.Property<int?>("DaysAllowed")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("DefaultDiscountPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.Property<int?>("DefaultSalesRepresentativeId")
                         .HasColumnType("int");
@@ -2189,6 +2499,10 @@ namespace MarcoERP.Persistence.Migrations
                     b.Property<string>("DeletedBy")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -2228,6 +2542,10 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<decimal>("PreviousBalance")
                         .ValueGeneratedOnAdd()
                         .HasPrecision(18, 4)
@@ -2245,6 +2563,10 @@ namespace MarcoERP.Persistence.Migrations
                     b.Property<string>("TaxNumber")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -2586,7 +2908,7 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("CustomerId")
+                    b.Property<int?>("CustomerId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("DeletedAt")
@@ -2596,9 +2918,30 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<decimal>("DeliveryFee")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
                     b.Property<decimal>("DiscountTotal")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("HeaderDiscountAmount")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("HeaderDiscountPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
 
                     b.Property<DateTime>("InvoiceDate")
                         .HasColumnType("date");
@@ -2608,6 +2951,11 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(30)
                         .IsUnicode(false)
                         .HasColumnType("varchar(30)");
+
+                    b.Property<int>("InvoiceType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -2637,6 +2985,11 @@ namespace MarcoERP.Persistence.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)")
                         .HasDefaultValue(0m);
+
+                    b.Property<int>("PaymentMethod")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("PaymentStatus")
                         .HasColumnType("int");
@@ -2680,11 +3033,6 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("InvoiceDate")
                         .HasDatabaseName("IX_SalesInvoices_InvoiceDate");
 
-                    b.HasIndex("InvoiceNumber")
-                        .IsUnique()
-                        .HasDatabaseName("IX_SalesInvoices_InvoiceNumber")
-                        .HasFilter("[IsDeleted] = 0");
-
                     b.HasIndex("JournalEntryId")
                         .HasDatabaseName("IX_SalesInvoices_JournalEntryId")
                         .HasFilter("[JournalEntryId] IS NOT NULL");
@@ -2703,7 +3051,15 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("WarehouseId")
                         .HasDatabaseName("IX_SalesInvoices_WarehouseId");
 
-                    b.ToTable("SalesInvoices", (string)null);
+                    b.HasIndex("CompanyId", "InvoiceNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SalesInvoices_Company_InvoiceNumber")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.ToTable("SalesInvoices", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SalesInvoices_PaidAmount", "[PaidAmount] >= 0 AND [PaidAmount] <= [NetTotal]");
+                        });
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Sales.SalesInvoiceLine", b =>
@@ -2782,7 +3138,12 @@ namespace MarcoERP.Persistence.Migrations
 
                     b.HasIndex("UnitId");
 
-                    b.ToTable("SalesInvoiceLines", (string)null);
+                    b.ToTable("SalesInvoiceLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SalesInvoiceLines_Quantity", "[Quantity] > 0");
+
+                            t.HasCheckConstraint("CK_SalesInvoiceLines_UnitPrice", "[UnitPrice] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Sales.SalesQuotation", b =>
@@ -2894,10 +3255,6 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("QuotationDate")
                         .HasDatabaseName("IX_SalesQuotations_QuotationDate");
 
-                    b.HasIndex("QuotationNumber")
-                        .IsUnique()
-                        .HasDatabaseName("IX_SalesQuotations_QuotationNumber");
-
                     b.HasIndex("SalesRepresentativeId")
                         .HasDatabaseName("IX_SalesQuotations_SalesRepresentativeId")
                         .HasFilter("[SalesRepresentativeId] IS NOT NULL");
@@ -2907,6 +3264,11 @@ namespace MarcoERP.Persistence.Migrations
 
                     b.HasIndex("WarehouseId")
                         .HasDatabaseName("IX_SalesQuotations_WarehouseId");
+
+                    b.HasIndex("CompanyId", "QuotationNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SalesQuotations_CompanyId_QuotationNumber")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("SalesQuotations", (string)null);
                 });
@@ -3123,6 +3485,12 @@ namespace MarcoERP.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<decimal>("DeliveryFee")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
+
                     b.Property<decimal>("DiscountTotal")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
@@ -3209,10 +3577,6 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("ReturnDate")
                         .HasDatabaseName("IX_SalesReturns_ReturnDate");
 
-                    b.HasIndex("ReturnNumber")
-                        .IsUnique()
-                        .HasDatabaseName("IX_SalesReturns_ReturnNumber");
-
                     b.HasIndex("SalesRepresentativeId")
                         .HasDatabaseName("IX_SalesReturns_SalesRepresentativeId")
                         .HasFilter("[SalesRepresentativeId] IS NOT NULL");
@@ -3226,6 +3590,11 @@ namespace MarcoERP.Persistence.Migrations
 
                     b.HasIndex("WarehouseId")
                         .HasDatabaseName("IX_SalesReturns_WarehouseId");
+
+                    b.HasIndex("CompanyId", "ReturnNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_SalesReturns_Company_ReturnNumber")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("SalesReturns", (string)null);
                 });
@@ -3306,7 +3675,12 @@ namespace MarcoERP.Persistence.Migrations
 
                     b.HasIndex("UnitId");
 
-                    b.ToTable("SalesReturnLines", (string)null);
+                    b.ToTable("SalesReturnLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SalesReturnLines_Quantity", "[Quantity] > 0");
+
+                            t.HasCheckConstraint("CK_SalesReturnLines_UnitPrice", "[UnitPrice] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Security.Role", b =>
@@ -4242,10 +4616,6 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("PaymentDate")
                         .HasDatabaseName("IX_CashPayments_PaymentDate");
 
-                    b.HasIndex("PaymentNumber")
-                        .IsUnique()
-                        .HasDatabaseName("IX_CashPayments_PaymentNumber");
-
                     b.HasIndex("PurchaseInvoiceId")
                         .HasDatabaseName("IX_CashPayments_PurchaseInvoiceId")
                         .HasFilter("[PurchaseInvoiceId] IS NOT NULL");
@@ -4256,6 +4626,11 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("SupplierId")
                         .HasDatabaseName("IX_CashPayments_SupplierId")
                         .HasFilter("[SupplierId] IS NOT NULL");
+
+                    b.HasIndex("CompanyId", "PaymentNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CashPayments_CompanyId_PaymentNumber")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("CashPayments", (string)null);
                 });
@@ -4365,16 +4740,17 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("ReceiptDate")
                         .HasDatabaseName("IX_CashReceipts_ReceiptDate");
 
-                    b.HasIndex("ReceiptNumber")
-                        .IsUnique()
-                        .HasDatabaseName("IX_CashReceipts_ReceiptNumber");
-
                     b.HasIndex("SalesInvoiceId")
                         .HasDatabaseName("IX_CashReceipts_SalesInvoiceId")
                         .HasFilter("[SalesInvoiceId] IS NOT NULL");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("IX_CashReceipts_Status");
+
+                    b.HasIndex("CompanyId", "ReceiptNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CashReceipts_CompanyId_ReceiptNumber")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("CashReceipts", (string)null);
                 });
@@ -4478,9 +4854,10 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasIndex("TransferDate")
                         .HasDatabaseName("IX_CashTransfers_TransferDate");
 
-                    b.HasIndex("TransferNumber")
+                    b.HasIndex("CompanyId", "TransferNumber")
                         .IsUnique()
-                        .HasDatabaseName("IX_CashTransfers_TransferNumber");
+                        .HasDatabaseName("IX_CashTransfers_CompanyId_TransferNumber")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("CashTransfers", (string)null);
                 });
@@ -4495,6 +4872,12 @@ namespace MarcoERP.Persistence.Migrations
 
                     b.Property<int?>("AccountId")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("Balance")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)")
+                        .HasDefaultValue(0m);
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -4558,6 +4941,8 @@ namespace MarcoERP.Persistence.Migrations
                         .HasColumnType("rowversion");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
 
                     b.HasIndex("Code")
                         .IsUnique()
@@ -4635,6 +5020,67 @@ namespace MarcoERP.Persistence.Migrations
                         .HasForeignKey("JournalEntryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("MarcoERP.Domain.Entities.Accounting.OpeningBalance", b =>
+                {
+                    b.HasOne("MarcoERP.Domain.Entities.Accounting.FiscalYear", "FiscalYear")
+                        .WithMany()
+                        .HasForeignKey("FiscalYearId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarcoERP.Domain.Entities.Accounting.JournalEntry", null)
+                        .WithMany()
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("FiscalYear");
+                });
+
+            modelBuilder.Entity("MarcoERP.Domain.Entities.Accounting.OpeningBalanceLine", b =>
+                {
+                    b.HasOne("MarcoERP.Domain.Entities.Accounting.Account", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarcoERP.Domain.Entities.Treasury.BankAccount", null)
+                        .WithMany()
+                        .HasForeignKey("BankAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MarcoERP.Domain.Entities.Treasury.Cashbox", null)
+                        .WithMany()
+                        .HasForeignKey("CashboxId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MarcoERP.Domain.Entities.Sales.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MarcoERP.Domain.Entities.Accounting.OpeningBalance", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("OpeningBalanceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MarcoERP.Domain.Entities.Purchases.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Inventory.Category", b =>
@@ -4901,7 +5347,7 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasOne("MarcoERP.Domain.Entities.Purchases.PurchaseQuotation", null)
                         .WithMany("Lines")
                         .HasForeignKey("PurchaseQuotationId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("MarcoERP.Domain.Entities.Inventory.Unit", null)
@@ -5047,23 +5493,29 @@ namespace MarcoERP.Persistence.Migrations
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Sales.PosSession", b =>
                 {
-                    b.HasOne("MarcoERP.Domain.Entities.Treasury.Cashbox", null)
+                    b.HasOne("MarcoERP.Domain.Entities.Treasury.Cashbox", "Cashbox")
                         .WithMany()
                         .HasForeignKey("CashboxId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MarcoERP.Domain.Entities.Security.User", null)
+                    b.HasOne("MarcoERP.Domain.Entities.Security.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Warehouse", null)
+                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Warehouse", "Warehouse")
                         .WithMany()
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Cashbox");
+
+                    b.Navigation("User");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Sales.PriceTier", b =>
@@ -5101,8 +5553,7 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasOne("MarcoERP.Domain.Entities.Sales.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MarcoERP.Domain.Entities.Accounting.JournalEntry", null)
                         .WithMany()
@@ -5119,7 +5570,7 @@ namespace MarcoERP.Persistence.Migrations
                         .HasForeignKey("SupplierId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Warehouse", null)
+                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Warehouse", "Warehouse")
                         .WithMany()
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -5130,11 +5581,13 @@ namespace MarcoERP.Persistence.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("SalesRepresentative");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Sales.SalesInvoiceLine", b =>
                 {
-                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Product", null)
+                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -5146,11 +5599,15 @@ namespace MarcoERP.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Unit", null)
+                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Unit", "Unit")
                         .WithMany()
                         .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Unit");
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Sales.SalesQuotation", b =>
@@ -5199,7 +5656,7 @@ namespace MarcoERP.Persistence.Migrations
                     b.HasOne("MarcoERP.Domain.Entities.Sales.SalesQuotation", null)
                         .WithMany("Lines")
                         .HasForeignKey("SalesQuotationId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("MarcoERP.Domain.Entities.Inventory.Unit", null)
@@ -5247,7 +5704,7 @@ namespace MarcoERP.Persistence.Migrations
                         .HasForeignKey("SupplierId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Warehouse", null)
+                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Warehouse", "Warehouse")
                         .WithMany()
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -5260,11 +5717,13 @@ namespace MarcoERP.Persistence.Migrations
                     b.Navigation("OriginalInvoice");
 
                     b.Navigation("SalesRepresentative");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Sales.SalesReturnLine", b =>
                 {
-                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Product", null)
+                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -5276,11 +5735,15 @@ namespace MarcoERP.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Unit", null)
+                    b.HasOne("MarcoERP.Domain.Entities.Inventory.Unit", "Unit")
                         .WithMany()
                         .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Unit");
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Security.RolePermission", b =>
@@ -5398,7 +5861,7 @@ namespace MarcoERP.Persistence.Migrations
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Treasury.CashReceipt", b =>
                 {
-                    b.HasOne("MarcoERP.Domain.Entities.Accounting.Account", null)
+                    b.HasOne("MarcoERP.Domain.Entities.Accounting.Account", "Account")
                         .WithMany()
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -5416,7 +5879,7 @@ namespace MarcoERP.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MarcoERP.Domain.Entities.Sales.Customer", null)
+                    b.HasOne("MarcoERP.Domain.Entities.Sales.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -5431,7 +5894,11 @@ namespace MarcoERP.Persistence.Migrations
                         .HasForeignKey("SalesInvoiceId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.Navigation("Account");
+
                     b.Navigation("Cashbox");
+
+                    b.Navigation("Customer");
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Treasury.CashTransfer", b =>
@@ -5466,11 +5933,18 @@ namespace MarcoERP.Persistence.Migrations
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Treasury.Cashbox", b =>
                 {
+                    b.HasOne("MarcoERP.Domain.Entities.Accounting.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("MarcoERP.Domain.Entities.Common.Company", null)
                         .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Accounting.FiscalYear", b =>
@@ -5479,6 +5953,11 @@ namespace MarcoERP.Persistence.Migrations
                 });
 
             modelBuilder.Entity("MarcoERP.Domain.Entities.Accounting.JournalEntry", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("MarcoERP.Domain.Entities.Accounting.OpeningBalance", b =>
                 {
                     b.Navigation("Lines");
                 });

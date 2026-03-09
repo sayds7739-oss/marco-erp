@@ -14,6 +14,8 @@ using MarcoERP.Domain.Entities.Accounting;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions.Accounting;
 using MarcoERP.Domain.Interfaces;
+using MarcoERP.Application.Interfaces.Settings;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Accounting
 {
@@ -31,6 +33,8 @@ namespace MarcoERP.Application.Services.Accounting
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IValidator<CreateAccountDto> _createValidator;
         private readonly IValidator<UpdateAccountDto> _updateValidator;
+        private readonly ILogger<AccountService> _logger;
+        private readonly IFeatureService _featureService;
 
         public AccountService(
             IAccountRepository accountRepository,
@@ -39,7 +43,9 @@ namespace MarcoERP.Application.Services.Accounting
             IAuditLogger auditLogger,
             IDateTimeProvider dateTimeProvider,
             IValidator<CreateAccountDto> createValidator,
-            IValidator<UpdateAccountDto> updateValidator)
+            IValidator<UpdateAccountDto> updateValidator,
+            ILogger<AccountService> logger = null,
+            IFeatureService featureService = null)
         {
             _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
@@ -48,6 +54,8 @@ namespace MarcoERP.Application.Services.Accounting
             _dateTimeProvider = dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<AccountService>.Instance;
+            _featureService = featureService;
         }
 
         // ── Queries ─────────────────────────────────────────────
@@ -163,8 +171,19 @@ namespace MarcoERP.Application.Services.Accounting
         /// </summary>
         public async Task<ServiceResult<AccountDto>> CreateAsync(CreateAccountDto dto, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check<AccountDto>(_currentUser, PermissionKeys.AccountsCreate);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "Account", 0);
+            // Feature Guard — block operation if Accounting module is disabled
+            if (_featureService != null)
+            {
+                var guard = await FeatureGuard.CheckAsync<AccountDto>(_featureService, FeatureKeys.Accounting, cancellationToken);
+                if (guard != null) return guard;
+            }
+
+            // Defense-in-depth: auth guard (primary check is in AuthorizationProxy)
+            if (!_currentUser.IsAuthenticated)
+                return ServiceResult<AccountDto>.Failure("يجب تسجيل الدخول أولاً.");
+            if (!_currentUser.HasPermission(PermissionKeys.AccountsCreate))
+                return ServiceResult<AccountDto>.Failure("لا تملك الصلاحية لتنفيذ هذه العملية.");
 
             // Step 1: DTO format validation
             var validationResult = await _createValidator.ValidateAsync(dto, cancellationToken);
@@ -257,8 +276,12 @@ namespace MarcoERP.Application.Services.Accounting
         /// </summary>
         public async Task<ServiceResult<AccountDto>> UpdateAsync(UpdateAccountDto dto, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check<AccountDto>(_currentUser, PermissionKeys.AccountsEdit);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "Account", dto.Id);
+            // Defense-in-depth: auth guard
+            if (!_currentUser.IsAuthenticated)
+                return ServiceResult<AccountDto>.Failure("يجب تسجيل الدخول أولاً.");
+            if (!_currentUser.HasPermission(PermissionKeys.AccountsEdit))
+                return ServiceResult<AccountDto>.Failure("لا تملك الصلاحية لتنفيذ هذه العملية.");
 
             // Step 1: DTO validation
             var validationResult = await _updateValidator.ValidateAsync(dto, cancellationToken);
@@ -310,9 +333,7 @@ namespace MarcoERP.Application.Services.Accounting
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.AccountsEdit);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "Account", id);
             var account = await _accountRepository.GetByIdAsync(id, cancellationToken);
             if (account == null)
                 return ServiceResult.Failure("الحساب غير موجود.");
@@ -343,9 +364,7 @@ namespace MarcoERP.Application.Services.Accounting
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.AccountsEdit);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "Account", id);
             var account = await _accountRepository.GetByIdAsync(id, cancellationToken);
             if (account == null)
                 return ServiceResult.Failure("الحساب غير موجود.");
@@ -368,8 +387,12 @@ namespace MarcoERP.Application.Services.Accounting
 
         public async Task<ServiceResult> DeleteAsync(int id, CancellationToken cancellationToken)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.AccountsDelete);
-            if (authCheck != null) return authCheck;
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeleteAsync", "Account", id);
+            // Defense-in-depth: auth guard
+            if (!_currentUser.IsAuthenticated)
+                return ServiceResult.Failure("يجب تسجيل الدخول أولاً.");
+            if (!_currentUser.HasPermission(PermissionKeys.AccountsDelete))
+                return ServiceResult.Failure("لا تملك الصلاحية لتنفيذ هذه العملية.");
 
             var account = await _accountRepository.GetByIdAsync(id, cancellationToken);
             if (account == null)

@@ -8,12 +8,15 @@ using MarcoERP.Application.Common;
 using MarcoERP.Application.DTOs.Security;
 using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Security;
+using MarcoERP.Application.Interfaces.Settings;
 using MarcoERP.Application.Mappers.Security;
+using MarcoERP.Domain;
 using MarcoERP.Domain.Entities.Security;
 using MarcoERP.Domain.Enums;
 using MarcoERP.Domain.Exceptions;
 using MarcoERP.Domain.Interfaces;
 using MarcoERP.Domain.Interfaces.Security;
+using Microsoft.Extensions.Logging;
 
 namespace MarcoERP.Application.Services.Security
 {
@@ -28,9 +31,11 @@ namespace MarcoERP.Application.Services.Security
         private readonly IPasswordHasher _passwordHasher;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
+        private readonly IFeatureService _featureService;
         private readonly IValidator<CreateUserDto> _createValidator;
         private readonly IValidator<UpdateUserDto> _updateValidator;
         private readonly IValidator<ResetPasswordDto> _resetValidator;
+        private readonly ILogger<UserService> _logger;
 
         public UserService(
             IUserRepository userRepo,
@@ -38,18 +43,22 @@ namespace MarcoERP.Application.Services.Security
             IPasswordHasher passwordHasher,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser,
+            IFeatureService featureService,
             IValidator<CreateUserDto> createValidator,
             IValidator<UpdateUserDto> updateValidator,
-            IValidator<ResetPasswordDto> resetValidator)
+            IValidator<ResetPasswordDto> resetValidator,
+            ILogger<UserService> logger = null)
         {
             _userRepo = userRepo ?? throw new ArgumentNullException(nameof(userRepo));
             _roleRepo = roleRepo ?? throw new ArgumentNullException(nameof(roleRepo));
             _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
+            _featureService = featureService ?? throw new ArgumentNullException(nameof(featureService));
             _createValidator = createValidator ?? throw new ArgumentNullException(nameof(createValidator));
             _updateValidator = updateValidator ?? throw new ArgumentNullException(nameof(updateValidator));
             _resetValidator = resetValidator ?? throw new ArgumentNullException(nameof(resetValidator));
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<UserService>.Instance;
         }
 
         public async Task<ServiceResult<IReadOnlyList<UserListDto>>> GetAllAsync(CancellationToken ct = default)
@@ -69,8 +78,11 @@ namespace MarcoERP.Application.Services.Security
 
         public async Task<ServiceResult<UserDto>> CreateAsync(CreateUserDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<UserDto>(_currentUser, PermissionKeys.UsersManage);
-            if (authCheck != null) return authCheck;
+            // Feature guard: UserManagement must be enabled
+            var guard = await FeatureGuard.CheckAsync<UserDto>(_featureService, FeatureKeys.UserManagement, ct);
+            if (guard != null) return guard;
+
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "CreateAsync", "User", 0);
 
             var vr = await _createValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
@@ -116,9 +128,11 @@ namespace MarcoERP.Application.Services.Security
 
         public async Task<ServiceResult<UserDto>> UpdateAsync(UpdateUserDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check<UserDto>(_currentUser, PermissionKeys.UsersManage);
-            if (authCheck != null) return authCheck;
+            // Feature guard: UserManagement must be enabled
+            var guard = await FeatureGuard.CheckAsync<UserDto>(_featureService, FeatureKeys.UserManagement, ct);
+            if (guard != null) return guard;
 
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UpdateAsync", "User", dto.Id);
             var vr = await _updateValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult<UserDto>.Failure(
@@ -135,6 +149,10 @@ namespace MarcoERP.Application.Services.Security
 
             try
             {
+                // H-11: Prevent changing the admin user's role
+                if (entity.Username == DomainConstants.AdminUsername && dto.RoleId != entity.RoleId)
+                    return ServiceResult<UserDto>.Failure("لا يمكن تغيير دور المدير الرئيسي.");
+
                 entity.UpdateProfile(dto.FullNameAr, dto.FullNameEn, dto.Email, dto.Phone);
                 entity.ChangeRole(dto.RoleId);
                 _userRepo.Update(entity);
@@ -151,9 +169,11 @@ namespace MarcoERP.Application.Services.Security
 
         public async Task<ServiceResult> ResetPasswordAsync(ResetPasswordDto dto, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.UsersManage);
-            if (authCheck != null) return authCheck;
+            // Feature guard: UserManagement must be enabled
+            var guard = await FeatureGuard.CheckAsync(_featureService, FeatureKeys.UserManagement, ct);
+            if (guard != null) return guard;
 
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ResetPasswordAsync", "User", dto.UserId);
             var vr = await _resetValidator.ValidateAsync(dto, ct);
             if (!vr.IsValid)
                 return ServiceResult.Failure(
@@ -179,9 +199,7 @@ namespace MarcoERP.Application.Services.Security
 
         public async Task<ServiceResult> ActivateAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.UsersManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "ActivateAsync", "User", id);
             var entity = await _userRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("المستخدم غير موجود.");
 
@@ -193,11 +211,13 @@ namespace MarcoERP.Application.Services.Security
 
         public async Task<ServiceResult> DeactivateAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.UsersManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "DeactivateAsync", "User", id);
             var entity = await _userRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("المستخدم غير موجود.");
+
+            // H-10: Prevent user from deactivating their own account
+            if (_currentUser.UserId == id)
+                return ServiceResult.Failure("لا يمكنك تعطيل حسابك الخاص.");
 
             try
             {
@@ -214,9 +234,7 @@ namespace MarcoERP.Application.Services.Security
 
         public async Task<ServiceResult> UnlockAsync(int id, CancellationToken ct = default)
         {
-            var authCheck = AuthorizationGuard.Check(_currentUser, PermissionKeys.UsersManage);
-            if (authCheck != null) return authCheck;
-
+            _logger.LogInformation("Operation={Operation} Entity={Entity} EntityId={EntityId}", "UnlockAsync", "User", id);
             var entity = await _userRepo.GetByIdAsync(id, ct);
             if (entity == null) return ServiceResult.Failure("المستخدم غير موجود.");
 

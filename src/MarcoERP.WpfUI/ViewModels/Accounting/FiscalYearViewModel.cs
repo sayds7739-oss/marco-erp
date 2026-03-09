@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using MarcoERP.Application.DTOs.Accounting;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Accounting;
 using MarcoERP.Domain.Enums;
 
@@ -17,10 +18,12 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
     public sealed class FiscalYearViewModel : BaseViewModel
     {
         private readonly IFiscalYearService _fiscalYearService;
+        private readonly IDialogService _dialog;
 
-        public FiscalYearViewModel(IFiscalYearService fiscalYearService)
+        public FiscalYearViewModel(IFiscalYearService fiscalYearService, IDialogService dialog)
         {
             _fiscalYearService = fiscalYearService ?? throw new ArgumentNullException(nameof(fiscalYearService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             FiscalYears = new ObservableCollection<FiscalYearDto>();
             Periods = new ObservableCollection<FiscalPeriodDto>();
@@ -210,11 +213,9 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         {
             if (SelectedYear == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل تريد تفعيل السنة المالية {SelectedYear.Year}؟\nسنة واحدة فقط يمكن أن تكون نشطة.",
-                "تأكيد التفعيل",
-                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد التفعيل")) return;
 
             IsBusy = true;
             ClearError();
@@ -247,11 +248,9 @@ namespace MarcoERP.WpfUI.ViewModels.Accounting
         {
             if (SelectedYear == null) return;
 
-            var confirm = MessageBox.Show(
+            if (!_dialog.Confirm(
                 $"هل تريد إقفال السنة المالية {SelectedYear.Year}؟\n⚠️ الإقفال غير قابل للعكس!\nيجب أن تكون كل الفترات مُقفلة.",
-                "تأكيد الإقفال",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+                "تأكيد الإقفال")) return;
 
             IsBusy = true;
             ClearError();

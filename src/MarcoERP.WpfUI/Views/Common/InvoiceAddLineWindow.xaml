@@ -11,7 +11,7 @@
         ShowInTaskbar="False"
         FontFamily="Segoe UI"
         TextElement.FontSize="12"
-        FocusManager.FocusedElement="{Binding ElementName=cmbProduct}">
+        FocusManager.FocusedElement="{Binding ElementName=txtProductSearch}">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -37,24 +37,97 @@
     <Border Padding="14,10" Background="White">
         <StackPanel>
 
-            <!-- ═══ Product ═══ -->
+            <!-- ═══ Product Smart Search ═══ -->
             <TextBlock Text="الصنف" FontSize="12" Foreground="{StaticResource SubtitleBrush}" Margin="0,0,0,2" />
             <Grid Margin="0,0,0,2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <ComboBox x:Name="cmbProduct" Grid.Column="0"
+
+                <!-- Smart search TextBox with auto-suggest popup -->
+                <Grid Grid.Column="0">
+                    <TextBox x:Name="txtProductSearch" TabIndex="0"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="باركود / كود / اسم الصنف..."
+                             materialDesign:TextFieldAssist.HasLeadingIcon="True"
+                             materialDesign:TextFieldAssist.LeadingIcon="Magnify"
+                             FontSize="13" Height="44"
+                             common:SelectAllOnFocusBehavior.IsEnabled="True"
+                             TextChanged="SearchTextBox_TextChanged"
+                             PreviewKeyDown="SearchTextBox_PreviewKeyDown"
+                             GotFocus="SearchTextBox_GotFocus" />
+
+                    <!-- Auto-suggest popup -->
+                    <Popup x:Name="searchPopup" PlacementTarget="{Binding ElementName=txtProductSearch}"
+                           Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+                           PopupAnimation="Slide"
+                           Width="{Binding ActualWidth, ElementName=txtProductSearch}">
+                        <Border Background="White" BorderBrush="#CFD8DC" BorderThickness="1"
+                                CornerRadius="0,0,6,6" Margin="0,-1,0,0"
+                                Effect="{StaticResource MaterialDesignShadowDepth2}">
+                            <Grid MaxHeight="300">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <!-- Result count header -->
+                                <Border Grid.Row="0" Background="#F5F5F5" Padding="8,4">
+                                    <TextBlock x:Name="lblResultCount" FontSize="10" Foreground="#78909C" />
+                                </Border>
+                                <!-- Results list -->
+                                <ListBox x:Name="lstSearchResults" Grid.Row="1"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         BorderThickness="0" Padding="0"
+                                         PreviewKeyDown="SearchResults_PreviewKeyDown"
+                                         MouseDoubleClick="SearchResults_MouseDoubleClick"
+                                         SelectionChanged="SearchResults_SelectionChanged">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="4,3" MinWidth="320">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <!-- Code badge -->
+                                                <Border Grid.Column="0" Background="#E3F2FD" CornerRadius="3"
+                                                        Padding="6,2" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Code}" FontSize="11" FontWeight="SemiBold"
+                                                               Foreground="#1565C0" />
+                                                </Border>
+                                                <!-- Product name -->
+                                                <TextBlock Grid.Column="1" Text="{Binding NameAr}" FontSize="13"
+                                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                <!-- Sale price -->
+                                                <TextBlock Grid.Column="2" Text="{Binding DefaultSalePrice, StringFormat=N2}"
+                                                           FontSize="10" Foreground="#43A047" VerticalAlignment="Center"
+                                                           Margin="6,0" />
+                                                <!-- Barcode -->
+                                                <TextBlock Grid.Column="3" Text="{Binding Barcode}" FontSize="10"
+                                                           Foreground="#90A4AE" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                                            <Setter Property="Padding" Value="4,2" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                </ListBox>
+                            </Grid>
+                        </Border>
+                    </Popup>
+                </Grid>
+
+                <!-- Hidden ComboBox for data binding (keeps SelectedValue binding intact) -->
+                <ComboBox x:Name="cmbProduct" Visibility="Collapsed"
                           ItemsSource="{Binding Products}"
                           SelectedValue="{Binding LinePopup.ProductId, UpdateSourceTrigger=PropertyChanged}"
-                          SelectedValuePath="Id" DisplayMemberPath="NameAr"
-                          IsEditable="True" TabIndex="0"
-                          materialDesign:HintAssist.Hint="الصنف (F1 للبحث)"
-                          common:F1SearchBehavior.IsEnabled="True"
-                          common:F1SearchBehavior.Title="بحث الأصناف"
-                          Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                          FontSize="13" Height="52"
-                          PreviewKeyDown="Field_EnterToNext" />
+                          SelectedValuePath="Id" />
+
                 <Button Grid.Column="1" Style="{StaticResource MaterialDesignIconForegroundButton}"
                         Click="QuickAddProduct_Click"
                         ToolTip="إضافة صنف سريع"
@@ -284,7 +357,7 @@
                         <TextBlock Text="إضافة وإغلاق" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="11" />
                     </StackPanel>
                 </Button>
-                <Button Grid.Column="3" TabIndex="8"
+                <Button Grid.Column="3" TabIndex="8" IsCancel="True"
                         Style="{StaticResource MaterialDesignOutlinedButton}"
                         Click="Cancel_Click" Margin="3,0" Height="32" Padding="14,0">
                     <TextBlock Text="إلغاء" FontSize="11" />

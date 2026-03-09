@@ -1,3 +1,5 @@
+using MarcoERP.Domain.Enums;
+
 namespace MarcoERP.Application.DTOs.Sales
 {
     // ═══════════════════════════════════════════════════════════
@@ -16,6 +18,14 @@ namespace MarcoERP.Application.DTOs.Sales
         public string Address { get; set; }
         public string City { get; set; }
         public string TaxNumber { get; set; }
+        public string Email { get; set; }
+        public CustomerType CustomerType { get; set; }
+        public string CommercialRegister { get; set; }
+        public string Country { get; set; }
+        public string PostalCode { get; set; }
+        public string ContactPerson { get; set; }
+        public string Website { get; set; }
+        public decimal DefaultDiscountPercent { get; set; }
         public decimal PreviousBalance { get; set; }
         public decimal CreditLimit { get; set; }
         public int? DaysAllowed { get; set; }
@@ -38,6 +48,14 @@ namespace MarcoERP.Application.DTOs.Sales
         public string Address { get; set; }
         public string City { get; set; }
         public string TaxNumber { get; set; }
+        public string Email { get; set; }
+        public CustomerType CustomerType { get; set; }
+        public string CommercialRegister { get; set; }
+        public string Country { get; set; }
+        public string PostalCode { get; set; }
+        public string ContactPerson { get; set; }
+        public string Website { get; set; }
+        public decimal DefaultDiscountPercent { get; set; }
         public decimal PreviousBalance { get; set; }
         public decimal CreditLimit { get; set; }
         public int? DaysAllowed { get; set; }
@@ -57,6 +75,14 @@ namespace MarcoERP.Application.DTOs.Sales
         public string Address { get; set; }
         public string City { get; set; }
         public string TaxNumber { get; set; }
+        public string Email { get; set; }
+        public CustomerType CustomerType { get; set; }
+        public string CommercialRegister { get; set; }
+        public string Country { get; set; }
+        public string PostalCode { get; set; }
+        public string ContactPerson { get; set; }
+        public string Website { get; set; }
+        public decimal DefaultDiscountPercent { get; set; }
         public decimal CreditLimit { get; set; }
         public int? DaysAllowed { get; set; }
         public bool BlockedOnOverdue { get; set; }
@@ -71,6 +97,7 @@ namespace MarcoERP.Application.DTOs.Sales
         public string Code { get; set; }
         public string NameAr { get; set; }
         public string Phone { get; set; }
+        public CustomerType CustomerType { get; set; }
         public bool IsActive { get; set; }
     }
 }

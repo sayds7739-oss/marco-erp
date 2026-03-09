@@ -92,6 +92,13 @@
                         <DataGridTextColumn Header="الهاتف" Binding="{Binding Phone}" Width="90" />
                         <DataGridTextColumn Header="الجوال" Binding="{Binding Mobile}" Width="90" />
                         <DataGridTextColumn Header="المدينة" Binding="{Binding City}" Width="70" />
+                        <DataGridTextColumn Header="البريد" Binding="{Binding Email}" Width="120">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="FlowDirection" Value="LeftToRight" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                         <DataGridTextColumn Header="الرصيد" Binding="{Binding PreviousBalance, StringFormat=N2}" Width="90">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
@@ -224,6 +231,28 @@
                                              materialDesign:HintAssist.IsFloating="True"
                                              IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" Margin="0,6,0,0"
                                              FlowDirection="LeftToRight" />
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="6" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox Grid.Column="0"
+                                                  ItemsSource="{Binding CustomerTypeItems}"
+                                                  SelectedItem="{Binding FormCustomerType}"
+                                                  materialDesign:HintAssist.Hint="نوع العميل"
+                                                  materialDesign:HintAssist.IsFloating="True"
+                                                  IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" />
+                                        <TextBox Grid.Column="2" Text="{Binding FormCommercialRegister, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="السجل التجاري"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
+                                                 FlowDirection="LeftToRight" />
+                                    </Grid>
+                                    <TextBox Text="{Binding FormContactPerson, UpdateSourceTrigger=PropertyChanged}"
+                                             materialDesign:HintAssist.Hint="الشخص المسؤول"
+                                             materialDesign:HintAssist.IsFloating="True"
+                                             IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" Margin="0,6,0,0" />
                                 </StackPanel>
                             </Border>
 
@@ -257,6 +286,23 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="6" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Text="{Binding FormEmail, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="البريد الإلكتروني"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
+                                                 FlowDirection="LeftToRight" />
+                                        <TextBox Grid.Column="2" Text="{Binding FormWebsite, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="الموقع الإلكتروني"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
+                                                 FlowDirection="LeftToRight" />
+                                    </Grid>
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="6" />
                                             <ColumnDefinition Width="100" />
                                         </Grid.ColumnDefinitions>
                                         <TextBox Grid.Column="0" Text="{Binding FormAddress, UpdateSourceTrigger=PropertyChanged}"
@@ -267,6 +313,22 @@
                                                  materialDesign:HintAssist.Hint="المدينة"
                                                  materialDesign:HintAssist.IsFloating="True"
                                                  IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" />
+                                    </Grid>
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="6" />
+                                            <ColumnDefinition Width="120" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0" Text="{Binding FormCountry, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="الدولة"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" />
+                                        <TextBox Grid.Column="2" Text="{Binding FormPostalCode, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="الرمز البريدي"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
+                                                 FlowDirection="LeftToRight" MaxLength="10" />
                                     </Grid>
                                     <TextBox Text="{Binding FormTaxNumber, UpdateSourceTrigger=PropertyChanged}"
                                              materialDesign:HintAssist.Hint="الرقم الضريبي"
@@ -303,6 +365,11 @@
                                              IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4"
                                              FlowDirection="LeftToRight" />
                                 </Grid>
+                                <TextBox Text="{Binding FormDefaultDiscountPercent, StringFormat=N2, UpdateSourceTrigger=LostFocus}"
+                                         materialDesign:HintAssist.Hint="نسبة الخصم الافتراضية %"
+                                         materialDesign:HintAssist.IsFloating="True"
+                                         IsEnabled="{Binding IsEditing}" FontSize="12" Padding="6,4" Margin="0,6,0,0"
+                                         FlowDirection="LeftToRight" />
                                 <TextBox Text="{Binding FormNotes, UpdateSourceTrigger=PropertyChanged}"
                                          materialDesign:HintAssist.Hint="ملاحظات"
                                          materialDesign:HintAssist.IsFloating="True"

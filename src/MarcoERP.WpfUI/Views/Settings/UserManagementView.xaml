@@ -92,11 +92,13 @@
                         <PasswordBox materialDesign:HintAssist.Hint="كلمة المرور *"
                                      Visibility="{Binding IsNew, Converter={StaticResource BooleanToVisibilityConverter}}"
                                      Style="{StaticResource MaterialDesignOutlinedPasswordBox}" Margin="0,0,0,10"
-                                     x:Name="PasswordField"/>
+                                     x:Name="PasswordField"
+                                     PasswordChanged="PasswordField_PasswordChanged"/>
                         <PasswordBox materialDesign:HintAssist.Hint="تأكيد كلمة المرور *"
                                      Visibility="{Binding IsNew, Converter={StaticResource BooleanToVisibilityConverter}}"
                                      Style="{StaticResource MaterialDesignOutlinedPasswordBox}" Margin="0,0,0,10"
-                                     x:Name="ConfirmPasswordField"/>
+                                     x:Name="ConfirmPasswordField"
+                                     PasswordChanged="ConfirmPasswordField_PasswordChanged"/>
 
                         <TextBox materialDesign:HintAssist.Hint="الاسم الكامل بالعربية *"
                                  Text="{Binding FormFullNameAr, UpdateSourceTrigger=PropertyChanged}"

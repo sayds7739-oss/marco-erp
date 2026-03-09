@@ -11,9 +11,11 @@ namespace MarcoERP.Application.Interfaces.Reports
     public interface IReportExportService
     {
         /// <summary>Exports report data to a PDF file. Returns the file path.</summary>
+        [RequiresPermission(PermissionKeys.ReportsView)]
         Task<ServiceResult<string>> ExportToPdfAsync(ReportExportRequest request, string outputPath, CancellationToken ct = default);
 
         /// <summary>Exports report data to an Excel file. Returns the file path.</summary>
+        [RequiresPermission(PermissionKeys.ReportsView)]
         Task<ServiceResult<string>> ExportToExcelAsync(ReportExportRequest request, string outputPath, CancellationToken ct = default);
     }
 }

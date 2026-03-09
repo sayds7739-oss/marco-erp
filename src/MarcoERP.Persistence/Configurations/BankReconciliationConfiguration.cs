@@ -13,9 +13,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(r => r.Id);
             builder.Property(r => r.Id).UseIdentityColumn();
 
-            builder.Property(r => r.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(r => r.ReconciliationDate).IsRequired();
             builder.Property(r => r.StatementBalance).IsRequired().HasPrecision(18, 4);
@@ -55,9 +53,7 @@ namespace MarcoERP.Persistence.Configurations
             builder.HasKey(i => i.Id);
             builder.Property(i => i.Id).UseIdentityColumn();
 
-            builder.Property(i => i.RowVersion)
-                .IsRowVersion()
-                .IsConcurrencyToken();
+            DbProviderHelper.ConfigureRowVersion(builder);
 
             builder.Property(i => i.TransactionDate).IsRequired();
             builder.Property(i => i.Description).IsRequired().HasMaxLength(300);

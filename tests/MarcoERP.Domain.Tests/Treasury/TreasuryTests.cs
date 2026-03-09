@@ -131,7 +131,7 @@ namespace MarcoERP.Domain.Tests.Treasury
         public void UpdateHeader_DraftReceipt_UpdatesFields()
         {
             var cr = CreateValidDraft();
-            cr.UpdateHeader(new DateTime(2026, 3, 1), 2, 2, 1000m, "وصف جديد", 5, "ملاحظات");
+            cr.UpdateHeader(new DateTime(2026, 3, 1), 2, 2, 1000m, "وصف جديد", 5, null, "ملاحظات");
             cr.Amount.Should().Be(1000m);
             cr.CashboxId.Should().Be(2);
             cr.AccountId.Should().Be(2);
@@ -143,7 +143,7 @@ namespace MarcoERP.Domain.Tests.Treasury
         {
             var cr = CreateValidDraft();
             cr.Post(1);
-            Action act = () => cr.UpdateHeader(DateTime.Now, 2, 2, 1000m, "وصف", null, null);
+            Action act = () => cr.UpdateHeader(DateTime.Now, 2, 2, 1000m, "وصف", null, null, null);
             act.Should().Throw<Exception>();
         }
     }
@@ -208,7 +208,7 @@ namespace MarcoERP.Domain.Tests.Treasury
         public void UpdateHeader_DraftPayment_UpdatesFields()
         {
             var cp = CreateValidDraft();
-            cp.UpdateHeader(new DateTime(2026, 3, 1), 2, 2, 800m, "وصف جديد", 3, "ملاحظات");
+            cp.UpdateHeader(new DateTime(2026, 3, 1), 2, 2, 800m, "وصف جديد", 3, null, "ملاحظات");
             cp.Amount.Should().Be(800m);
             cp.SupplierId.Should().Be(3);
         }

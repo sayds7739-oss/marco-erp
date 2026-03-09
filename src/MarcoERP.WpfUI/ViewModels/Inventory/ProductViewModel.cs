@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using MarcoERP.Application.DTOs.Inventory;
 using MarcoERP.Application.DTOs.Purchases;
+using MarcoERP.Application.Interfaces;
 using MarcoERP.Application.Interfaces.Inventory;
 using MarcoERP.Application.Interfaces.Purchases;
 using MarcoERP.Domain.Exceptions;
@@ -24,6 +25,8 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         private readonly ICategoryService _categoryService;
         private readonly IUnitService _unitService;
         private readonly ISupplierService _supplierService;
+        private readonly ILineCalculationService _lineCalculationService;
+        private readonly IDialogService _dialog;
 
         // ── Collections ───────────────────────────────────────────
         public ObservableCollection<ProductDto> AllProducts { get; } = new();
@@ -163,6 +166,34 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             set => SetProperty(ref _formDefaultSupplierId, value);
         }
 
+        private decimal _formWholesalePrice;
+        public decimal FormWholesalePrice
+        {
+            get => _formWholesalePrice;
+            set => SetProperty(ref _formWholesalePrice, value);
+        }
+
+        private decimal _formRetailPrice;
+        public decimal FormRetailPrice
+        {
+            get => _formRetailPrice;
+            set => SetProperty(ref _formRetailPrice, value);
+        }
+
+        private string _formImagePath;
+        public string FormImagePath
+        {
+            get => _formImagePath;
+            set => SetProperty(ref _formImagePath, value);
+        }
+
+        private decimal _formMaximumStock;
+        public decimal FormMaximumStock
+        {
+            get => _formMaximumStock;
+            set => SetProperty(ref _formMaximumStock, value);
+        }
+
         // ── CanExecute Guards ───────────────────────────────────
         public bool CanSave => !string.IsNullOrWhiteSpace(FormNameAr)
                                && FormCategoryId.HasValue && FormCategoryId > 0
@@ -190,12 +221,16 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             IProductService productService,
             ICategoryService categoryService,
             IUnitService unitService,
-            ISupplierService supplierService)
+            ISupplierService supplierService,
+            ILineCalculationService lineCalculationService,
+            IDialogService dialog)
         {
             _productService = productService ?? throw new ArgumentNullException(nameof(productService));
             _categoryService = categoryService ?? throw new ArgumentNullException(nameof(categoryService));
             _unitService = unitService ?? throw new ArgumentNullException(nameof(unitService));
             _supplierService = supplierService ?? throw new ArgumentNullException(nameof(supplierService));
+            _lineCalculationService = lineCalculationService ?? throw new ArgumentNullException(nameof(lineCalculationService));
+            _dialog = dialog ?? throw new ArgumentNullException(nameof(dialog));
 
             LoadCommand = new AsyncRelayCommand(LoadProductsAsync);
             NewCommand = new AsyncRelayCommand(PrepareNewAsync);
@@ -284,6 +319,10 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             FormBarcode = "";
             FormDescription = "";
             FormDefaultSupplierId = null;
+            FormWholesalePrice = 0;
+            FormRetailPrice = 0;
+            FormImagePath = "";
+            FormMaximumStock = 0;
             FormUnits.Clear();
 
             StatusMessage = "إنشاء صنف جديد...";
@@ -307,6 +346,10 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                         BaseUnitId = FormBaseUnitId ?? 0,
                         CostPrice = FormCostPrice,
                         DefaultSalePrice = FormDefaultSalePrice,
+                        WholesalePrice = FormWholesalePrice,
+                        RetailPrice = FormRetailPrice,
+                        ImagePath = FormImagePath?.Trim(),
+                        MaximumStock = FormMaximumStock,
                         MinimumStock = FormMinimumStock,
                         ReorderLevel = FormReorderLevel,
                         VatRate = FormVatRate,
@@ -348,6 +391,10 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                         CategoryId = FormCategoryId ?? 0,
                         CostPrice = FormCostPrice,
                         DefaultSalePrice = FormDefaultSalePrice,
+                        WholesalePrice = FormWholesalePrice,
+                        RetailPrice = FormRetailPrice,
+                        ImagePath = FormImagePath?.Trim(),
+                        MaximumStock = FormMaximumStock,
                         MinimumStock = FormMinimumStock,
                         ReorderLevel = FormReorderLevel,
                         VatRate = FormVatRate,
@@ -398,11 +445,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         {
             if (SelectedItem == null) return;
 
-            var confirm = MessageBox.Show(
-                $"هل تريد حذف الصنف «{SelectedItem.NameAr}»؟\nالحذف نهائي ولا يمكن التراجع عنه.",
-                "تأكيد الحذف",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"هل تريد حذف الصنف «{SelectedItem.NameAr}»؟\nالحذف نهائي ولا يمكن التراجع عنه.", "تأكيد الحذف")) return;
 
             IsBusy = true;
             ClearError();
@@ -447,7 +490,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                 }
                 else ErrorMessage = result.ErrorMessage;
             }
-            catch (Exception ex) { ErrorMessage = ex.Message; }
+            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("تفعيل الصنف", ex); }
             finally { IsBusy = false; }
         }
 
@@ -455,11 +498,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         {
             if (SelectedItem == null) return;
 
-            var confirm = MessageBox.Show(
-                $"هل تريد تعطيل الصنف «{SelectedItem.NameAr}»؟",
-                "تأكيد التعطيل",
-                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (!_dialog.Confirm($"هل تريد تعطيل الصنف «{SelectedItem.NameAr}»؟", "تأكيد التعطيل")) return;
 
             IsBusy = true;
             ClearError();
@@ -473,7 +512,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
                 }
                 else ErrorMessage = result.ErrorMessage;
             }
-            catch (Exception ex) { ErrorMessage = ex.Message; }
+            catch (Exception ex) { ErrorMessage = FriendlyErrorMessage("تعطيل الصنف", ex); }
             finally { IsBusy = false; }
         }
 
@@ -483,6 +522,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             if (!IsEditing) return;
             var item = new ProductUnitFormItem();
             item.SetBasePriceProvider(() => (FormDefaultSalePrice, FormCostPrice));
+            item.SetPriceConverter(_lineCalculationService.ConvertPrice);
             FormUnits.Add(item);
         }
 
@@ -517,6 +557,10 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             FormBarcode = product.Barcode;
             FormDescription = product.Description;
             FormDefaultSupplierId = product.DefaultSupplierId;
+            FormWholesalePrice = product.WholesalePrice;
+            FormRetailPrice = product.RetailPrice;
+            FormImagePath = product.ImagePath;
+            FormMaximumStock = product.MaximumStock;
 
             // Populate units
             FormUnits.Clear();
@@ -524,6 +568,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             {
                 var item = new ProductUnitFormItem();
                 item.SetBasePriceProvider(() => (FormDefaultSalePrice, FormCostPrice));
+                item.SetPriceConverter(_lineCalculationService.ConvertPrice);
                 item.LoadWithoutAutoCalc(u.UnitId, u.ConversionFactor, u.SalePrice, u.PurchasePrice, u.Barcode, u.IsDefault);
                 FormUnits.Add(item);
             }
@@ -567,6 +612,10 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             FormBarcode = "";
             FormDescription = "";
             FormDefaultSupplierId = null;
+            FormWholesalePrice = 0;
+            FormRetailPrice = 0;
+            FormImagePath = "";
+            FormMaximumStock = 0;
             FormUnits.Clear();
         }
 
@@ -585,6 +634,7 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
     public sealed class ProductUnitFormItem : BaseViewModel
     {
         private Func<(decimal salePrice, decimal costPrice)> _getBasePrices;
+        private Func<decimal, decimal, decimal> _convertPrice;
         private bool _suppressAutoCalc;
         private bool _isAutoCalc;
         private bool _salePriceManual;
@@ -597,6 +647,14 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
         public void SetBasePriceProvider(Func<(decimal salePrice, decimal costPrice)> provider)
         {
             _getBasePrices = provider;
+        }
+
+        /// <summary>
+        /// Sets the price converter delegate (delegates to ILineCalculationService.ConvertPrice).
+        /// </summary>
+        public void SetPriceConverter(Func<decimal, decimal, decimal> converter)
+        {
+            _convertPrice = converter;
         }
 
         private int _selectedUnitId;
@@ -668,10 +726,14 @@ namespace MarcoERP.WpfUI.ViewModels.Inventory
             _isAutoCalc = true;
 
             if (baseSale > 0 && !_salePriceManual)
-                SalePrice = Math.Round(baseSale / ConversionFactor, 4);
+                SalePrice = _convertPrice != null
+                    ? _convertPrice(baseSale, ConversionFactor)
+                    : Math.Round(baseSale / ConversionFactor, 4);
 
             if (baseCost > 0 && !_purchasePriceManual)
-                PurchasePrice = Math.Round(baseCost / ConversionFactor, 4);
+                PurchasePrice = _convertPrice != null
+                    ? _convertPrice(baseCost, ConversionFactor)
+                    : Math.Round(baseCost / ConversionFactor, 4);
 
             _isAutoCalc = false;
         }

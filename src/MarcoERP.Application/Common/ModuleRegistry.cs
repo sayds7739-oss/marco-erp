@@ -65,6 +65,13 @@ namespace MarcoERP.Application.Common
                 SystemModule.Security,
                 SystemModule.Settings),
 
+            // ── POS depends on Sales, Inventory, Accounting, Treasury ──
+            new ModuleDefinition(SystemModule.POS,
+                SystemModule.Sales,
+                SystemModule.Inventory,
+                SystemModule.Accounting,
+                SystemModule.Treasury),
+
             // ── Common has no dependencies ──
             new ModuleDefinition(SystemModule.Common),
         };
